@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: festival-backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/festival_db
+    username: postgres
+    password: 1234
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+
+server:
+  port: 8080
+
+security:
+  jwt:
+    secret: ZmVzdGl2YWwtYXBwLXN1cGVyLXNlY3JldC1rZXktZm9yLWp3dC0yMDI2LTAxMDE=
+    expiration-ms: 86400000
