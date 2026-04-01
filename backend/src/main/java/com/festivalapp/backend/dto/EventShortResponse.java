@@ -5,17 +5,19 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Builder
-public class EventResponse {
+public class EventShortResponse {
 
     private Long id;
     private String title;
     private String shortDescription;
-    private String fullDescription;
     private Integer ageRating;
-    private EventStatus status;
     private LocalDateTime createdAt;
-    private Long organizerId;
+    private EventStatus status;
+    private String organizerName;
+    private List<CategoryResponse> categories;
+    private String coverUrl;
 }

@@ -50,6 +50,9 @@ public class Event {
     @Column(name = "age_rating")
     private Integer ageRating;
 
+    @Column(name = "cover_url")
+    private String coverUrl;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

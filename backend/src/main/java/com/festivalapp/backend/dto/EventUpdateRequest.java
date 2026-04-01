@@ -3,8 +3,6 @@ package com.festivalapp.backend.dto;
 import com.festivalapp.backend.entity.EventStatus;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -13,10 +11,9 @@ import java.util.Set;
 
 @Getter
 @Setter
-public class EventCreateRequest {
+public class EventUpdateRequest {
 
-    @NotBlank(message = "Title is required")
-    @Size(max = 255, message = "Title is too long")
+    @Size(min = 1, max = 255, message = "Title must be between 1 and 255 characters")
     private String title;
 
     @Size(max = 500, message = "Short description is too long")
@@ -32,7 +29,6 @@ public class EventCreateRequest {
 
     private EventStatus status;
 
-    @NotNull(message = "Organizer ID is required")
     private Long organizerId;
 
     private Set<Long> categoryIds;
