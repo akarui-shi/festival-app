@@ -12,11 +12,15 @@ const parseResponse = async (response) => {
   }
 };
 
-const buildHeaders = (headers = {}, auth = true) => {
+const buildHeaders = (headers = {}, auth = true, isFormData = false) => {
   const builtHeaders = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...headers
   };
+
+  if (builtHeaders['Content-Type'] === undefined || builtHeaders['Content-Type'] === null) {
+    delete builtHeaders['Content-Type'];
+  }
 
   if (auth) {
     const token = authStorage.getToken();
@@ -29,13 +33,20 @@ const buildHeaders = (headers = {}, auth = true) => {
 };
 
 const request = async (path, options = {}) => {
-  const { method = 'GET', body, headers, auth = true } = options;
+  const { method = 'GET', body, headers, auth = true, isFormData = false } = options;
+  const requestBody =
+    body === undefined
+      ? undefined
+      : isFormData
+        ? body
+        : JSON.stringify(body);
+
   let response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       method,
-      headers: buildHeaders(headers, auth),
-      body: body ? JSON.stringify(body) : undefined
+      headers: buildHeaders(headers, auth, isFormData),
+      body: requestBody
     });
   } catch (networkError) {
     const error = new Error('Сервер недоступен');
@@ -63,6 +74,7 @@ const request = async (path, options = {}) => {
 export const apiClient = {
   get: (path, options) => request(path, { ...options, method: 'GET' }),
   post: (path, body, options) => request(path, { ...options, method: 'POST', body }),
+  postForm: (path, formData, options) => request(path, { ...options, method: 'POST', body: formData, isFormData: true }),
   put: (path, body, options) => request(path, { ...options, method: 'PUT', body }),
   patch: (path, body, options) => request(path, { ...options, method: 'PATCH', body }),
   delete: (path, options) => request(path, { ...options, method: 'DELETE' })

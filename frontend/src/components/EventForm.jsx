@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import ErrorMessage from './ErrorMessage';
+import { uploadService } from '../services/uploadService';
+import { toUserErrorMessage } from '../utils/errorMessages';
 
 const DEFAULT_VALUES = {
   title: '',
@@ -10,6 +12,16 @@ const DEFAULT_VALUES = {
   status: 'DRAFT',
   categoryIds: []
 };
+
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result?.toString() || '');
+    reader.onerror = () => reject(new Error('Не удалось прочитать файл.'));
+    reader.readAsDataURL(file);
+  });
 
 const EventForm = ({
   initialValues,
@@ -29,9 +41,16 @@ const EventForm = ({
   );
 
   const [formData, setFormData] = useState(mergedInitialValues);
+  const [previewUrl, setPreviewUrl] = useState(mergedInitialValues.coverUrl || '');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [uploadMessage, setUploadMessage] = useState('');
 
   useEffect(() => {
     setFormData(mergedInitialValues);
+    setPreviewUrl(mergedInitialValues.coverUrl || '');
+    setUploadError('');
+    setUploadMessage('');
   }, [mergedInitialValues]);
 
   const handleChange = (event) => {
@@ -51,6 +70,10 @@ const EventForm = ({
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    if (isUploadingImage) {
+      return;
+    }
+
     onSubmit({
       title: formData.title.trim(),
       shortDescription: formData.shortDescription.trim(),
@@ -60,6 +83,63 @@ const EventForm = ({
       status: formData.status,
       categoryIds: formData.categoryIds
     });
+  };
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setUploadError('');
+    setUploadMessage('');
+
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Можно загружать только изображения.');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      setUploadError('Размер изображения не должен превышать 5 МБ.');
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      const localPreview = await readFileAsDataUrl(file);
+      if (localPreview) {
+        setPreviewUrl(localPreview);
+      }
+    } catch {
+      // Local preview is optional, continue with upload.
+    }
+
+    try {
+      setIsUploadingImage(true);
+      const uploaded = await uploadService.uploadEventCover(file);
+      const uploadedUrl = uploaded?.url || uploaded?.relativePath || '';
+
+      if (!uploadedUrl) {
+        throw new Error('Не удалось получить адрес загруженного изображения.');
+      }
+
+      setFormData((prev) => ({ ...prev, coverUrl: uploadedUrl }));
+      setPreviewUrl(uploadedUrl);
+      setUploadMessage('Изображение успешно загружено.');
+    } catch (err) {
+      setUploadError(toUserErrorMessage(err, 'Не удалось загрузить изображение.'));
+    } finally {
+      setIsUploadingImage(false);
+      event.target.value = '';
+    }
+  };
+
+  const clearCover = () => {
+    setFormData((prev) => ({ ...prev, coverUrl: '' }));
+    setPreviewUrl('');
+    setUploadMessage('');
+    setUploadError('');
   };
 
   return (
@@ -92,10 +172,40 @@ const EventForm = ({
         />
       </label>
 
-      <label>
-        Обложка (URL)
-        <input name="coverUrl" value={formData.coverUrl} onChange={handleChange} placeholder="https://..." />
-      </label>
+      <div className="event-cover-upload">
+        <label>
+          Обложка мероприятия
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileUpload}
+            disabled={isSubmitting || isUploadingImage}
+          />
+        </label>
+        <p className="muted">Поддерживаются файлы JPG, PNG, WEBP, GIF до 5 МБ.</p>
+
+        {isUploadingImage && <p className="page-note">Загружаем изображение...</p>}
+        {uploadError && <ErrorMessage message={uploadError} />}
+        {uploadMessage && <p className="page-note page-note--success">{uploadMessage}</p>}
+
+        {previewUrl ? (
+          <div className="event-cover-preview-wrap">
+            <img src={previewUrl} alt="Превью обложки" className="event-cover-preview" />
+            <div className="inline-actions">
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={clearCover}
+                disabled={isSubmitting || isUploadingImage}
+              >
+                Удалить обложку
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="muted">Обложка пока не выбрана.</p>
+        )}
+      </div>
 
       <label>
         Статус
@@ -124,7 +234,7 @@ const EventForm = ({
 
       {errorMessage && <ErrorMessage message={errorMessage} />}
 
-      <button className="btn btn--primary" type="submit" disabled={isSubmitting}>
+      <button className="btn btn--primary" type="submit" disabled={isSubmitting || isUploadingImage}>
         {isSubmitting ? 'Сохраняем...' : submitLabel}
       </button>
     </form>
@@ -132,4 +242,3 @@ const EventForm = ({
 };
 
 export default EventForm;
-

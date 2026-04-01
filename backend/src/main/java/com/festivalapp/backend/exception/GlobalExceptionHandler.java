@@ -10,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -74,6 +75,11 @@ public class GlobalExceptionHandler {
             return buildResponse(HttpStatus.BAD_REQUEST, "Не удалось создать регистрацию");
         }
         return buildResponse(HttpStatus.BAD_REQUEST, "Нарушение целостности данных");
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "File size is too large");
     }
 
     @ExceptionHandler(Exception.class)

@@ -6,6 +6,9 @@ const MESSAGE_MAP = [
   { match: ['publication not found'], message: 'Публикация не найдена.' },
   { match: ['duplicate review'], message: 'Вы уже оставили отзыв на это мероприятие.' },
   { match: ['duplicate favorite'], message: 'Это мероприятие уже добавлено в избранное.' },
+  { match: ['only image files are allowed'], message: 'Можно загружать только изображения.' },
+  { match: ['file size is too large', 'maximum upload size exceeded'], message: 'Размер файла превышает допустимый лимит.' },
+  { match: ['file is required'], message: 'Выберите файл для загрузки.' },
   { match: ['нарушение целостности данных', 'data integrity violation'], message: 'Операция не выполнена: у мероприятия есть связанные данные.' },
   { match: ['could not execute statement', 'constraint'], message: 'Операция не выполнена: проверьте связанные данные.' },
   { match: ['validation failed'], message: 'Проверьте правильность заполнения полей.' }

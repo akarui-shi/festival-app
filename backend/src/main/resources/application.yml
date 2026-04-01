@@ -17,6 +17,11 @@ spring:
         format_sql: true
     open-in-view: false
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
 server:
   port: 8080
   address: 127.0.0.1
@@ -25,3 +30,8 @@ security:
   jwt:
     secret: ZmVzdGl2YWwtYXBwLXN1cGVyLXNlY3JldC1rZXktZm9yLWp3dC0yMDI2LTAxMDE=
     expiration-ms: 86400000
+
+app:
+  upload:
+    dir: uploads
+    max-file-size-bytes: 5242880

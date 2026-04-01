@@ -786,6 +786,24 @@ a {
   font-size: 14px;
 }
 
+.event-cover-upload {
+  display: grid;
+  gap: 8px;
+}
+
+.event-cover-preview-wrap {
+  display: grid;
+  gap: 8px;
+}
+
+.event-cover-preview {
+  width: min(380px, 100%);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  object-fit: cover;
+}
+
 .admin-tabs {
   display: flex;
   flex-wrap: wrap;
