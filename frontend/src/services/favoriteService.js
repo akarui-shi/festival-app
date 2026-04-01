@@ -5,11 +5,20 @@ export const favoriteService = {
     return apiClient.get('/api/favorites/my');
   },
 
-  addFavorite(eventId) {
+  addToFavorites(eventId) {
     return apiClient.post('/api/favorites', { eventId });
   },
 
-  removeFavorite(eventId) {
+  removeFromFavorites(eventId) {
     return apiClient.delete(`/api/favorites/${eventId}`);
+  },
+
+  // Backward compatible aliases.
+  addFavorite(eventId) {
+    return this.addToFavorites(eventId);
+  },
+
+  removeFavorite(eventId) {
+    return this.removeFromFavorites(eventId);
   }
 };

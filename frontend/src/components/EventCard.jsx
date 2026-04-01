@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import { formatStatus } from '../utils/formatters';
 
-const EventCard = ({ event }) => {
+const EventCard = ({ event, onFavoriteClick, favoriteButtonText, isFavoriteButtonLoading = false }) => {
+  const resolvedFavoriteText = favoriteButtonText || 'В избранное';
+
   return (
     <article className="event-card">
       <div className="event-card__image-wrap">
@@ -21,9 +23,16 @@ const EventCard = ({ event }) => {
           <span>{formatStatus(event.status)}</span>
         </div>
 
-        <Link to={`/events/${event.id}`} className="btn btn--primary">
-          Подробнее
-        </Link>
+        <div className="event-card__actions">
+          <Link to={`/events/${event.id}`} className="btn btn--primary">
+            Подробнее
+          </Link>
+          {onFavoriteClick && (
+            <button className="btn btn--ghost" type="button" onClick={() => onFavoriteClick(event)} disabled={isFavoriteButtonLoading}>
+              {isFavoriteButtonLoading ? 'Обработка...' : resolvedFavoriteText}
+            </button>
+          )}
+        </div>
       </div>
     </article>
   );

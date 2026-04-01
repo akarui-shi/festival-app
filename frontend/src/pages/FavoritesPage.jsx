@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react';
 import EmptyState from '../components/EmptyState';
 import ErrorMessage from '../components/ErrorMessage';
 import Loader from '../components/Loader';
+import EventCard from '../components/EventCard';
 import { favoriteService } from '../services/favoriteService';
-import { formatStatus } from '../utils/formatters';
 
 const FavoritesPage = () => {
   const [favorites, setFavorites] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [removingEventId, setRemovingEventId] = useState(null);
 
   const loadFavorites = async () => {
     try {
@@ -29,10 +31,16 @@ const FavoritesPage = () => {
 
   const removeFavorite = async (eventId) => {
     try {
-      await favoriteService.removeFavorite(eventId);
+      setError('');
+      setMessage('');
+      setRemovingEventId(eventId);
+      await favoriteService.removeFromFavorites(eventId);
       setFavorites((prev) => prev.filter((item) => item.eventId !== eventId));
+      setMessage('Удалено из избранного.');
     } catch (err) {
       setError(err.message || 'Не удалось удалить из избранного.');
+    } finally {
+      setRemovingEventId(null);
     }
   };
 
@@ -42,24 +50,20 @@ const FavoritesPage = () => {
 
       {isLoading && <Loader text="Загружаем избранное..." />}
       {error && <ErrorMessage message={error} />}
+      {message && <p className="page-note page-note--success">{message}</p>}
 
-      {!isLoading && !error && favorites.length === 0 && <EmptyState message="Список избранного пока пуст." />}
+      {!isLoading && !error && favorites.length === 0 && <EmptyState message="Нет избранных мероприятий." />}
 
       {!isLoading && !error && favorites.length > 0 && (
-        <div className="favorites-list">
+        <div className="event-grid">
           {favorites.map((item) => (
-            <article className="panel favorites-item" key={item.eventId}>
-              <div>
-                <h3>{item.title}</h3>
-                <p>{item.shortDescription || '-'}</p>
-                <p className="muted">
-                  Возраст: {item.ageRating ?? '-'} | Статус: {formatStatus(item.status)}
-                </p>
-              </div>
-              <button className="btn btn--ghost" type="button" onClick={() => removeFavorite(item.eventId)}>
-                Удалить
-              </button>
-            </article>
+            <EventCard
+              key={item.eventId}
+              event={{ ...item, id: item.eventId }}
+              onFavoriteClick={() => removeFavorite(item.eventId)}
+              favoriteButtonText="Удалить из избранного"
+              isFavoriteButtonLoading={removingEventId === item.eventId}
+            />
           ))}
         </div>
       )}

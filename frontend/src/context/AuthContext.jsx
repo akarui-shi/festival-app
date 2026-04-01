@@ -55,6 +55,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(() => {
     clearAuth();
+    window.location.assign('/');
   }, [clearAuth]);
 
   useEffect(() => {
@@ -79,6 +80,7 @@ export const AuthProvider = ({ children }) => {
   const value = useMemo(
     () => ({
       user,
+      currentUser: user,
       token,
       isLoading,
       isAuthenticated: Boolean(token && user),

@@ -1,15 +1,10 @@
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ROLE } from '../utils/roles';
 
 const Header = () => {
-  const { isAuthenticated, user, logout, hasRole } = useAuth();
-  const navigate = useNavigate();
-
-  const onLogout = () => {
-    logout();
-    navigate('/');
-  };
+  const { isAuthenticated, currentUser, logout, hasRole } = useAuth();
+  const displayName = [currentUser?.firstName, currentUser?.lastName].filter(Boolean).join(' ') || currentUser?.login;
 
   return (
     <header className="app-header">
@@ -21,8 +16,7 @@ const Header = () => {
         <nav className="nav-links">
           <NavLink to="/">Главная</NavLink>
           <NavLink to="/events">Мероприятия</NavLink>
-          <NavLink to="/favorites">Избранное</NavLink>
-          <NavLink to="/profile">Профиль</NavLink>
+          {isAuthenticated && <NavLink to="/favorites">Избранное</NavLink>}
           {hasRole([ROLE.ORGANIZER, ROLE.ADMIN]) && <NavLink to="/organizer">Организатор</NavLink>}
           {hasRole([ROLE.ADMIN]) && <NavLink to="/admin">Админ</NavLink>}
         </nav>
@@ -30,8 +24,11 @@ const Header = () => {
         <div className="auth-actions">
           {isAuthenticated ? (
             <>
-              <span className="auth-user">{user?.login}</span>
-              <button onClick={onLogout} className="btn btn--ghost" type="button">
+              <span className="auth-user">{displayName}</span>
+              <Link to="/profile" className="btn btn--ghost">
+                Профиль
+              </Link>
+              <button onClick={logout} className="btn btn--ghost" type="button">
                 Выйти
               </button>
             </>
