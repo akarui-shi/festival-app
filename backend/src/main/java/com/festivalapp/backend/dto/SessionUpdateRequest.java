@@ -12,6 +12,7 @@ public class SessionUpdateRequest {
 
     private Long eventId;
 
+    // Deprecated: venue is defined on event level. Kept for backward compatibility.
     private Long venueId;
 
     @Size(min = 1, max = 255, message = "Title must be between 1 and 255 characters")

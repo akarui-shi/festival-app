@@ -18,6 +18,10 @@ public class EventShortResponse {
     private LocalDateTime createdAt;
     private EventStatus status;
     private String organizerName;
+    private Long venueId;
+    private String venueName;
+    private String venueAddress;
+    private String cityName;
     private List<CategoryResponse> categories;
     private String coverUrl;
 }

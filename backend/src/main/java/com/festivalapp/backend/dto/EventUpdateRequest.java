@@ -31,5 +31,7 @@ public class EventUpdateRequest {
 
     private Long organizerId;
 
+    private Long venueId;
+
     private Set<Long> categoryIds;
 }

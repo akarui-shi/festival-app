@@ -11,7 +11,6 @@ import com.festivalapp.backend.entity.Event;
 import com.festivalapp.backend.entity.EventStatus;
 import com.festivalapp.backend.entity.Organizer;
 import com.festivalapp.backend.entity.RoleName;
-import com.festivalapp.backend.entity.Session;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.entity.Venue;
 import com.festivalapp.backend.exception.BadRequestException;
@@ -26,6 +25,7 @@ import com.festivalapp.backend.repository.RegistrationRepository;
 import com.festivalapp.backend.repository.ReviewRepository;
 import com.festivalapp.backend.repository.SessionRepository;
 import com.festivalapp.backend.repository.UserRepository;
+import com.festivalapp.backend.repository.VenueRepository;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +40,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -62,6 +61,7 @@ public class EventService {
     private final ReviewRepository reviewRepository;
     private final FavoriteRepository favoriteRepository;
     private final PublicationRepository publicationRepository;
+    private final VenueRepository venueRepository;
 
     @Transactional(readOnly = true)
     public List<EventShortResponse> getAll(String title,
@@ -140,6 +140,7 @@ public class EventService {
     public EventShortResponse create(EventCreateRequest request, String actorIdentifier) {
         User actor = loadActor(actorIdentifier);
         Organizer organizer = resolveOrganizerForCreate(actor, request.getOrganizerId());
+        Venue venue = resolveVenue(request.getVenueId());
 
         Set<Category> categories = resolveCategories(request.getCategoryIds());
         EventStatus targetStatus = resolveStatusForCreate(actor, request.getStatus());
@@ -153,6 +154,7 @@ public class EventService {
             .createdAt(LocalDateTime.now())
             .status(targetStatus)
             .organizer(organizer)
+            .venue(venue)
             .categories(categories)
             .build();
 
@@ -170,6 +172,10 @@ public class EventService {
 
         if (request.getOrganizerId() != null) {
             updateOrganizerIfNeeded(actor, event, request.getOrganizerId());
+        }
+        if (request.getVenueId() != null) {
+            event.setVenue(resolveVenue(request.getVenueId()));
+            contentUpdated = true;
         }
 
         if (request.getTitle() != null) {
@@ -319,6 +325,14 @@ public class EventService {
         return EventStatus.PENDING_APPROVAL;
     }
 
+    private Venue resolveVenue(Long venueId) {
+        if (venueId == null) {
+            throw new BadRequestException("Venue ID is required");
+        }
+        return venueRepository.findById(venueId)
+            .orElseThrow(() -> new ResourceNotFoundException("Venue not found: " + venueId));
+    }
+
     private Organizer resolveActorOrganizer(User actor) {
         if (actor.getOrganizer() != null) {
             return actor.getOrganizer();
@@ -429,19 +443,10 @@ public class EventService {
                 predicates.add(cb.equal(root.join("categories", JoinType.LEFT).get("id"), categoryId));
             }
             if (venueId != null) {
-                predicates.add(cb.equal(
-                    root.join("sessions", JoinType.LEFT).join("venue", JoinType.LEFT).get("id"),
-                    venueId
-                ));
+                predicates.add(cb.equal(root.join("venue", JoinType.LEFT).get("id"), venueId));
             }
             if (cityId != null) {
-                predicates.add(cb.equal(
-                    root.join("sessions", JoinType.LEFT)
-                        .join("venue", JoinType.LEFT)
-                        .join("city", JoinType.LEFT)
-                        .get("id"),
-                    cityId
-                ));
+                predicates.add(cb.equal(root.join("venue", JoinType.LEFT).join("city", JoinType.LEFT).get("id"), cityId));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -485,6 +490,7 @@ public class EventService {
     }
 
     private EventShortResponse toShortResponse(Event event) {
+        Venue venue = event.getVenue();
         return EventShortResponse.builder()
             .id(event.getId())
             .title(event.getTitle())
@@ -493,6 +499,10 @@ public class EventService {
             .createdAt(event.getCreatedAt())
             .status(event.getStatus())
             .organizerName(event.getOrganizer() != null ? event.getOrganizer().getName() : null)
+            .venueId(venue != null ? venue.getId() : null)
+            .venueName(venue != null ? venue.getName() : null)
+            .venueAddress(venue != null ? venue.getAddress() : null)
+            .cityName(venue != null && venue.getCity() != null ? venue.getCity().getName() : null)
             .categories(toCategoryResponses(event.getCategories()))
             .coverUrl(event.getCoverUrl())
             .build();
@@ -509,8 +519,8 @@ public class EventService {
             .status(event.getStatus())
             .coverUrl(event.getCoverUrl())
             .organizer(toOrganizerSummary(event.getOrganizer()))
+            .venue(toVenueResponse(event.getVenue()))
             .categories(toCategoryResponses(event.getCategories()))
-            .venues(extractVenues(event.getSessions()))
             .build();
     }
 
@@ -538,25 +548,17 @@ public class EventService {
             .toList();
     }
 
-    private List<VenueResponse> extractVenues(Set<Session> sessions) {
-        Map<Long, VenueResponse> uniqueVenues = sessions.stream()
-            .map(Session::getVenue)
-            .filter(Objects::nonNull)
-            .collect(Collectors.toMap(
-                Venue::getId,
-                this::toVenueResponse,
-                (left, right) -> left,
-                LinkedHashMap::new
-            ));
-
-        return uniqueVenues.values().stream().toList();
-    }
-
     private VenueResponse toVenueResponse(Venue venue) {
+        if (venue == null) {
+            return null;
+        }
         return VenueResponse.builder()
             .id(venue.getId())
             .name(venue.getName())
             .address(venue.getAddress())
+            .contacts(venue.getContacts())
+            .latitude(venue.getLatitude())
+            .longitude(venue.getLongitude())
             .capacity(venue.getCapacity())
             .cityId(venue.getCity() != null ? venue.getCity().getId() : null)
             .cityName(venue.getCity() != null ? venue.getCity().getName() : null)

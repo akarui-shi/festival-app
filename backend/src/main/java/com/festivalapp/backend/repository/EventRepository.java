@@ -14,13 +14,13 @@ import java.util.Optional;
 
 public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecificationExecutor<Event> {
 
-    @EntityGraph(attributePaths = {"organizer", "categories"})
+    @EntityGraph(attributePaths = {"organizer", "categories", "venue", "venue.city"})
     List<Event> findAll(Specification<Event> specification, Sort sort);
 
-    @EntityGraph(attributePaths = {"organizer", "categories", "sessions", "sessions.venue", "sessions.venue.city"})
+    @EntityGraph(attributePaths = {"organizer", "categories", "venue", "venue.city", "sessions", "sessions.venue", "sessions.venue.city"})
     @Query("select e from Event e where e.id = :id")
     Optional<Event> findDetailedById(@Param("id") Long id);
 
-    @EntityGraph(attributePaths = {"organizer", "categories"})
+    @EntityGraph(attributePaths = {"organizer", "categories", "venue", "venue.city"})
     List<Event> findAllByOrganizerId(Long organizerId, Sort sort);
 }

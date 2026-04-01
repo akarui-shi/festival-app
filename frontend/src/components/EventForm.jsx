@@ -9,6 +9,7 @@ const DEFAULT_VALUES = {
   fullDescription: '',
   ageRating: 0,
   coverUrl: '',
+  venueId: '',
   categoryIds: []
 };
 
@@ -25,6 +26,7 @@ const readFileAsDataUrl = (file) =>
 const EventForm = ({
   initialValues,
   categories = [],
+  venues = [],
   isSubmitting = false,
   submitLabel = 'Сохранить',
   errorMessage = '',
@@ -79,6 +81,7 @@ const EventForm = ({
       fullDescription: formData.fullDescription.trim(),
       ageRating: Number(formData.ageRating),
       coverUrl: formData.coverUrl.trim(),
+      venueId: Number(formData.venueId),
       categoryIds: formData.categoryIds
     });
   };
@@ -168,6 +171,18 @@ const EventForm = ({
           onChange={handleChange}
           required
         />
+      </label>
+
+      <label>
+        Площадка проведения
+        <select name="venueId" value={formData.venueId} onChange={handleChange} required>
+          <option value="">Выберите площадку</option>
+          {venues.map((venue) => (
+            <option key={venue.id} value={venue.id}>
+              {venue.name} {venue.cityName ? `(${venue.cityName})` : ''}
+            </option>
+          ))}
+        </select>
       </label>
 
       <div className="event-cover-upload">

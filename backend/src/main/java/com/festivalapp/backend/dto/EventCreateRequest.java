@@ -4,6 +4,7 @@ import com.festivalapp.backend.entity.EventStatus;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -32,6 +33,9 @@ public class EventCreateRequest {
     private EventStatus status;
 
     private Long organizerId;
+
+    @NotNull(message = "Venue ID is required")
+    private Long venueId;
 
     private Set<Long> categoryIds;
 }

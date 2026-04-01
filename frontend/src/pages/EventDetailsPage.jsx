@@ -28,7 +28,6 @@ const EventDetailsPage = () => {
   const [sessions, setSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [sessionsError, setSessionsError] = useState('');
-  const [selectedSessionId, setSelectedSessionId] = useState(null);
 
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
@@ -50,21 +49,7 @@ const EventDetailsPage = () => {
       setSessionsLoading(true);
       setSessionsError('');
       const data = await sessionService.getSessions({ eventId: id });
-      const normalizedSessions = Array.isArray(data) ? data : [];
-      setSessions(normalizedSessions);
-      setSelectedSessionId((currentId) => {
-        if (normalizedSessions.length === 0) {
-          return null;
-        }
-        if (currentId && normalizedSessions.some((session) => session.id === currentId)) {
-          return currentId;
-        }
-
-        const sessionWithCoords = normalizedSessions.find(
-          (session) => Number.isFinite(Number(session.latitude)) && Number.isFinite(Number(session.longitude))
-        );
-        return sessionWithCoords ? sessionWithCoords.id : normalizedSessions[0].id;
-      });
+      setSessions(Array.isArray(data) ? data : []);
     } catch (err) {
       setSessionsError(toUserErrorMessage(err, 'Не удалось загрузить сеансы.'));
     } finally {
@@ -184,9 +169,9 @@ const EventDetailsPage = () => {
       ? (reviews.reduce((sum, item) => sum + Number(item.rating || 0), 0) / reviews.length).toFixed(1)
       : null;
 
-  const selectedSession = sessions.find((session) => session.id === selectedSessionId) || null;
-  const venueLatitude = selectedSession ? Number(selectedSession.latitude) : NaN;
-  const venueLongitude = selectedSession ? Number(selectedSession.longitude) : NaN;
+  const venue = event.venue || null;
+  const venueLatitude = venue ? Number(venue.latitude) : NaN;
+  const venueLongitude = venue ? Number(venue.longitude) : NaN;
   const hasVenueCoordinates = Number.isFinite(venueLatitude) && Number.isFinite(venueLongitude);
 
   if (isLoading) return <section className="container page"><Loader text="Загружаем мероприятие..." /></section>;
@@ -202,6 +187,8 @@ const EventDetailsPage = () => {
         <p><strong>Возрастной рейтинг:</strong> {event.ageRating ?? '-'}</p>
         <p><strong>Создано:</strong> {formatDateTime(event.createdAt)}</p>
         <p><strong>Организатор:</strong> {event.organizer?.name || '-'}</p>
+        <p><strong>Площадка:</strong> {venue?.name || 'Не указана'}</p>
+        <p><strong>Адрес:</strong> {venue?.address || 'Не указан'}</p>
       </div>
 
       {event.coverUrl && <img src={event.coverUrl} alt={event.title} className="details-cover" />}
@@ -222,13 +209,16 @@ const EventDetailsPage = () => {
       </div>
 
       <div className="panel">
-        <h2>Площадки</h2>
-        <ul className="details-list">
-          {(event.venues || []).map((venue) => (
-            <li key={venue.id}>{venue.name} ({venue.cityName})</li>
-          ))}
-          {(event.venues || []).length === 0 && <li>Площадки пока не добавлены.</li>}
-        </ul>
+        <h2>Место проведения</h2>
+        {venue ? (
+          <ul className="details-list">
+            <li><strong>Площадка:</strong> {venue.name}</li>
+            <li><strong>Адрес:</strong> {venue.address || 'Не указан'}</li>
+            <li><strong>Город:</strong> {venue.cityName || 'Не указан'}</li>
+          </ul>
+        ) : (
+          <p>Площадка пока не указана.</p>
+        )}
       </div>
 
       <div className="panel">
@@ -240,37 +230,21 @@ const EventDetailsPage = () => {
           <EmptyState message="Сеансы пока не добавлены." />
         )}
 
-        {!sessionsLoading && !sessionsError && sessions.length > 0 && (
+        {!sessionsLoading && !sessionsError && venue && (
           <>
-            <label className="map-session-select">
-              <span>Сеанс для отображения на карте</span>
-              <select
-                value={selectedSessionId ?? ''}
-                onChange={(event) => setSelectedSessionId(Number(event.target.value))}
-              >
-                {sessions.map((session) => (
-                  <option key={session.id} value={session.id}>
-                    {session.title} ({formatDateTime(session.startAt)})
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="venue-map__meta">
+              <p>
+                <strong>Площадка:</strong> {venue.name || '-'}
+              </p>
+              <p>
+                <strong>Адрес:</strong> {venue.address || 'Адрес не указан'}
+              </p>
+            </div>
 
-            {selectedSession && (
-              <div className="venue-map__meta">
-                <p>
-                  <strong>Площадка:</strong> {selectedSession.venueName || '-'}
-                </p>
-                <p>
-                  <strong>Адрес:</strong> {selectedSession.venueAddress || 'Адрес не указан'}
-                </p>
-              </div>
-            )}
-
-            {selectedSession && hasVenueCoordinates ? (
+            {hasVenueCoordinates ? (
               <VenueMap
-                venueName={selectedSession.venueName || 'Площадка'}
-                address={selectedSession.venueAddress}
+                venueName={venue.name || 'Площадка'}
+                address={venue.address}
                 latitude={venueLatitude}
                 longitude={venueLongitude}
               />
@@ -278,6 +252,10 @@ const EventDetailsPage = () => {
               <p className="muted">Координаты площадки пока не указаны.</p>
             )}
           </>
+        )}
+
+        {!sessionsLoading && !sessionsError && !venue && (
+          <p className="muted">Координаты площадки пока не указаны.</p>
         )}
       </div>
 

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import ErrorMessage from './ErrorMessage';
 
 const DEFAULT_VALUES = {
-  venueId: '',
   title: '',
   description: '',
   startAt: '',
@@ -25,7 +24,6 @@ const toApiDateTimeValue = (value) => {
 
 const SessionForm = ({
   initialValues,
-  venues = [],
   isSubmitting = false,
   submitLabel = 'Сохранить',
   errorMessage = '',
@@ -56,7 +54,6 @@ const SessionForm = ({
   const handleSubmit = (event) => {
     event.preventDefault();
     onSubmit({
-      venueId: Number(formData.venueId),
       title: formData.title.trim(),
       description: formData.description.trim(),
       startAt: toApiDateTimeValue(formData.startAt),
@@ -66,18 +63,6 @@ const SessionForm = ({
 
   return (
     <form className="panel form" onSubmit={handleSubmit}>
-      <label>
-        Площадка
-        <select name="venueId" value={formData.venueId} onChange={handleChange} required>
-          <option value="">Выберите площадку</option>
-          {venues.map((venue) => (
-            <option key={venue.id} value={venue.id}>
-              {venue.name} ({venue.cityName})
-            </option>
-          ))}
-        </select>
-      </label>
-
       <label>
         Название сеанса
         <input name="title" value={formData.title} onChange={handleChange} required />
@@ -115,4 +100,3 @@ const SessionForm = ({
 };
 
 export default SessionForm;
-

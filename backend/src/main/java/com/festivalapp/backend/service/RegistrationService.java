@@ -7,6 +7,7 @@ import com.festivalapp.backend.entity.Registration;
 import com.festivalapp.backend.entity.RegistrationStatus;
 import com.festivalapp.backend.entity.Session;
 import com.festivalapp.backend.entity.User;
+import com.festivalapp.backend.entity.Venue;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
 import com.festivalapp.backend.repository.RegistrationRepository;
@@ -136,21 +137,23 @@ public class RegistrationService {
     }
 
     private int safeCapacity(Session session) {
-        if (session.getVenue() == null || session.getVenue().getCapacity() == null) {
+        Venue venue = resolveSessionVenue(session);
+        if (venue == null || venue.getCapacity() == null) {
             return 0;
         }
-        return session.getVenue().getCapacity();
+        return venue.getCapacity();
     }
 
     private RegistrationResponse toRegistrationResponse(Registration registration) {
         Session session = registration.getSession();
+        Venue venue = resolveSessionVenue(session);
 
         return RegistrationResponse.builder()
             .registrationId(registration.getId())
             .sessionId(session.getId())
             .eventTitle(session.getEvent() != null ? session.getEvent().getTitle() : null)
             .sessionTitle(session.getTitle())
-            .venueName(session.getVenue() != null ? session.getVenue().getName() : null)
+            .venueName(venue != null ? venue.getName() : null)
             .startAt(session.getStartTime())
             .quantity(registration.getQuantity())
             .status(registration.getStatus())
@@ -161,19 +164,30 @@ public class RegistrationService {
 
     private MyRegistrationResponse toMyRegistrationResponse(Registration registration) {
         Session session = registration.getSession();
+        Venue venue = resolveSessionVenue(session);
 
         return MyRegistrationResponse.builder()
             .registrationId(registration.getId())
             .sessionId(session.getId())
             .eventTitle(session.getEvent() != null ? session.getEvent().getTitle() : null)
             .sessionTitle(session.getTitle())
-            .venueName(session.getVenue() != null ? session.getVenue().getName() : null)
+            .venueName(venue != null ? venue.getName() : null)
             .startAt(session.getStartTime())
             .quantity(registration.getQuantity())
             .status(registration.getStatus())
             .qrToken(registration.getQrToken())
             .createdAt(registration.getCreatedAt())
             .build();
+    }
+
+    private Venue resolveSessionVenue(Session session) {
+        if (session == null) {
+            return null;
+        }
+        if (session.getEvent() != null && session.getEvent().getVenue() != null) {
+            return session.getEvent().getVenue();
+        }
+        return session.getVenue();
     }
 
     private String resolveRegistrationIntegrityMessage(DataIntegrityViolationException ex) {

@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Component
 @Order(3)
@@ -77,6 +78,7 @@ public class DemoDataInitializer implements CommandLineRunner {
         Venue centralSquare = ensureVenue(kolomna, "Центральная площадь", "пл. Советская, 1", 5000,
             new BigDecimal("55.099900"), new BigDecimal("38.769500"));
 
+        migrateEventVenuesFromSessions();
         seedEventsAndSessions(organizer, music, theatre, exhibition, cityHoliday, park, cultureHouse, centralSquare);
     }
 
@@ -212,6 +214,7 @@ public class DemoDataInitializer implements CommandLineRunner {
                 .createdAt(LocalDateTime.now().minusDays(12))
                 .status(EventStatus.PUBLISHED)
                 .organizer(organizer)
+                .venue(park)
                 .categories(new HashSet<>(List.of(music, cityHoliday)))
                 .build(),
             Event.builder()
@@ -223,6 +226,7 @@ public class DemoDataInitializer implements CommandLineRunner {
                 .createdAt(LocalDateTime.now().minusDays(10))
                 .status(EventStatus.PUBLISHED)
                 .organizer(organizer)
+                .venue(cultureHouse)
                 .categories(new HashSet<>(List.of(theatre)))
                 .build(),
             Event.builder()
@@ -234,6 +238,7 @@ public class DemoDataInitializer implements CommandLineRunner {
                 .createdAt(LocalDateTime.now().minusDays(8))
                 .status(EventStatus.PUBLISHED)
                 .organizer(organizer)
+                .venue(cultureHouse)
                 .categories(new HashSet<>(List.of(exhibition)))
                 .build(),
             Event.builder()
@@ -245,6 +250,7 @@ public class DemoDataInitializer implements CommandLineRunner {
                 .createdAt(LocalDateTime.now().minusDays(6))
                 .status(EventStatus.PUBLISHED)
                 .organizer(organizer)
+                .venue(centralSquare)
                 .categories(new HashSet<>(List.of(music, cityHoliday)))
                 .build(),
             Event.builder()
@@ -256,12 +262,34 @@ public class DemoDataInitializer implements CommandLineRunner {
                 .createdAt(LocalDateTime.now().minusDays(4))
                 .status(EventStatus.PUBLISHED)
                 .organizer(organizer)
+                .venue(centralSquare)
                 .categories(new HashSet<>(List.of(cityHoliday)))
                 .build()
         );
 
         List<Event> savedEvents = eventRepository.saveAll(eventsToSave);
         seedSessions(savedEvents, park, cultureHouse, centralSquare);
+    }
+
+    private void migrateEventVenuesFromSessions() {
+        List<Event> events = eventRepository.findAll();
+        for (Event event : events) {
+            if (event.getVenue() != null) {
+                continue;
+            }
+
+            Event detailed = eventRepository.findDetailedById(event.getId()).orElse(event);
+            Venue fallbackVenue = detailed.getSessions().stream()
+                .map(Session::getVenue)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+
+            if (fallbackVenue != null) {
+                event.setVenue(fallbackVenue);
+                eventRepository.save(event);
+            }
+        }
     }
 
     private void seedSessions(List<Event> events, Venue park, Venue cultureHouse, Venue centralSquare) {
@@ -287,12 +315,12 @@ public class DemoDataInitializer implements CommandLineRunner {
         addSession(sessions, eventsByTitle.get("Коломенский театральный вечер"), cultureHouse,
             "Дополнительный показ", "Повторный показ по многочисленным просьбам.", baseDate.plusDays(4), 2);
 
-        addSession(sessions, eventsByTitle.get("Выставка \"История Коломны\""), centralSquare,
+        addSession(sessions, eventsByTitle.get("Выставка \"История Коломны\""), cultureHouse,
             "Открытие выставки", "Торжественное открытие и первая экскурсия.", baseDate.plusDays(2).minusHours(5), 3);
 
         addSession(sessions, eventsByTitle.get("Фестиваль уличного искусства"), centralSquare,
             "Дневная программа фестиваля", "Уличные выступления, мастер-классы и интерактивы.", baseDate.plusDays(5).minusHours(4), 4);
-        addSession(sessions, eventsByTitle.get("Фестиваль уличного искусства"), park,
+        addSession(sessions, eventsByTitle.get("Фестиваль уличного искусства"), centralSquare,
             "Вечерняя концертная программа", "Хедлайнеры и вечерний open-air концерт.", baseDate.plusDays(5).plusHours(1), 3);
 
         addSession(sessions, eventsByTitle.get("День города Коломны"), centralSquare,
@@ -308,13 +336,14 @@ public class DemoDataInitializer implements CommandLineRunner {
                             String description,
                             LocalDateTime start,
                             int durationHours) {
-        if (event == null || venue == null) {
+        Venue resolvedVenue = event != null && event.getVenue() != null ? event.getVenue() : venue;
+        if (event == null || resolvedVenue == null) {
             return;
         }
 
         sessions.add(Session.builder()
             .event(event)
-            .venue(venue)
+            .venue(resolvedVenue)
             .title(title)
             .description(description)
             .startTime(start)

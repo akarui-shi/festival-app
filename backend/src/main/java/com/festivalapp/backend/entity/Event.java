@@ -64,6 +64,10 @@ public class Event {
     @JoinColumn(name = "organizer_id", nullable = false)
     private Organizer organizer;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "venue_id")
+    private Venue venue;
+
     @Builder.Default
     @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<EventCategory> eventCategories = new HashSet<>();

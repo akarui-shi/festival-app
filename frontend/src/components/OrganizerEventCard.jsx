@@ -19,7 +19,9 @@ const OrganizerEventCard = ({
       <div className="organizer-event-card__meta">
         <span>Статус: {formatStatus(event.status)}</span>
         <span>Возраст: {event.ageRating ?? '-'}</span>
+        <span>Площадка: {event.venueName || 'Не указана'}</span>
       </div>
+      {event.venueAddress && <p className="muted">Адрес: {event.venueAddress}</p>}
 
       <div className="chips">
         {(event.categories || []).map((category) => (

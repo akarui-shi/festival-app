@@ -37,8 +37,10 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
         select r from Registration r
         join fetch r.session s
         join fetch s.event e
-        join fetch s.venue v
-        join fetch v.city c
+        left join fetch e.venue ev
+        left join fetch ev.city ec
+        left join fetch s.venue v
+        left join fetch v.city c
         where r.user.id = :userId
         order by r.createdAt desc
         """)

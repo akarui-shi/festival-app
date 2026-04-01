@@ -21,6 +21,8 @@ import com.festivalapp.backend.repository.SessionRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import com.festivalapp.backend.repository.VenueRepository;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -83,10 +85,9 @@ public class SessionService {
     public SessionDetailsResponse create(SessionCreateRequest request, String actorIdentifier) {
         User actor = loadActor(actorIdentifier);
 
-        Event event = eventRepository.findById(request.getEventId())
+        Event event = eventRepository.findDetailedById(request.getEventId())
             .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + request.getEventId()));
-        Venue venue = venueRepository.findById(request.getVenueId())
-            .orElseThrow(() -> new ResourceNotFoundException("Venue not found: " + request.getVenueId()));
+        Venue venue = resolveVenueForEvent(event, request.getVenueId());
 
         validateOrganizerAccess(actor, event);
         validateSessionTimeRange(request.getStartAt(), request.getEndAt());
@@ -113,12 +114,13 @@ public class SessionService {
 
         Event targetEvent = request.getEventId() == null
             ? session.getEvent()
-            : eventRepository.findById(request.getEventId())
+            : eventRepository.findDetailedById(request.getEventId())
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + request.getEventId()));
-        Venue targetVenue = request.getVenueId() == null
-            ? session.getVenue()
-            : venueRepository.findById(request.getVenueId())
-                .orElseThrow(() -> new ResourceNotFoundException("Venue not found: " + request.getVenueId()));
+        Long legacyVenueId = request.getVenueId();
+        if (legacyVenueId == null && targetEvent.getVenue() == null && session.getVenue() != null) {
+            legacyVenueId = session.getVenue().getId();
+        }
+        Venue targetVenue = resolveVenueForEvent(targetEvent, legacyVenueId);
 
         LocalDateTime targetStart = request.getStartAt() == null ? session.getStartTime() : request.getStartAt();
         LocalDateTime targetEnd = request.getEndAt() == null ? session.getEndTime() : request.getEndAt();
@@ -240,15 +242,26 @@ public class SessionService {
             if (query != null) {
                 query.distinct(true);
             }
+            Join<Session, Event> eventJoin = root.join("event", JoinType.LEFT);
+            Join<Event, Venue> eventVenueJoin = eventJoin.join("venue", JoinType.LEFT);
+            Join<Session, Venue> sessionVenueJoin = root.join("venue", JoinType.LEFT);
+            Join<Venue, ?> eventCityJoin = eventVenueJoin.join("city", JoinType.LEFT);
+            Join<Venue, ?> sessionCityJoin = sessionVenueJoin.join("city", JoinType.LEFT);
 
             if (eventId != null) {
-                predicates.add(cb.equal(root.get("event").get("id"), eventId));
+                predicates.add(cb.equal(eventJoin.get("id"), eventId));
             }
             if (venueId != null) {
-                predicates.add(cb.equal(root.get("venue").get("id"), venueId));
+                predicates.add(cb.or(
+                    cb.equal(eventVenueJoin.get("id"), venueId),
+                    cb.and(cb.isNull(eventVenueJoin.get("id")), cb.equal(sessionVenueJoin.get("id"), venueId))
+                ));
             }
             if (cityId != null) {
-                predicates.add(cb.equal(root.get("venue").get("city").get("id"), cityId));
+                predicates.add(cb.or(
+                    cb.equal(eventCityJoin.get("id"), cityId),
+                    cb.and(cb.isNull(eventCityJoin.get("id")), cb.equal(sessionCityJoin.get("id"), cityId))
+                ));
             }
             if (dateFrom != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("startTime"), dateFrom.atStartOfDay()));
@@ -289,7 +302,8 @@ public class SessionService {
     }
 
     private SessionShortResponse toShortResponse(Session session, int reservedSeats) {
-        int totalCapacity = safeCapacity(session.getVenue());
+        Venue effectiveVenue = resolveSessionVenue(session);
+        int totalCapacity = safeCapacity(effectiveVenue);
         int availableSeats = Math.max(totalCapacity - reservedSeats, 0);
 
         return SessionShortResponse.builder()
@@ -300,21 +314,22 @@ public class SessionService {
             .endAt(session.getEndTime())
             .eventId(session.getEvent() != null ? session.getEvent().getId() : null)
             .eventTitle(session.getEvent() != null ? session.getEvent().getTitle() : null)
-            .venueId(session.getVenue() != null ? session.getVenue().getId() : null)
-            .venueName(session.getVenue() != null ? session.getVenue().getName() : null)
-            .venueAddress(session.getVenue() != null ? session.getVenue().getAddress() : null)
-            .cityName(session.getVenue() != null && session.getVenue().getCity() != null
-                ? session.getVenue().getCity().getName()
+            .venueId(effectiveVenue != null ? effectiveVenue.getId() : null)
+            .venueName(effectiveVenue != null ? effectiveVenue.getName() : null)
+            .venueAddress(effectiveVenue != null ? effectiveVenue.getAddress() : null)
+            .cityName(effectiveVenue != null && effectiveVenue.getCity() != null
+                ? effectiveVenue.getCity().getName()
                 : null)
-            .latitude(session.getVenue() != null ? session.getVenue().getLatitude() : null)
-            .longitude(session.getVenue() != null ? session.getVenue().getLongitude() : null)
+            .latitude(effectiveVenue != null ? effectiveVenue.getLatitude() : null)
+            .longitude(effectiveVenue != null ? effectiveVenue.getLongitude() : null)
             .availableSeats(availableSeats)
             .totalCapacity(totalCapacity)
             .build();
     }
 
     private SessionDetailsResponse toDetailsResponse(Session session, int reservedSeats) {
-        int totalCapacity = safeCapacity(session.getVenue());
+        Venue effectiveVenue = resolveSessionVenue(session);
+        int totalCapacity = safeCapacity(effectiveVenue);
         int availableSeats = Math.max(totalCapacity - reservedSeats, 0);
 
         return SessionDetailsResponse.builder()
@@ -326,11 +341,14 @@ public class SessionService {
             .availableSeats(availableSeats)
             .totalCapacity(totalCapacity)
             .event(toEventInfo(session.getEvent()))
-            .venue(toVenueInfo(session.getVenue()))
+            .venue(toVenueInfo(effectiveVenue))
             .build();
     }
 
     private SessionDetailsResponse.EventInfo toEventInfo(Event event) {
+        if (event == null) {
+            return null;
+        }
         return SessionDetailsResponse.EventInfo.builder()
             .id(event.getId())
             .title(event.getTitle())
@@ -340,6 +358,9 @@ public class SessionService {
     }
 
     private SessionDetailsResponse.VenueInfo toVenueInfo(Venue venue) {
+        if (venue == null) {
+            return null;
+        }
         return SessionDetailsResponse.VenueInfo.builder()
             .id(venue.getId())
             .name(venue.getName())
@@ -371,6 +392,39 @@ public class SessionService {
     }
 
     private int safeCapacity(Venue venue) {
+        if (venue == null) {
+            return 0;
+        }
         return venue.getCapacity() == null ? 0 : venue.getCapacity();
+    }
+
+    private Venue resolveVenueForEvent(Event event, Long backwardCompatibleVenueId) {
+        if (event.getVenue() != null) {
+            if (backwardCompatibleVenueId != null
+                && !Objects.equals(event.getVenue().getId(), backwardCompatibleVenueId)) {
+                throw new BadRequestException("Venue is defined at event level and must match event venue");
+            }
+            return event.getVenue();
+        }
+
+        if (backwardCompatibleVenueId == null) {
+            throw new BadRequestException("Event venue is not set. Update event venue before creating sessions.");
+        }
+
+        Venue fallbackVenue = venueRepository.findById(backwardCompatibleVenueId)
+            .orElseThrow(() -> new ResourceNotFoundException("Venue not found: " + backwardCompatibleVenueId));
+        // Backward-compatibility migration: attach legacy session venue to event.
+        event.setVenue(fallbackVenue);
+        return fallbackVenue;
+    }
+
+    private Venue resolveSessionVenue(Session session) {
+        if (session == null) {
+            return null;
+        }
+        if (session.getEvent() != null && session.getEvent().getVenue() != null) {
+            return session.getEvent().getVenue();
+        }
+        return session.getVenue();
     }
 }

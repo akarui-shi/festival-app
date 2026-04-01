@@ -38,7 +38,7 @@ public class Session {
     private Event event;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "venue_id", nullable = false)
+    @JoinColumn(name = "venue_id")
     private Venue venue;
 
     @Column(nullable = false)

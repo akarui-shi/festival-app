@@ -20,8 +20,8 @@ public class EventDetailsResponse {
     private EventStatus status;
     private String coverUrl;
     private OrganizerSummary organizer;
+    private VenueResponse venue;
     private List<CategoryResponse> categories;
-    private List<VenueResponse> venues;
 
     @Getter
     @Builder

@@ -19,6 +19,8 @@ const EventCard = ({ event, onFavoriteClick, favoriteButtonText, isFavoriteButto
 
         <div className="event-card__meta">
           <span>Возраст {event.ageRating ?? '-'}</span>
+          {event.venueName && <span>Площадка: {event.venueName}</span>}
+          {event.venueAddress && <span>Адрес: {event.venueAddress}</span>}
         </div>
 
         <div className="event-card__actions">
