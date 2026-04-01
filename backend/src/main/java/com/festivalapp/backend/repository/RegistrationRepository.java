@@ -16,7 +16,7 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
     boolean existsByUserIdAndSessionIdAndStatusIn(Long userId, Long sessionId, Collection<RegistrationStatus> statuses);
 
     @Query("""
-        select coalesce(sum(r.participantsCount), 0) from Registration r
+        select coalesce(sum(r.quantity), 0) from Registration r
         where r.session.id = :sessionId
           and r.status in :statuses
         """)
@@ -24,7 +24,7 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
                                                   @Param("statuses") Collection<RegistrationStatus> statuses);
 
     @Query("""
-        select r.session.id, coalesce(sum(r.participantsCount), 0) from Registration r
+        select r.session.id, coalesce(sum(r.quantity), 0) from Registration r
         where r.session.id in :sessionIds
           and r.status in :statuses
         group by r.session.id

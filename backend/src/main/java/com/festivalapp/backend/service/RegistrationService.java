@@ -13,11 +13,11 @@ import com.festivalapp.backend.repository.RegistrationRepository;
 import com.festivalapp.backend.repository.SessionRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -61,13 +61,17 @@ public class RegistrationService {
         Registration registration = Registration.builder()
             .user(user)
             .session(session)
-            .participantsCount(request.getQuantity())
+            .quantity(request.getQuantity())
             .status(RegistrationStatus.CREATED)
             .qrToken(generateUniqueQrToken())
-            .createdAt(LocalDateTime.now())
             .build();
 
-        Registration saved = registrationRepository.save(registration);
+        Registration saved;
+        try {
+            saved = registrationRepository.save(registration);
+        } catch (DataIntegrityViolationException ex) {
+            throw new BadRequestException(resolveRegistrationIntegrityMessage(ex));
+        }
         return toRegistrationResponse(saved);
     }
 
@@ -148,7 +152,7 @@ public class RegistrationService {
             .sessionTitle(session.getTitle())
             .venueName(session.getVenue() != null ? session.getVenue().getName() : null)
             .startAt(session.getStartTime())
-            .quantity(registration.getParticipantsCount())
+            .quantity(registration.getQuantity())
             .status(registration.getStatus())
             .qrToken(registration.getQrToken())
             .createdAt(registration.getCreatedAt())
@@ -165,10 +169,31 @@ public class RegistrationService {
             .sessionTitle(session.getTitle())
             .venueName(session.getVenue() != null ? session.getVenue().getName() : null)
             .startAt(session.getStartTime())
-            .quantity(registration.getParticipantsCount())
+            .quantity(registration.getQuantity())
             .status(registration.getStatus())
             .qrToken(registration.getQrToken())
             .createdAt(registration.getCreatedAt())
             .build();
+    }
+
+    private String resolveRegistrationIntegrityMessage(DataIntegrityViolationException ex) {
+        String rawMessage = ex.getMostSpecificCause() != null
+            ? ex.getMostSpecificCause().getMessage()
+            : ex.getMessage();
+        String normalized = rawMessage == null ? "" : rawMessage.toLowerCase();
+
+        if (normalized.contains("registrations_status_check")) {
+            return "Не удалось создать регистрацию: недопустимый статус регистрации";
+        }
+        if (normalized.contains("qr_token")) {
+            return "Не удалось создать регистрацию: конфликт QR-токена";
+        }
+        if (normalized.contains("session_id")) {
+            return "Не удалось создать регистрацию: сеанс не найден";
+        }
+        if (normalized.contains("user_id")) {
+            return "Не удалось создать регистрацию: пользователь не найден";
+        }
+        return "Не удалось создать регистрацию";
     }
 }

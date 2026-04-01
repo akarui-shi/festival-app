@@ -358,7 +358,7 @@ public class SessionService {
             .registrationId(registration.getId())
             .userId(user.getId())
             .userFullName(userFullName)
-            .quantity(registration.getParticipantsCount())
+            .quantity(registration.getQuantity())
             .status(registration.getStatus())
             .qrToken(registration.getQrToken())
             .createdAt(registration.getCreatedAt())

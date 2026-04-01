@@ -1,20 +1,49 @@
-import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
+import EmptyState from '../components/EmptyState';
+import SessionCard from '../components/SessionCard';
+import RegistrationFormModal from '../components/RegistrationFormModal';
 import { eventService } from '../services/eventService';
 import { favoriteService } from '../services/favoriteService';
+import { sessionService } from '../services/sessionService';
+import { registrationService } from '../services/registrationService';
 import { useAuth } from '../context/AuthContext';
 import { formatDateTime, formatStatus } from '../utils/formatters';
 
 const EventDetailsPage = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
   const [event, setEvent] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [sessions, setSessions] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessionsError, setSessionsError] = useState('');
+
+  const [registrationSession, setRegistrationSession] = useState(null);
+  const [registrationError, setRegistrationError] = useState('');
+  const [registrationSuccess, setRegistrationSuccess] = useState('');
+  const [isRegistrationSubmitting, setIsRegistrationSubmitting] = useState(false);
+
   const [favoriteMessage, setFavoriteMessage] = useState('');
+
+  const loadSessions = useCallback(async () => {
+    try {
+      setSessionsLoading(true);
+      setSessionsError('');
+      const data = await sessionService.getSessions({ eventId: id });
+      setSessions(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setSessionsError(err.message || 'Не удалось загрузить сеансы.');
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, [id]);
 
   useEffect(() => {
     const load = async () => {
@@ -33,6 +62,10 @@ const EventDetailsPage = () => {
     load();
   }, [id]);
 
+  useEffect(() => {
+    loadSessions();
+  }, [loadSessions]);
+
   const onAddFavorite = async () => {
     try {
       setFavoriteMessage('');
@@ -40,6 +73,41 @@ const EventDetailsPage = () => {
       setFavoriteMessage('Добавлено в избранное.');
     } catch (err) {
       setFavoriteMessage(err.message || 'Не удалось добавить в избранное.');
+    }
+  };
+
+  const onOpenRegistration = (session) => {
+    setRegistrationError('');
+    setRegistrationSuccess('');
+
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: `/events/${id}` } });
+      return;
+    }
+
+    setRegistrationSession(session);
+  };
+
+  const onCloseRegistration = () => {
+    if (isRegistrationSubmitting) {
+      return;
+    }
+    setRegistrationSession(null);
+    setRegistrationError('');
+  };
+
+  const onSubmitRegistration = async ({ sessionId, quantity }) => {
+    try {
+      setIsRegistrationSubmitting(true);
+      setRegistrationError('');
+      const response = await registrationService.createRegistration(sessionId, quantity);
+      setRegistrationSuccess(`Вы успешно записаны. QR-токен: ${response.qrToken}`);
+      setRegistrationSession(null);
+      await loadSessions();
+    } catch (err) {
+      setRegistrationError(err.message || 'Не удалось записаться на сеанс.');
+    } finally {
+      setIsRegistrationSubmitting(false);
     }
   };
 
@@ -86,6 +154,25 @@ const EventDetailsPage = () => {
         </ul>
       </div>
 
+      <div className="panel">
+        <h2>Сеансы</h2>
+
+        {registrationSuccess && <p className="page-note page-note--success">{registrationSuccess}</p>}
+        {sessionsLoading && <Loader text="Загружаем сеансы..." />}
+        {!sessionsLoading && sessionsError && <ErrorMessage message={sessionsError} />}
+        {!sessionsLoading && !sessionsError && sessions.length === 0 && (
+          <EmptyState message="Сеансы пока не добавлены." />
+        )}
+
+        {!sessionsLoading && !sessionsError && sessions.length > 0 && (
+          <div className="session-list">
+            {sessions.map((session) => (
+              <SessionCard key={session.id} session={session} onRegisterClick={onOpenRegistration} />
+            ))}
+          </div>
+        )}
+      </div>
+
       {isAuthenticated && (
         <div className="panel">
           <button className="btn btn--primary" type="button" onClick={onAddFavorite}>
@@ -94,6 +181,15 @@ const EventDetailsPage = () => {
           {favoriteMessage && <p className="page-note">{favoriteMessage}</p>}
         </div>
       )}
+
+      <RegistrationFormModal
+        open={Boolean(registrationSession)}
+        session={registrationSession}
+        error={registrationError}
+        isSubmitting={isRegistrationSubmitting}
+        onSubmit={onSubmitRegistration}
+        onClose={onCloseRegistration}
+      />
     </section>
   );
 };

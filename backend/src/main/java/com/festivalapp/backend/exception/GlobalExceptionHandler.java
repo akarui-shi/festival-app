@@ -65,7 +65,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException ex) {
-        return buildResponse(HttpStatus.BAD_REQUEST, "Data integrity violation");
+        String rootCauseMessage = ex.getMostSpecificCause() != null
+            ? ex.getMostSpecificCause().getMessage()
+            : ex.getMessage();
+        String normalized = rootCauseMessage == null ? "" : rootCauseMessage.toLowerCase();
+
+        if (normalized.contains("registrations")) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Не удалось создать регистрацию");
+        }
+        return buildResponse(HttpStatus.BAD_REQUEST, "Нарушение целостности данных");
     }
 
     @ExceptionHandler(Exception.class)

@@ -8,6 +8,7 @@ import EventsPage from '../pages/EventsPage';
 import EventDetailsPage from '../pages/EventDetailsPage';
 import FavoritesPage from '../pages/FavoritesPage';
 import ProfilePage from '../pages/ProfilePage';
+import MyRegistrationsPage from '../pages/MyRegistrationsPage';
 import OrganizerDashboardPage from '../pages/OrganizerDashboardPage';
 import AdminDashboardPage from '../pages/AdminDashboardPage';
 import NotFoundPage from '../pages/NotFoundPage';
@@ -36,6 +37,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <ProfilePage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'my-registrations',
+        element: (
+          <ProtectedRoute>
+            <MyRegistrationsPage />
           </ProtectedRoute>
         )
       },

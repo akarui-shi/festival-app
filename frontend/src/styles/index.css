@@ -293,6 +293,146 @@ a {
   padding-left: 18px;
 }
 
+.session-list {
+  display: grid;
+  gap: 12px;
+}
+
+.session-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.session-card__body {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.session-card__title {
+  margin: 0;
+}
+
+.session-card__description {
+  margin: 0;
+  color: var(--muted);
+}
+
+.session-card__meta {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.session-card__meta p {
+  margin: 0;
+}
+
+.session-card__actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.registrations-list {
+  display: grid;
+  gap: 12px;
+}
+
+.registration-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.registration-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.registration-card__header h3 {
+  margin: 0;
+}
+
+.registration-status {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #edf3ff;
+  color: var(--primary);
+  font-size: 13px;
+}
+
+.registration-card__meta {
+  display: grid;
+  gap: 7px;
+  font-size: 14px;
+}
+
+.registration-card__meta p {
+  margin: 0;
+}
+
+.qr-token-block {
+  border: 1px dashed #8ea7d6;
+  border-radius: 10px;
+  background: #f4f8ff;
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.qr-token-label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.qr-token-value {
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.registration-card__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1000;
+}
+
+.modal {
+  width: min(520px, 100%);
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.modal h3 {
+  margin: 0;
+}
+
+.modal__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .favorites-list {
   display: grid;
   gap: 10px;
@@ -337,5 +477,15 @@ a {
   .favorites-item {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .registration-card__actions,
+  .modal__actions {
+    justify-content: stretch;
+  }
+
+  .registration-card__actions .btn,
+  .modal__actions .btn {
+    width: 100%;
   }
 }
