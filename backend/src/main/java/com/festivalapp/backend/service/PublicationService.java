@@ -52,8 +52,9 @@ public class PublicationService {
         Publication publication = Publication.builder()
             .title(request.getTitle())
             .content(request.getContent())
-            // Keep publication flow simple: publish immediately after creation.
-            .status(PublicationStatus.PUBLISHED)
+            .imageUrl(normalizeOptional(request.getImageUrl()))
+            // Organizer publications are created via moderation flow.
+            .status(PublicationStatus.PENDING)
             .createdAt(LocalDateTime.now())
             .author(actor)
             .event(event)
@@ -106,13 +107,23 @@ public class PublicationService {
         if (request.getContent() != null) {
             publication.setContent(request.getContent());
         }
+        if (request.getImageUrl() != null) {
+            publication.setImageUrl(normalizeOptional(request.getImageUrl()));
+        }
         if (request.getEventId() != null) {
             Event event = resolveEventOrNull(request.getEventId());
             validateCreateAccess(actor, event);
             publication.setEvent(event);
         }
 
-        publication.setStatus(PublicationStatus.PUBLISHED);
+        // After organizer edits publication returns to moderation.
+        if (hasRole(actor, RoleName.ROLE_ADMIN)) {
+            if (publication.getStatus() == PublicationStatus.REJECTED || publication.getStatus() == PublicationStatus.PENDING) {
+                publication.setStatus(PublicationStatus.PUBLISHED);
+            }
+        } else {
+            publication.setStatus(PublicationStatus.PENDING);
+        }
 
         Publication saved = publicationRepository.save(publication);
         return toDetailsResponse(saved);
@@ -138,6 +149,9 @@ public class PublicationService {
 
     @Transactional
     public PublicationDetailsResponse updateStatus(Long id, PublicationStatus status) {
+        if (status == null) {
+            throw new BadRequestException("Status is required");
+        }
         Publication publication = publicationRepository.findWithAuthorAndEventById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Publication not found: " + id));
 
@@ -249,7 +263,9 @@ public class PublicationService {
             .createdAt(publication.getCreatedAt())
             .status(publication.getStatus())
             .authorName(resolveAuthorName(publication.getAuthor()))
+            .imageUrl(publication.getImageUrl())
             .eventId(publication.getEvent() != null ? publication.getEvent().getId() : null)
+            .eventTitle(publication.getEvent() != null ? publication.getEvent().getTitle() : null)
             .build();
     }
 
@@ -258,6 +274,7 @@ public class PublicationService {
             .publicationId(publication.getId())
             .title(publication.getTitle())
             .content(publication.getContent())
+            .imageUrl(publication.getImageUrl())
             .createdAt(publication.getCreatedAt())
             .status(publication.getStatus())
             .authorName(resolveAuthorName(publication.getAuthor()))
@@ -265,6 +282,13 @@ public class PublicationService {
             .eventId(publication.getEvent() != null ? publication.getEvent().getId() : null)
             .eventTitle(publication.getEvent() != null ? publication.getEvent().getTitle() : null)
             .build();
+    }
+
+    private String normalizeOptional(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return value.trim();
     }
 
     private String resolveAuthorName(User user) {

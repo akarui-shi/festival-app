@@ -65,6 +65,10 @@ const PublicationDetailsPage = () => {
         )}
       </div>
 
+      {publication.imageUrl && (
+        <img src={publication.imageUrl} alt={publication.title} className="publication-details-image" />
+      )}
+
       <article className="panel publication-content">
         <p>{publication.content || 'Текст публикации отсутствует.'}</p>
       </article>

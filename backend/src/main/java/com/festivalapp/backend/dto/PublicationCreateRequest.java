@@ -16,5 +16,7 @@ public class PublicationCreateRequest {
     @NotBlank(message = "Content is required")
     private String content;
 
+    private String imageUrl;
+
     private Long eventId;
 }

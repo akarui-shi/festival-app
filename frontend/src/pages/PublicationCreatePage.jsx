@@ -4,9 +4,20 @@ import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
 import { publicationService } from '../services/publicationService';
 import { organizerService } from '../services/organizerService';
+import { uploadService } from '../services/uploadService';
 import { useAuth } from '../context/AuthContext';
 import { ROLE } from '../utils/roles';
 import { toUserErrorMessage } from '../utils/errorMessages';
+
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result?.toString() || '');
+    reader.onerror = () => reject(new Error('Не удалось прочитать файл.'));
+    reader.readAsDataURL(file);
+  });
 
 const PublicationCreatePage = () => {
   const navigate = useNavigate();
@@ -24,8 +35,13 @@ const PublicationCreatePage = () => {
   const [formData, setFormData] = useState({
     title: '',
     content: '',
+    imageUrl: '',
     eventId: ''
   });
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [uploadMessage, setUploadMessage] = useState('');
 
   useEffect(() => {
     const loadEvents = async () => {
@@ -64,16 +80,75 @@ const PublicationCreatePage = () => {
       const payload = {
         title: formData.title.trim(),
         content: formData.content.trim(),
+        imageUrl: formData.imageUrl || null,
         eventId: formData.eventId ? Number(formData.eventId) : null
       };
 
-      const created = await publicationService.createPublication(payload);
-      navigate(`/publications/${created.publicationId}`);
+      await publicationService.createPublication(payload);
+      navigate('/publications', {
+        state: { message: 'Публикация отправлена на модерацию. После одобрения она станет видимой всем пользователям.' }
+      });
     } catch (err) {
       setError(toUserErrorMessage(err, 'Не удалось создать публикацию.'));
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setUploadError('');
+    setUploadMessage('');
+
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Можно загружать только изображения.');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      setUploadError('Размер изображения не должен превышать 5 МБ.');
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      const localPreview = await readFileAsDataUrl(file);
+      if (localPreview) {
+        setPreviewUrl(localPreview);
+      }
+    } catch {
+      // Local preview is optional.
+    }
+
+    try {
+      setIsUploadingImage(true);
+      const uploaded = await uploadService.uploadPublicationImage(file);
+      const uploadedUrl = uploaded?.url || uploaded?.relativePath || '';
+      if (!uploadedUrl) {
+        throw new Error('Не удалось получить адрес загруженного изображения.');
+      }
+
+      setFormData((prev) => ({ ...prev, imageUrl: uploadedUrl }));
+      setPreviewUrl(uploadedUrl);
+      setUploadMessage('Изображение публикации загружено.');
+    } catch (err) {
+      setUploadError(toUserErrorMessage(err, 'Не удалось загрузить изображение публикации.'));
+    } finally {
+      setIsUploadingImage(false);
+      event.target.value = '';
+    }
+  };
+
+  const clearImage = () => {
+    setFormData((prev) => ({ ...prev, imageUrl: '' }));
+    setPreviewUrl('');
+    setUploadMessage('');
+    setUploadError('');
   };
 
   if (isLoading) {
@@ -114,6 +189,41 @@ const PublicationCreatePage = () => {
           />
         </label>
 
+        <div className="event-cover-upload">
+          <label>
+            Изображение публикации
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              disabled={isSubmitting || isUploadingImage}
+            />
+          </label>
+          <p className="muted">Поддерживаются JPG, PNG, WEBP, GIF до 5 МБ.</p>
+
+          {isUploadingImage && <p className="page-note">Загружаем изображение...</p>}
+          {uploadError && <ErrorMessage message={uploadError} />}
+          {uploadMessage && <p className="page-note page-note--success">{uploadMessage}</p>}
+
+          {previewUrl ? (
+            <div className="event-cover-preview-wrap">
+              <img src={previewUrl} alt="Превью публикации" className="publication-cover-preview" />
+              <div className="inline-actions">
+                <button
+                  type="button"
+                  className="btn btn--ghost"
+                  onClick={clearImage}
+                  disabled={isSubmitting || isUploadingImage}
+                >
+                  Удалить изображение
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="muted">Изображение пока не выбрано.</p>
+          )}
+        </div>
+
         <label>
           Мероприятие
           <select
@@ -135,8 +245,8 @@ const PublicationCreatePage = () => {
         )}
 
         <div className="inline-actions">
-          <button className="btn btn--primary" type="submit" disabled={!canSubmit || isSubmitting}>
-            {isSubmitting ? 'Публикуем...' : 'Создать публикацию'}
+          <button className="btn btn--primary" type="submit" disabled={!canSubmit || isSubmitting || isUploadingImage}>
+            {isSubmitting ? 'Отправляем...' : 'Отправить на модерацию'}
           </button>
           <button type="button" className="btn btn--ghost" onClick={() => navigate('/publications')} disabled={isSubmitting}>
             Отмена

@@ -37,18 +37,27 @@ public class FileStorageService {
         try {
             Files.createDirectories(resolveUploadRoot());
             Files.createDirectories(resolveEventImagesDirectory());
+            Files.createDirectories(resolvePublicationImagesDirectory());
         } catch (IOException ex) {
             throw new IllegalStateException("Failed to initialize upload directories", ex);
         }
     }
 
     public StoredFile storeEventCover(MultipartFile file) {
+        return storeImage(file, resolveEventImagesDirectory(), "/uploads/events/");
+    }
+
+    public StoredFile storePublicationImage(MultipartFile file) {
+        return storeImage(file, resolvePublicationImagesDirectory(), "/uploads/publications/");
+    }
+
+    private StoredFile storeImage(MultipartFile file, Path targetDirectory, String relativeDirectoryPath) {
         validateImage(file);
 
         String extension = resolveExtension(file.getOriginalFilename(), file.getContentType());
         String fileName = UUID.randomUUID() + extension;
 
-        Path target = resolveEventImagesDirectory().resolve(fileName).normalize();
+        Path target = targetDirectory.resolve(fileName).normalize();
         try {
             Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException ex) {
@@ -57,7 +66,7 @@ public class FileStorageService {
 
         return StoredFile.builder()
             .fileName(fileName)
-            .relativePath("/uploads/events/" + fileName)
+            .relativePath(relativeDirectoryPath + fileName)
             .size(file.getSize())
             .contentType(file.getContentType())
             .build();
@@ -69,6 +78,10 @@ public class FileStorageService {
 
     private Path resolveEventImagesDirectory() {
         return resolveUploadRoot().resolve("events").normalize();
+    }
+
+    private Path resolvePublicationImagesDirectory() {
+        return resolveUploadRoot().resolve("publications").normalize();
     }
 
     private void validateImage(MultipartFile file) {

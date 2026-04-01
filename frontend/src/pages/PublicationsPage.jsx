@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
 import EmptyState from '../components/EmptyState';
@@ -10,6 +11,7 @@ import { ROLE } from '../utils/roles';
 import { toUserErrorMessage } from '../utils/errorMessages';
 
 const PublicationsPage = () => {
+  const location = useLocation();
   const { hasRole } = useAuth();
   const canCreatePublication = hasRole([ROLE.ORGANIZER, ROLE.ADMIN]);
 
@@ -18,6 +20,14 @@ const PublicationsPage = () => {
   const [appliedTitle, setAppliedTitle] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState(location.state?.message || '');
+
+  useEffect(() => {
+    if (!location.state?.message) {
+      return;
+    }
+    window.history.replaceState({}, document.title);
+  }, [location.state]);
 
   useEffect(() => {
     const loadPublications = async () => {
@@ -47,6 +57,7 @@ const PublicationsPage = () => {
         )}
       </div>
       <p className="page-subtitle">Читайте новости, анонсы и материалы организаторов.</p>
+      {message && <p className="page-note page-note--success">{message}</p>}
 
       <form
         className="panel publications-filter"

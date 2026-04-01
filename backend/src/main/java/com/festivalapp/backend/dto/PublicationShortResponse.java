@@ -16,5 +16,7 @@ public class PublicationShortResponse {
     private LocalDateTime createdAt;
     private PublicationStatus status;
     private String authorName;
+    private String imageUrl;
     private Long eventId;
+    private String eventTitle;
 }

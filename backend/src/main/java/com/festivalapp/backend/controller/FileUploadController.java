@@ -24,6 +24,16 @@ public class FileUploadController {
     @PostMapping(value = "/event-cover", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<FileUploadResponse> uploadEventCover(@RequestPart("file") @NotNull MultipartFile file) {
         FileStorageService.StoredFile storedFile = fileStorageService.storeEventCover(file);
+        return buildUploadResponse(storedFile);
+    }
+
+    @PostMapping(value = "/publication-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<FileUploadResponse> uploadPublicationImage(@RequestPart("file") @NotNull MultipartFile file) {
+        FileStorageService.StoredFile storedFile = fileStorageService.storePublicationImage(file);
+        return buildUploadResponse(storedFile);
+    }
+
+    private ResponseEntity<FileUploadResponse> buildUploadResponse(FileStorageService.StoredFile storedFile) {
         String fileUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
             .path(storedFile.getRelativePath())
             .toUriString();

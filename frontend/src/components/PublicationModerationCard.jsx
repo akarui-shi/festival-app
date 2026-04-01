@@ -16,12 +16,16 @@ const PublicationModerationCard = ({ publication, processingAction = '', onUpdat
           <strong>Автор:</strong> {publication.authorName || '-'}
         </p>
         <p>
-          <strong>Мероприятие ID:</strong> {publication.eventId ?? '-'}
+          <strong>Мероприятие:</strong> {publication.eventTitle || (publication.eventId != null ? `#${publication.eventId}` : '-')}
         </p>
         <p>
           <strong>Дата:</strong> {formatDateTime(publication.createdAt)}
         </p>
       </div>
+
+      {publication.imageUrl && (
+        <img src={publication.imageUrl} alt={publication.title} className="admin-publication-image" />
+      )}
 
       <div className="admin-card__actions">
         <button
@@ -30,7 +34,7 @@ const PublicationModerationCard = ({ publication, processingAction = '', onUpdat
           disabled={processingAction !== ''}
           onClick={() => onUpdateStatus(publication.publicationId, 'PUBLISHED')}
         >
-          {processingAction === 'PUBLISHED' ? 'Сохраняем...' : 'Опубликовать'}
+          {processingAction === 'PUBLISHED' ? 'Сохраняем...' : 'Одобрить'}
         </button>
         <button
           type="button"
@@ -46,7 +50,7 @@ const PublicationModerationCard = ({ publication, processingAction = '', onUpdat
           disabled={processingAction !== ''}
           onClick={() => onUpdateStatus(publication.publicationId, 'DELETED')}
         >
-          {processingAction === 'DELETED' ? 'Сохраняем...' : 'Удалить'}
+          {processingAction === 'DELETED' ? 'Сохраняем...' : 'Архивировать'}
         </button>
       </div>
     </article>
@@ -54,4 +58,3 @@ const PublicationModerationCard = ({ publication, processingAction = '', onUpdat
 };
 
 export default PublicationModerationCard;
-

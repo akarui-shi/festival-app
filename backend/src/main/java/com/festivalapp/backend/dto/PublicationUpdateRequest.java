@@ -13,5 +13,7 @@ public class PublicationUpdateRequest {
 
     private String content;
 
+    private String imageUrl;
+
     private Long eventId;
 }

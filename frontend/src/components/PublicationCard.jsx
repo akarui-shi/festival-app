@@ -4,6 +4,12 @@ import { formatDateTime } from '../utils/formatters';
 const PublicationCard = ({ publication }) => {
   return (
     <article className="publication-card">
+      {publication.imageUrl && (
+        <Link to={`/publications/${publication.publicationId}`} className="publication-card__image-link">
+          <img src={publication.imageUrl} alt={publication.title} className="publication-card__image" />
+        </Link>
+      )}
+
       <h3>
         <Link to={`/publications/${publication.publicationId}`}>{publication.title}</Link>
       </h3>
@@ -17,8 +23,8 @@ const PublicationCard = ({ publication }) => {
 
       {publication.eventId && (
         <p className="publication-card__event-link">
-          Связано с мероприятием:{' '}
-          <Link to={`/events/${publication.eventId}`}>перейти к мероприятию</Link>
+          Мероприятие:{' '}
+          <Link to={`/events/${publication.eventId}`}>{publication.eventTitle || `#${publication.eventId}`}</Link>
         </p>
       )}
     </article>
