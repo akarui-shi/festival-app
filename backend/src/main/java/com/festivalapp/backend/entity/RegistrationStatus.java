@@ -1,7 +1,7 @@
 package com.festivalapp.backend.entity;
 
 public enum RegistrationStatus {
-    PENDING,
+    CREATED,
     CONFIRMED,
     CANCELLED
 }

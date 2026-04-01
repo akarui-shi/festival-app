@@ -17,6 +17,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -47,4 +49,7 @@ public class Registration {
 
     @Column(name = "qr_token", nullable = false, unique = true)
     private String qrToken;
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
 }

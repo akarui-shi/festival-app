@@ -41,6 +41,12 @@ public class Session {
     @JoinColumn(name = "venue_id", nullable = false)
     private Venue venue;
 
+    @Column(nullable = false)
+    private String title;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
     @Column(name = "start_time", nullable = false)
     private LocalDateTime startTime;
 
