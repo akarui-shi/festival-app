@@ -67,6 +67,12 @@ public class EventController {
         return ResponseEntity.ok(eventService.delete(id, extractUsername(principal)));
     }
 
+    @PostMapping("/{id}/archive")
+    public ResponseEntity<Map<String, Object>> archive(@PathVariable Long id,
+                                                       @AuthenticationPrincipal UserDetails principal) {
+        return ResponseEntity.ok(eventService.archive(id, extractUsername(principal)));
+    }
+
     private String extractUsername(UserDetails principal) {
         if (principal == null) {
             throw new UnauthorizedException("Unauthorized user");

@@ -48,7 +48,6 @@ const OrganizerEventEditPage = () => {
       fullDescription: event.fullDescription || '',
       ageRating: event.ageRating ?? 0,
       coverUrl: event.coverUrl || '',
-      status: event.status || 'DRAFT',
       categoryIds: (event.categories || []).map((category) => category.id)
     };
   }, [event]);
@@ -58,7 +57,7 @@ const OrganizerEventEditPage = () => {
       setIsSubmitting(true);
       setError('');
       await eventService.updateEvent(id, payload);
-      navigate('/organizer', { state: { message: 'Мероприятие обновлено.' } });
+      navigate('/organizer', { state: { message: 'Изменения сохранены. Мероприятие отправлено на модерацию.' } });
     } catch (err) {
       setError(err.message || 'Не удалось обновить мероприятие.');
     } finally {

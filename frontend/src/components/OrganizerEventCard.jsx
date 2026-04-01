@@ -1,6 +1,16 @@
 import { formatStatus } from '../utils/formatters';
 
-const OrganizerEventCard = ({ event, isDeleting = false, onEdit, onSessions, onDelete }) => {
+const OrganizerEventCard = ({
+  event,
+  isDeleting = false,
+  isArchiving = false,
+  onEdit,
+  onSessions,
+  onDelete,
+  onArchive
+}) => {
+  const isArchived = event.status === 'ARCHIVED';
+
   return (
     <article className="organizer-event-card">
       <h3>{event.title}</h3>
@@ -27,6 +37,14 @@ const OrganizerEventCard = ({ event, isDeleting = false, onEdit, onSessions, onD
         <button type="button" className="btn btn--ghost" onClick={() => onSessions(event.id)}>
           Сеансы
         </button>
+        <button
+          type="button"
+          className="btn btn--ghost"
+          onClick={() => onArchive?.(event.id)}
+          disabled={isArchived || isArchiving}
+        >
+          {isArchiving ? 'Архивируем...' : isArchived ? 'В архиве' : 'В архив'}
+        </button>
         <button type="button" className="btn btn--danger" onClick={() => onDelete(event.id)} disabled={isDeleting}>
           {isDeleting ? 'Удаляем...' : 'Удалить'}
         </button>
@@ -36,4 +54,3 @@ const OrganizerEventCard = ({ event, isDeleting = false, onEdit, onSessions, onD
 };
 
 export default OrganizerEventCard;
-

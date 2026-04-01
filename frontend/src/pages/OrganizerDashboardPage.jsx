@@ -17,6 +17,7 @@ const OrganizerDashboardPage = () => {
   const [error, setError] = useState('');
   const [message, setMessage] = useState(location.state?.message || '');
   const [deletingId, setDeletingId] = useState(null);
+  const [archivingId, setArchivingId] = useState(null);
 
   const loadEvents = async ({ withLoader = true } = {}) => {
     try {
@@ -66,6 +67,26 @@ const OrganizerDashboardPage = () => {
     }
   };
 
+  const handleArchive = async (eventId) => {
+    const confirmed = window.confirm('Отправить мероприятие в архив?');
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setArchivingId(eventId);
+      setError('');
+      setMessage('');
+      await eventService.archiveEvent(eventId);
+      await loadEvents({ withLoader: false });
+      setMessage('Мероприятие отправлено в архив.');
+    } catch (err) {
+      setError(toUserErrorMessage(err, 'Не удалось отправить мероприятие в архив.'));
+    } finally {
+      setArchivingId(null);
+    }
+  };
+
   return (
     <section className="container page">
       <div className="page-header-row">
@@ -88,8 +109,10 @@ const OrganizerDashboardPage = () => {
               key={event.id}
               event={event}
               isDeleting={deletingId === event.id}
+              isArchiving={archivingId === event.id}
               onEdit={(id) => navigate(`/organizer/events/${id}/edit`)}
               onSessions={(id) => navigate(`/organizer/events/${id}/sessions`)}
+              onArchive={handleArchive}
               onDelete={handleDelete}
             />
           ))}

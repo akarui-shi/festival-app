@@ -15,6 +15,7 @@ const ROLE_LABELS = {
 };
 
 const STATUS_LABELS = {
+  PENDING_APPROVAL: 'На согласовании',
   DRAFT: 'Черновик',
   PENDING: 'На модерации',
   APPROVED: 'Одобрено',

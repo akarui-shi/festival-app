@@ -3,19 +3,24 @@ import AdminTabs from '../components/AdminTabs';
 import AdminEmptyState from '../components/AdminEmptyState';
 import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
+import AdminEventModerationCard from '../components/AdminEventModerationCard';
 import PublicationModerationCard from '../components/PublicationModerationCard';
 import UserManagementTable from '../components/UserManagementTable';
 import CategoryForm from '../components/CategoryForm';
+import { adminService } from '../services/adminService';
 import { publicationService } from '../services/publicationService';
 import { userService } from '../services/userService';
 import { categoryService } from '../services/categoryService';
+import { formatStatus } from '../utils/formatters';
 
 const TABS = [
+  { key: 'events', label: 'Мероприятия' },
   { key: 'publications', label: 'Публикации' },
   { key: 'users', label: 'Пользователи' },
   { key: 'categories', label: 'Категории' }
 ];
 
+const EVENT_STATUSES = ['', 'PENDING_APPROVAL', 'PUBLISHED', 'REJECTED', 'ARCHIVED'];
 const PUBLICATION_STATUSES = ['', 'PENDING', 'PUBLISHED', 'REJECTED', 'DELETED'];
 
 const normalizeRoles = (roles) => (Array.isArray(roles) ? [...new Set(roles)].sort() : []);
@@ -30,21 +35,29 @@ const sameRoleSet = (left, right) => {
 };
 
 const AdminDashboardPage = () => {
-  const [activeTab, setActiveTab] = useState('publications');
+  const [activeTab, setActiveTab] = useState('events');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
+  const [eventStatusFilter, setEventStatusFilter] = useState('PENDING_APPROVAL');
   const [publicationStatusFilter, setPublicationStatusFilter] = useState('');
+  const [events, setEvents] = useState([]);
   const [publications, setPublications] = useState([]);
   const [users, setUsers] = useState([]);
   const [categories, setCategories] = useState([]);
 
+  const [eventAction, setEventAction] = useState({ id: null, status: '' });
   const [publicationAction, setPublicationAction] = useState({ id: null, status: '' });
   const [savingUserId, setSavingUserId] = useState(null);
   const [editingCategory, setEditingCategory] = useState(null);
   const [dictionarySubmitting, setDictionarySubmitting] = useState(false);
   const [deletingCategoryId, setDeletingCategoryId] = useState(null);
+
+  const loadEvents = useCallback(async () => {
+    const data = await adminService.getAdminEvents(eventStatusFilter || undefined);
+    setEvents(Array.isArray(data) ? data : []);
+  }, [eventStatusFilter]);
 
   const loadPublications = useCallback(async () => {
     const data = await publicationService.getAdminPublications(publicationStatusFilter || undefined);
@@ -67,7 +80,9 @@ const AdminDashboardPage = () => {
         setIsLoading(true);
         setError('');
 
-        if (activeTab === 'publications') {
+        if (activeTab === 'events') {
+          await loadEvents();
+        } else if (activeTab === 'publications') {
           await loadPublications();
         } else if (activeTab === 'users') {
           await loadUsers();
@@ -82,9 +97,24 @@ const AdminDashboardPage = () => {
     };
 
     load();
-  }, [activeTab, loadPublications, loadUsers, loadCategories]);
+  }, [activeTab, loadEvents, loadPublications, loadUsers, loadCategories]);
 
   const currentTabLabel = useMemo(() => TABS.find((tab) => tab.key === activeTab)?.label || '', [activeTab]);
+
+  const handleEventStatusChange = async (eventId, status) => {
+    try {
+      setError('');
+      setMessage('');
+      setEventAction({ id: eventId, status });
+      await adminService.updateEventStatus(eventId, status);
+      await loadEvents();
+      setMessage('Статус мероприятия обновлен.');
+    } catch (err) {
+      setError(err.message || 'Не удалось обновить статус мероприятия.');
+    } finally {
+      setEventAction({ id: null, status: '' });
+    }
+  };
 
   const handlePublicationStatusChange = async (publicationId, status) => {
     try {
@@ -196,6 +226,37 @@ const AdminDashboardPage = () => {
       {error && <ErrorMessage message={error} />}
       {message && <p className="page-note page-note--success">{message}</p>}
 
+      {!isLoading && activeTab === 'events' && (
+        <div className="admin-section">
+          <label className="admin-filter">
+            Фильтр по статусу
+            <select value={eventStatusFilter} onChange={(event) => setEventStatusFilter(event.target.value)}>
+              <option value="">Все</option>
+              {EVENT_STATUSES.filter(Boolean).map((status) => (
+                <option key={status} value={status}>
+                  {formatStatus(status)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {events.length === 0 ? (
+            <AdminEmptyState message="Нет мероприятий для модерации." />
+          ) : (
+            <div className="admin-list">
+              {events.map((event) => (
+                <AdminEventModerationCard
+                  key={event.id}
+                  event={event}
+                  processingAction={eventAction.id === event.id ? eventAction.status : ''}
+                  onUpdateStatus={handleEventStatusChange}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {!isLoading && activeTab === 'publications' && (
         <div className="admin-section">
           <label className="admin-filter">
@@ -204,7 +265,7 @@ const AdminDashboardPage = () => {
               <option value="">Все</option>
               {PUBLICATION_STATUSES.filter(Boolean).map((status) => (
                 <option key={status} value={status}>
-                  {status}
+                  {formatStatus(status)}
                 </option>
               ))}
             </select>

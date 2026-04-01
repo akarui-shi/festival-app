@@ -9,7 +9,6 @@ const DEFAULT_VALUES = {
   fullDescription: '',
   ageRating: 0,
   coverUrl: '',
-  status: 'DRAFT',
   categoryIds: []
 };
 
@@ -80,7 +79,6 @@ const EventForm = ({
       fullDescription: formData.fullDescription.trim(),
       ageRating: Number(formData.ageRating),
       coverUrl: formData.coverUrl.trim(),
-      status: formData.status,
       categoryIds: formData.categoryIds
     });
   };
@@ -206,15 +204,6 @@ const EventForm = ({
           <p className="muted">Обложка пока не выбрана.</p>
         )}
       </div>
-
-      <label>
-        Статус
-        <select name="status" value={formData.status} onChange={handleChange} required>
-          <option value="DRAFT">Черновик</option>
-          <option value="PUBLISHED">Опубликовано</option>
-          <option value="ARCHIVED">В архиве</option>
-        </select>
-      </label>
 
       <div>
         <p className="form-section-title">Категории</p>

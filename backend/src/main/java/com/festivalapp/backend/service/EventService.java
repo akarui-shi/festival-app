@@ -142,6 +142,7 @@ public class EventService {
         Organizer organizer = resolveOrganizerForCreate(actor, request.getOrganizerId());
 
         Set<Category> categories = resolveCategories(request.getCategoryIds());
+        EventStatus targetStatus = resolveStatusForCreate(actor, request.getStatus());
 
         Event event = Event.builder()
             .title(request.getTitle())
@@ -150,7 +151,7 @@ public class EventService {
             .ageRating(request.getAgeRating())
             .coverUrl(request.getCoverUrl())
             .createdAt(LocalDateTime.now())
-            .status(request.getStatus() == null ? EventStatus.DRAFT : request.getStatus())
+            .status(targetStatus)
             .organizer(organizer)
             .categories(categories)
             .build();
@@ -164,6 +165,8 @@ public class EventService {
         Event event = eventRepository.findDetailedById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + id));
         validateUpdateOrDeleteAccess(actor, event);
+        boolean isAdmin = hasRole(actor, RoleName.ROLE_ADMIN);
+        boolean contentUpdated = false;
 
         if (request.getOrganizerId() != null) {
             updateOrganizerIfNeeded(actor, event, request.getOrganizerId());
@@ -171,26 +174,84 @@ public class EventService {
 
         if (request.getTitle() != null) {
             event.setTitle(request.getTitle());
+            contentUpdated = true;
         }
         if (request.getShortDescription() != null) {
             event.setShortDescription(request.getShortDescription());
+            contentUpdated = true;
         }
         if (request.getFullDescription() != null) {
             event.setFullDescription(request.getFullDescription());
+            contentUpdated = true;
         }
         if (request.getAgeRating() != null) {
             event.setAgeRating(request.getAgeRating());
+            contentUpdated = true;
         }
         if (request.getCoverUrl() != null) {
             event.setCoverUrl(request.getCoverUrl());
+            contentUpdated = true;
         }
         if (request.getStatus() != null) {
+            if (!isAdmin) {
+                throw new BadRequestException("Organizer cannot change event status manually");
+            }
             event.setStatus(request.getStatus());
         }
         if (request.getCategoryIds() != null) {
             event.setCategories(resolveCategories(request.getCategoryIds()));
+            contentUpdated = true;
         }
 
+        // Organizer edits are always re-submitted for moderation.
+        if (!isAdmin && contentUpdated && event.getStatus() != EventStatus.ARCHIVED) {
+            event.setStatus(EventStatus.PENDING_APPROVAL);
+        }
+
+        return toShortResponse(eventRepository.save(event));
+    }
+
+    @Transactional
+    public Map<String, Object> archive(Long id, String actorIdentifier) {
+        User actor = loadActor(actorIdentifier);
+        Event event = eventRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + id));
+        validateUpdateOrDeleteAccess(actor, event);
+
+        event.setStatus(EventStatus.ARCHIVED);
+        eventRepository.save(event);
+
+        return Map.of(
+            "message", "Event archived successfully",
+            "eventId", id,
+            "status", event.getStatus()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<EventShortResponse> getAllForAdmin(EventStatus status) {
+        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
+        List<Event> events = status == null
+            ? eventRepository.findAll((Specification<Event>) null, sort)
+            : eventRepository.findAll(
+                (root, query, cb) -> cb.equal(root.get("status"), status),
+                sort
+            );
+
+        return events.stream()
+            .map(this::toShortResponse)
+            .toList();
+    }
+
+    @Transactional
+    public EventShortResponse updateStatusByAdmin(Long eventId, EventStatus status) {
+        if (status == null) {
+            throw new BadRequestException("Status is required");
+        }
+
+        Event event = eventRepository.findDetailedById(eventId)
+            .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + eventId));
+        event.setStatus(status);
         return toShortResponse(eventRepository.save(event));
     }
 
@@ -249,6 +310,13 @@ public class EventService {
         }
 
         return actorOrganizer;
+    }
+
+    private EventStatus resolveStatusForCreate(User actor, EventStatus requestedStatus) {
+        if (hasRole(actor, RoleName.ROLE_ADMIN)) {
+            return requestedStatus == null ? EventStatus.PUBLISHED : requestedStatus;
+        }
+        return EventStatus.PENDING_APPROVAL;
     }
 
     private Organizer resolveActorOrganizer(User actor) {

@@ -35,7 +35,7 @@ const OrganizerEventCreatePage = () => {
       setIsSubmitting(true);
       setError('');
       await eventService.createEvent(payload);
-      navigate('/organizer', { state: { message: 'Мероприятие создано.' } });
+      navigate('/organizer', { state: { message: 'Мероприятие создано и отправлено на модерацию.' } });
     } catch (err) {
       setError(err.message || 'Не удалось создать мероприятие.');
     } finally {

@@ -20,6 +20,14 @@ const toQueryString = (params = {}) => {
 };
 
 export const adminService = {
+  getAdminEvents(status) {
+    return apiClient.get(`/api/admin/events${withStatusQuery(status)}`);
+  },
+
+  updateEventStatus(eventId, status) {
+    return apiClient.patch(`/api/admin/events/${eventId}/status`, { status });
+  },
+
   getAdminPublications(status) {
     return apiClient.get(`/api/admin/publications${withStatusQuery(status)}`);
   },

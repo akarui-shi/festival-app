@@ -31,6 +31,10 @@ export const eventService = {
     return apiClient.put(`/api/events/${id}`, data);
   },
 
+  archiveEvent(id) {
+    return apiClient.post(`/api/events/${id}/archive`, {});
+  },
+
   deleteEvent(id) {
     return apiClient.delete(`/api/events/${id}`);
   }
