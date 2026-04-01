@@ -9,6 +9,7 @@ import com.festivalapp.backend.dto.EventShortResponse;
 import com.festivalapp.backend.dto.EventUpdateRequest;
 import com.festivalapp.backend.dto.VenueResponse;
 import com.festivalapp.backend.entity.Category;
+import com.festivalapp.backend.entity.City;
 import com.festivalapp.backend.entity.Event;
 import com.festivalapp.backend.entity.EventImage;
 import com.festivalapp.backend.entity.EventStatus;
@@ -19,6 +20,7 @@ import com.festivalapp.backend.entity.Venue;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
 import com.festivalapp.backend.repository.CategoryRepository;
+import com.festivalapp.backend.repository.CityRepository;
 import com.festivalapp.backend.repository.EventCategoryRepository;
 import com.festivalapp.backend.repository.EventImageRepository;
 import com.festivalapp.backend.repository.EventRepository;
@@ -40,9 +42,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -60,6 +64,7 @@ public class EventService {
     private final EventImageRepository eventImageRepository;
     private final OrganizerRepository organizerRepository;
     private final CategoryRepository categoryRepository;
+    private final CityRepository cityRepository;
     private final UserRepository userRepository;
     private final RegistrationRepository registrationRepository;
     private final SessionRepository sessionRepository;
@@ -145,7 +150,19 @@ public class EventService {
     public EventShortResponse create(EventCreateRequest request, String actorIdentifier) {
         User actor = loadActor(actorIdentifier);
         Organizer organizer = resolveOrganizerForCreate(actor, request.getOrganizerId());
-        Venue venue = resolveVenue(request.getVenueId());
+        Venue venue = resolveVenueForRequest(
+            request.getVenueId(),
+            request.getVenueAddress(),
+            request.getVenueLatitude(),
+            request.getVenueLongitude(),
+            request.getVenueCityId(),
+            request.getVenueCityName(),
+            request.getVenueRegion(),
+            request.getVenueCountry(),
+            request.getVenueName(),
+            request.getVenueContacts(),
+            request.getVenueCapacity()
+        );
 
         Set<Category> categories = resolveCategories(request.getCategoryIds());
         EventStatus targetStatus = resolveStatusForCreate(actor, request.getStatus());
@@ -178,8 +195,20 @@ public class EventService {
         if (request.getOrganizerId() != null) {
             updateOrganizerIfNeeded(actor, event, request.getOrganizerId());
         }
-        if (request.getVenueId() != null) {
-            event.setVenue(resolveVenue(request.getVenueId()));
+        if (hasVenueUpdate(request)) {
+            event.setVenue(resolveVenueForRequest(
+                request.getVenueId(),
+                request.getVenueAddress(),
+                request.getVenueLatitude(),
+                request.getVenueLongitude(),
+                request.getVenueCityId(),
+                request.getVenueCityName(),
+                request.getVenueRegion(),
+                request.getVenueCountry(),
+                request.getVenueName(),
+                request.getVenueContacts(),
+                request.getVenueCapacity()
+            ));
             contentUpdated = true;
         }
 
@@ -262,8 +291,39 @@ public class EventService {
 
         Event event = eventRepository.findDetailedById(eventId)
             .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + eventId));
+
+        EventStatus currentStatus = event.getStatus();
+        if (currentStatus == null) {
+            throw new BadRequestException("У мероприятия не установлен текущий статус");
+        }
+        if (currentStatus == status) {
+            throw new BadRequestException("Статус мероприятия уже установлен: " + status.name());
+        }
+
+        Set<EventStatus> allowedTargets = getAllowedAdminTransitions(currentStatus);
+        if (!allowedTargets.contains(status)) {
+            String allowedStatuses = allowedTargets.stream()
+                .map(Enum::name)
+                .sorted()
+                .collect(Collectors.joining(", "));
+            throw new BadRequestException(
+                "Недопустимый переход статуса мероприятия: " + currentStatus.name() + " -> " + status.name()
+                    + ". Допустимые статусы: " + allowedStatuses
+            );
+        }
+
         event.setStatus(status);
         return toShortResponse(eventRepository.save(event));
+    }
+
+    private Set<EventStatus> getAllowedAdminTransitions(EventStatus currentStatus) {
+        return switch (currentStatus) {
+            case DRAFT -> EnumSet.of(EventStatus.PENDING_APPROVAL, EventStatus.ARCHIVED);
+            case PENDING_APPROVAL -> EnumSet.of(EventStatus.PUBLISHED, EventStatus.REJECTED, EventStatus.ARCHIVED);
+            case PUBLISHED -> EnumSet.of(EventStatus.REJECTED, EventStatus.ARCHIVED);
+            case REJECTED -> EnumSet.of(EventStatus.PUBLISHED, EventStatus.ARCHIVED);
+            case ARCHIVED -> EnumSet.of(EventStatus.PUBLISHED);
+        };
     }
 
     @Transactional
@@ -331,12 +391,143 @@ public class EventService {
         return EventStatus.PENDING_APPROVAL;
     }
 
-    private Venue resolveVenue(Long venueId) {
-        if (venueId == null) {
-            throw new BadRequestException("Venue ID is required");
+    private boolean hasVenueUpdate(EventUpdateRequest request) {
+        return request.getVenueId() != null
+            || request.getVenueAddress() != null
+            || request.getVenueLatitude() != null
+            || request.getVenueLongitude() != null
+            || request.getVenueCityId() != null
+            || request.getVenueCityName() != null
+            || request.getVenueRegion() != null
+            || request.getVenueCountry() != null
+            || request.getVenueName() != null
+            || request.getVenueContacts() != null
+            || request.getVenueCapacity() != null;
+    }
+
+    private Venue resolveVenueForRequest(Long venueId,
+                                         String venueAddress,
+                                         BigDecimal venueLatitude,
+                                         BigDecimal venueLongitude,
+                                         Long venueCityId,
+                                         String venueCityName,
+                                         String venueRegion,
+                                         String venueCountry,
+                                         String venueName,
+                                         String venueContacts,
+                                         Integer venueCapacity) {
+        if (venueId != null) {
+            return resolveVenueById(venueId);
         }
+
+        String normalizedAddress = normalizeOptional(venueAddress);
+        if (normalizedAddress == null) {
+            throw new BadRequestException("Адрес площадки обязателен");
+        }
+        if (venueLatitude == null || venueLongitude == null) {
+            throw new BadRequestException("Не удалось определить координаты площадки. Выберите адрес из подсказок или точку на карте.");
+        }
+
+        City city = resolveCityForVenue(venueCityId, venueCityName, venueRegion, venueCountry, normalizedAddress);
+        Venue existingVenue = venueRepository.findFirstByAddressIgnoreCaseAndCityId(normalizedAddress, city.getId()).orElse(null);
+        if (existingVenue != null) {
+            existingVenue.setLatitude(venueLatitude);
+            existingVenue.setLongitude(venueLongitude);
+            if (StringUtils.hasText(venueName)) {
+                existingVenue.setName(venueName.trim());
+            }
+            if (venueContacts != null) {
+                existingVenue.setContacts(normalizeOptional(venueContacts));
+            }
+            if (venueCapacity != null) {
+                existingVenue.setCapacity(venueCapacity);
+            }
+            return venueRepository.save(existingVenue);
+        }
+
+        String resolvedVenueName = StringUtils.hasText(venueName)
+            ? venueName.trim()
+            : buildVenueNameFromAddress(normalizedAddress);
+
+        return venueRepository.save(Venue.builder()
+            .name(resolvedVenueName)
+            .address(normalizedAddress)
+            .contacts(normalizeOptional(venueContacts))
+            .latitude(venueLatitude)
+            .longitude(venueLongitude)
+            .capacity(venueCapacity)
+            .city(city)
+            .build());
+    }
+
+    private Venue resolveVenueById(Long venueId) {
         return venueRepository.findById(venueId)
             .orElseThrow(() -> new ResourceNotFoundException("Venue not found: " + venueId));
+    }
+
+    private City resolveCityForVenue(Long cityId,
+                                     String cityName,
+                                     String region,
+                                     String country,
+                                     String address) {
+        if (cityId != null) {
+            return cityRepository.findById(cityId)
+                .orElseThrow(() -> new ResourceNotFoundException("City not found: " + cityId));
+        }
+
+        String normalizedCityName = normalizeOptional(cityName);
+        String normalizedRegion = normalizeOptional(region);
+        String normalizedCountry = normalizeOptional(country);
+
+        if (normalizedCityName != null && normalizedRegion != null && normalizedCountry != null) {
+            City exact = cityRepository
+                .findFirstByNameIgnoreCaseAndRegionIgnoreCaseAndCountryIgnoreCase(
+                    normalizedCityName,
+                    normalizedRegion,
+                    normalizedCountry
+                )
+                .orElse(null);
+            if (exact != null) {
+                return exact;
+            }
+        }
+
+        if (normalizedCityName != null) {
+            City byName = cityRepository.findFirstByNameIgnoreCase(normalizedCityName).orElse(null);
+            if (byName != null) {
+                return byName;
+            }
+        }
+
+        City inferredFromAddress = inferCityFromAddress(address);
+        if (inferredFromAddress != null) {
+            return inferredFromAddress;
+        }
+
+        throw new BadRequestException("Не удалось определить город по адресу. Выберите адрес точнее.");
+    }
+
+    private City inferCityFromAddress(String address) {
+        if (!StringUtils.hasText(address)) {
+            return null;
+        }
+        String normalizedAddress = address.toLowerCase(Locale.ROOT);
+        return cityRepository.findAllByOrderByNameAsc().stream()
+            .filter(city -> StringUtils.hasText(city.getName()))
+            .filter(city -> normalizedAddress.contains(city.getName().toLowerCase(Locale.ROOT)))
+            .max(Comparator.comparingInt(city -> city.getName().length()))
+            .orElse(null);
+    }
+
+    private String buildVenueNameFromAddress(String address) {
+        if (!StringUtils.hasText(address)) {
+            return "Площадка мероприятия";
+        }
+        String trimmed = address.trim();
+        if (trimmed.length() <= 120) {
+            return trimmed;
+        }
+        return trimmed.substring(0, 120);
     }
 
     private Organizer resolveActorOrganizer(User actor) {

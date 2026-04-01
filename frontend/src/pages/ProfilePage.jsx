@@ -3,18 +3,12 @@ import { useAuth } from '../context/AuthContext';
 import { formatRole } from '../utils/formatters';
 import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
-import SearchableCitySelect from '../components/SearchableCitySelect';
-import { authStorage } from '../utils/storage';
-import { ROLE } from '../utils/roles';
 
 const ProfilePage = () => {
-  const { currentUser, refreshCurrentUser, hasRole } = useAuth();
-  const canManageCity = hasRole([ROLE.RESIDENT]) && !hasRole([ROLE.ORGANIZER, ROLE.ADMIN]);
+  const { currentUser, refreshCurrentUser } = useAuth();
   const [profile, setProfile] = useState(currentUser);
-  const [selectedCity, setSelectedCity] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -45,16 +39,6 @@ const ProfilePage = () => {
     };
   }, [refreshCurrentUser]);
 
-  useEffect(() => {
-    if (!canManageCity) {
-      setSelectedCity(null);
-      return;
-    }
-
-    const userId = profile?.id || currentUser?.id;
-    setSelectedCity(authStorage.getPreferredCity(userId));
-  }, [canManageCity, profile?.id, currentUser?.id]);
-
   if (isLoading) {
     return (
       <section className="container page">
@@ -81,29 +65,7 @@ const ProfilePage = () => {
         <p><strong>Фамилия:</strong> {profile?.lastName || '-'}</p>
         <p><strong>Телефон:</strong> {profile?.phone || '-'}</p>
         <p><strong>Роли:</strong> {(profile?.roles || []).map(formatRole).join(', ') || '-'}</p>
-        {canManageCity && <p><strong>Выбранный город:</strong> {selectedCity?.name || '-'}</p>}
       </div>
-
-      {canManageCity && (
-        <div className="panel form">
-          <SearchableCitySelect
-            label="Ваш город"
-            placeholder="Начните вводить название города"
-            selectedCity={selectedCity}
-            onSelect={(city) => {
-              setSelectedCity(city);
-              authStorage.setPreferredCity(profile?.id || currentUser?.id, city);
-              setMessage(`Город сохранен: ${city.name}`);
-            }}
-            onClear={() => {
-              setSelectedCity(null);
-              authStorage.clearPreferredCity(profile?.id || currentUser?.id);
-              setMessage('Выбранный город очищен.');
-            }}
-          />
-          {message && <p className="page-note page-note--success">{message}</p>}
-        </div>
-      )}
     </section>
   );
 };

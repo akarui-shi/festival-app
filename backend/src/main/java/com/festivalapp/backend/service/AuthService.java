@@ -20,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -37,20 +38,27 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByLogin(request.getLogin())) {
+        String normalizedLogin = normalizeRequired(request.getLogin(), "Введите логин");
+        String normalizedEmail = normalizeRequired(request.getEmail(), "Введите электронную почту");
+        String normalizedPhone = normalizeOptional(request.getPhone());
+
+        if (userRepository.existsByLogin(normalizedLogin)) {
             throw new BadRequestException("Логин уже занят");
         }
-        if (userRepository.existsByEmail(request.getEmail())) {
+        if (userRepository.existsByEmail(normalizedEmail)) {
             throw new BadRequestException("Электронная почта уже используется");
+        }
+        if (normalizedPhone != null && userRepository.existsByPhone(normalizedPhone)) {
+            throw new BadRequestException("Пользователь с таким номером телефона уже существует");
         }
 
         User user = User.builder()
-            .login(request.getLogin())
-            .email(request.getEmail())
-            .phone(request.getPhone())
+            .login(normalizedLogin)
+            .email(normalizedEmail)
+            .phone(normalizedPhone)
             .passwordHash(passwordEncoder.encode(request.getPassword()))
-            .firstName(request.getFirstName())
-            .lastName(request.getLastName())
+            .firstName(normalizeOptional(request.getFirstName()))
+            .lastName(normalizeOptional(request.getLastName()))
             .createdAt(LocalDateTime.now())
             .status(UserStatus.ACTIVE)
             .build();
@@ -107,5 +115,19 @@ public class AuthService {
 
     private String normalizeRoleName(String roleName) {
         return roleName.startsWith("ROLE_") ? roleName.substring(5) : roleName;
+    }
+
+    private String normalizeRequired(String value, String message) {
+        if (!StringUtils.hasText(value)) {
+            throw new BadRequestException(message);
+        }
+        return value.trim();
+    }
+
+    private String normalizeOptional(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return value.trim();
     }
 }

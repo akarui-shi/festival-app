@@ -60,9 +60,48 @@ a {
   position: relative;
 }
 
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
 .logo {
   font-weight: 700;
   font-size: 20px;
+  flex-shrink: 0;
+}
+
+.header-city-switch {
+  border: 1px solid #c8d8f7;
+  border-radius: 10px;
+  background: #f3f7ff;
+  color: #1e3a6f;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  max-width: 280px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.header-city-switch:disabled {
+  cursor: wait;
+  opacity: 0.8;
+}
+
+.header-city-switch__label {
+  font-size: 12px;
+  color: #43659f;
+}
+
+.header-city-switch__name {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .header-burger {
@@ -240,6 +279,11 @@ a {
   font-size: 16px;
   color: #e7efff;
   max-width: 56ch;
+}
+
+.home-hero__city-note {
+  font-size: 14px;
+  color: #d8e6ff;
 }
 
 .home-hero__visual {
@@ -899,6 +943,23 @@ a {
   gap: 8px;
 }
 
+.event-location {
+  display: grid;
+  gap: 8px;
+}
+
+.event-location__map-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #fff;
+}
+
+.event-location__map {
+  width: 100%;
+  height: 320px;
+}
+
 .event-cover-preview-wrap {
   display: grid;
   gap: 8px;
@@ -1282,6 +1343,19 @@ a {
   margin: 0;
 }
 
+.city-modal {
+  width: min(560px, 100%);
+}
+
+.city-modal__confirm p {
+  margin: 0;
+}
+
+.city-modal__search {
+  display: grid;
+  gap: 8px;
+}
+
 .modal__actions {
   display: flex;
   gap: 10px;
@@ -1360,6 +1434,16 @@ a {
 }
 
 @media (max-width: 960px) {
+  .header-brand {
+    max-width: calc(100% - 56px);
+    gap: 8px;
+  }
+
+  .header-city-switch {
+    max-width: 220px;
+    padding: 7px 9px;
+  }
+
   .header-burger {
     display: inline-flex;
     margin-left: auto;
@@ -1454,6 +1538,14 @@ a {
 
   .events-filters__actions .btn {
     width: 100%;
+  }
+
+  .header-city-switch {
+    max-width: 170px;
+  }
+
+  .header-city-switch__label {
+    display: none;
   }
 
   .searchable-city-select__control {

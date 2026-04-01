@@ -76,16 +76,55 @@ public class GlobalExceptionHandler {
         if (normalized.contains("registrations")) {
             return buildResponse(HttpStatus.BAD_REQUEST, "Не удалось создать регистрацию");
         }
-        if (normalized.contains("users_login_key") || normalized.contains("users.login")) {
+        if (normalized.contains("event_categories_category_id_fkey")) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Нельзя удалить категорию: она используется в мероприятиях");
+        }
+        if (normalized.contains("events_venue_id_fkey")) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Нельзя удалить площадку: она используется в мероприятиях");
+        }
+        if (normalized.contains("venues_city_id_fkey")) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Нельзя удалить город: в нем есть связанные площадки");
+        }
+        if (normalized.contains("publications_event_id_fkey")) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Нельзя сохранить публикацию: связанное мероприятие не найдено");
+        }
+        if (normalized.contains("publications_author_id_fkey")) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Нельзя сохранить публикацию: автор не найден");
+        }
+        if (normalized.contains("foreign key") && normalized.contains("publications") && normalized.contains("event_id")) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Нельзя сохранить публикацию: связанное мероприятие не найдено");
+        }
+        if (normalized.contains("foreign key") && normalized.contains("publications") && normalized.contains("author_id")) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Нельзя сохранить публикацию: автор не найден");
+        }
+        if (normalized.contains("events_organizer_id_fkey")) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Нельзя сохранить мероприятие: организатор не найден");
+        }
+        if (normalized.contains("users_login_key")
+            || normalized.contains("users.login")
+            || (normalized.contains("duplicate key") && normalized.contains("login"))) {
             return buildResponse(HttpStatus.BAD_REQUEST, "Логин уже занят");
         }
-        if (normalized.contains("users_email_key") || normalized.contains("users.email")) {
+        if (normalized.contains("users_email_key")
+            || normalized.contains("users.email")
+            || (normalized.contains("duplicate key") && normalized.contains("email"))) {
             return buildResponse(HttpStatus.BAD_REQUEST, "Электронная почта уже используется");
         }
-        if (normalized.contains("users_phone_key") || normalized.contains("users.phone")) {
-            return buildResponse(HttpStatus.BAD_REQUEST, "Телефон уже используется");
+        if (normalized.contains("users_phone_key")
+            || normalized.contains("users.phone")
+            || (normalized.contains("duplicate key") && normalized.contains("phone"))) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Пользователь с таким номером телефона уже существует");
         }
-        return buildResponse(HttpStatus.BAD_REQUEST, "Не удалось сохранить данные. Проверьте введённые значения.");
+        if (normalized.contains("events_status_check")) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Не удалось сохранить мероприятие: некорректный статус");
+        }
+        if (normalized.contains("publications_status_check")) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Не удалось сохранить публикацию: обновите страницу и попробуйте снова");
+        }
+        if (normalized.contains("publications")) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Не удалось сохранить публикацию. Проверьте выбранное мероприятие и заполненные поля.");
+        }
+        return buildResponse(HttpStatus.BAD_REQUEST, "Операция не выполнена: данные связаны с другими записями.");
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)

@@ -27,10 +27,13 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -155,6 +158,26 @@ public class PublicationService {
         Publication publication = publicationRepository.findWithAuthorAndEventById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Publication not found: " + id));
 
+        PublicationStatus currentStatus = publication.getStatus();
+        if (currentStatus == null) {
+            throw new BadRequestException("У публикации не установлен текущий статус");
+        }
+        if (currentStatus == status) {
+            throw new BadRequestException("Статус публикации уже установлен: " + status.name());
+        }
+
+        Set<PublicationStatus> allowedTargets = getAllowedAdminTransitions(currentStatus);
+        if (!allowedTargets.contains(status)) {
+            String allowedStatuses = allowedTargets.stream()
+                .map(Enum::name)
+                .sorted()
+                .collect(Collectors.joining(", "));
+            throw new BadRequestException(
+                "Недопустимый переход статуса публикации: " + currentStatus.name() + " -> " + status.name()
+                    + ". Допустимые статусы: " + allowedStatuses
+            );
+        }
+
         publication.setStatus(status);
         Publication saved = publicationRepository.save(publication);
         return toDetailsResponse(saved);
@@ -197,6 +220,15 @@ public class PublicationService {
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    private Set<PublicationStatus> getAllowedAdminTransitions(PublicationStatus currentStatus) {
+        return switch (currentStatus) {
+            case PENDING -> EnumSet.of(PublicationStatus.PUBLISHED, PublicationStatus.REJECTED, PublicationStatus.DELETED);
+            case PUBLISHED -> EnumSet.of(PublicationStatus.REJECTED, PublicationStatus.DELETED);
+            case REJECTED -> EnumSet.of(PublicationStatus.PUBLISHED, PublicationStatus.DELETED);
+            case DELETED -> EnumSet.noneOf(PublicationStatus.class);
         };
     }
 

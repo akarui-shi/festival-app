@@ -5,6 +5,7 @@ import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
 import EmptyState from '../components/EmptyState';
 import { useAuth } from '../context/AuthContext';
+import { useCity } from '../context/CityContext';
 import { ROLE } from '../utils/roles';
 import { eventService } from '../services/eventService';
 import { cityService } from '../services/cityService';
@@ -34,6 +35,7 @@ const BENEFITS = [
 
 const HomePage = () => {
   const { isAuthenticated, hasRole } = useAuth();
+  const { selectedCityId, selectedCity } = useCity();
   const isAdmin = useMemo(() => hasRole([ROLE.ADMIN]), [hasRole]);
 
   const [events, setEvents] = useState([]);
@@ -57,7 +59,7 @@ const HomePage = () => {
         setError('');
 
         const [eventsResult, citiesResult, venuesResult, usersResult] = await Promise.allSettled([
-          eventService.getEvents(),
+          eventService.getEvents({ cityId: selectedCityId || undefined }),
           cityService.getCities(),
           venueService.getVenues(),
           isAuthenticated && isAdmin ? userService.getAdminUsers() : Promise.resolve(null)
@@ -90,7 +92,7 @@ const HomePage = () => {
     };
 
     loadHomeData();
-  }, [isAuthenticated, isAdmin]);
+  }, [isAuthenticated, isAdmin, selectedCityId]);
 
   const upcomingEvents = useMemo(() => events.slice(0, 4), [events]);
 
@@ -121,6 +123,11 @@ const HomePage = () => {
               Объединяем жителей, организаторов и площадки в одной платформе, чтобы культурная жизнь города
               была насыщенной, доступной и современной.
             </p>
+            {selectedCity && (
+              <p className="home-hero__city-note">
+                Сейчас показываем афишу города: <strong>{selectedCity.name}</strong>
+              </p>
+            )}
 
             <div className="home-actions">
               {!isAuthenticated ? (

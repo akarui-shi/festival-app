@@ -1,6 +1,28 @@
 import { formatDateTime, formatStatus } from '../utils/formatters';
 
+const EVENT_STATUS_ACTIONS = {
+  DRAFT: ['ARCHIVED'],
+  PENDING_APPROVAL: ['PUBLISHED', 'REJECTED', 'ARCHIVED'],
+  PUBLISHED: ['REJECTED', 'ARCHIVED'],
+  REJECTED: ['PUBLISHED', 'ARCHIVED'],
+  ARCHIVED: ['PUBLISHED']
+};
+
+const ACTION_LABELS = {
+  PUBLISHED: 'Одобрить',
+  REJECTED: 'Отклонить',
+  ARCHIVED: 'В архив'
+};
+
+const ACTION_VARIANTS = {
+  PUBLISHED: 'btn btn--ghost',
+  REJECTED: 'btn btn--ghost',
+  ARCHIVED: 'btn btn--danger'
+};
+
 const AdminEventModerationCard = ({ event, processingAction = '', onUpdateStatus }) => {
+  const actions = EVENT_STATUS_ACTIONS[event.status] || [];
+
   return (
     <article className="admin-card">
       <div className="admin-card__head">
@@ -24,30 +46,19 @@ const AdminEventModerationCard = ({ event, processingAction = '', onUpdateStatus
       </div>
 
       <div className="admin-card__actions">
-        <button
-          type="button"
-          className="btn btn--ghost"
-          disabled={processingAction !== ''}
-          onClick={() => onUpdateStatus(event.id, 'PUBLISHED')}
-        >
-          {processingAction === 'PUBLISHED' ? 'Сохраняем...' : 'Одобрить'}
-        </button>
-        <button
-          type="button"
-          className="btn btn--ghost"
-          disabled={processingAction !== ''}
-          onClick={() => onUpdateStatus(event.id, 'REJECTED')}
-        >
-          {processingAction === 'REJECTED' ? 'Сохраняем...' : 'Отклонить'}
-        </button>
-        <button
-          type="button"
-          className="btn btn--danger"
-          disabled={processingAction !== ''}
-          onClick={() => onUpdateStatus(event.id, 'ARCHIVED')}
-        >
-          {processingAction === 'ARCHIVED' ? 'Сохраняем...' : 'В архив'}
-        </button>
+        {actions.length === 0 && <p className="muted">Для этого статуса нет доступных действий.</p>}
+
+        {actions.map((action) => (
+          <button
+            key={action}
+            type="button"
+            className={ACTION_VARIANTS[action] || 'btn btn--ghost'}
+            disabled={processingAction !== ''}
+            onClick={() => onUpdateStatus(event.id, action)}
+          >
+            {processingAction === action ? 'Сохраняем...' : (ACTION_LABELS[action] || action)}
+          </button>
+        ))}
       </div>
     </article>
   );

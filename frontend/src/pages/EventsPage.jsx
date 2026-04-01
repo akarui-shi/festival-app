@@ -4,31 +4,30 @@ import EventCard from '../components/EventCard';
 import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
 import EmptyState from '../components/EmptyState';
-import SearchableCitySelect from '../components/SearchableCitySelect';
 import { eventService } from '../services/eventService';
 import { favoriteService } from '../services/favoriteService';
 import { categoryService } from '../services/categoryService';
 import { useAuth } from '../context/AuthContext';
+import { useCity } from '../context/CityContext';
 
 const DEFAULT_FILTERS = {
   title: '',
-  categoryId: '',
-  cityId: ''
+  categoryId: ''
 };
 
-const buildEventQueryParams = (filters) => ({
+const buildEventQueryParams = (filters, cityId) => ({
   title: filters.title.trim() || undefined,
   categoryId: filters.categoryId || undefined,
-  cityId: filters.cityId || undefined
+  cityId: cityId || undefined
 });
 
 const EventsPage = () => {
   const { isAuthenticated } = useAuth();
+  const { selectedCity, selectedCityId, isLoading: isCityLoading } = useCity();
   const navigate = useNavigate();
 
   const [events, setEvents] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [selectedCity, setSelectedCity] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFiltersLoading, setIsFiltersLoading] = useState(true);
   const [error, setError] = useState('');
@@ -42,17 +41,23 @@ const EventsPage = () => {
     () =>
       Boolean(
         appliedFilters.title ||
-        appliedFilters.categoryId ||
-          appliedFilters.cityId
+        appliedFilters.categoryId
       ),
     [appliedFilters]
   );
 
-  const loadEvents = useCallback(async (currentFilters) => {
+  const loadEvents = useCallback(async (currentFilters, cityId) => {
+    if (!cityId) {
+      setEvents([]);
+      setError('');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError('');
-      const data = await eventService.getEvents(buildEventQueryParams(currentFilters));
+      const data = await eventService.getEvents(buildEventQueryParams(currentFilters, cityId));
       setEvents(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err.message || 'Не удалось загрузить мероприятия.');
@@ -77,8 +82,11 @@ const EventsPage = () => {
   }, []);
 
   useEffect(() => {
-    loadEvents(appliedFilters);
-  }, [appliedFilters, loadEvents]);
+    if (isCityLoading) {
+      return;
+    }
+    loadEvents(appliedFilters, selectedCityId);
+  }, [appliedFilters, loadEvents, selectedCityId, isCityLoading]);
 
   const loadFavorites = useCallback(async () => {
     if (!isAuthenticated) {
@@ -143,13 +151,14 @@ const EventsPage = () => {
   const handleResetFilters = () => {
     setFilters(DEFAULT_FILTERS);
     setAppliedFilters(DEFAULT_FILTERS);
-    setSelectedCity(null);
   };
 
   return (
     <section className="container page">
       <h1>Мероприятия</h1>
-      <p className="page-subtitle">Найдите событие по названию, категории или городу.</p>
+      <p className="page-subtitle">
+        {selectedCity ? `Показываем события в городе ${selectedCity.name}.` : 'Выберите город в шапке приложения.'}
+      </p>
 
       <form className="events-filters panel" onSubmit={handleApplyFilters}>
         <div className="events-filters__grid">
@@ -175,39 +184,28 @@ const EventsPage = () => {
               ))}
             </select>
           </label>
-
-          <SearchableCitySelect
-            label="Город"
-            selectedCity={selectedCity}
-            onSelect={(city) => {
-              setSelectedCity(city);
-              setFilters((prev) => ({ ...prev, cityId: String(city.id) }));
-            }}
-            onClear={() => {
-              setSelectedCity(null);
-              setFilters((prev) => ({ ...prev, cityId: '' }));
-            }}
-            disabled={isFiltersLoading}
-          />
         </div>
 
         <div className="events-filters__actions">
           <button type="submit" className="btn btn--primary" disabled={isLoading}>
             Применить фильтры
           </button>
-          <button type="button" className="btn btn--ghost" onClick={handleResetFilters} disabled={!hasActiveFilters && !filters.title && !filters.categoryId && !filters.cityId}>
+          <button type="button" className="btn btn--ghost" onClick={handleResetFilters} disabled={!hasActiveFilters}>
             Сбросить фильтры
           </button>
         </div>
       </form>
 
+      {isCityLoading && <Loader text="Определяем выбранный город..." />}
       {isLoading && <Loader text="Загружаем мероприятия..." />}
       {error && <ErrorMessage message={error} />}
       {message && <p className="page-note page-note--success">{message}</p>}
 
-      {!isLoading && !error && events.length === 0 && <EmptyState message="Мероприятия не найдены." />}
+      {!isCityLoading && !selectedCity && <EmptyState message="Выберите город в шапке, чтобы увидеть афишу." />}
 
-      {!isLoading && !error && events.length > 0 && (
+      {!isLoading && !isCityLoading && selectedCity && !error && events.length === 0 && <EmptyState message="Мероприятия не найдены." />}
+
+      {!isLoading && !isCityLoading && !error && events.length > 0 && (
         <div className="event-grid">
           {events.map((event) => (
             <EventCard

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import EventForm from '../components/EventForm';
-import VenueForm from '../components/VenueForm';
 import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
 import { eventService } from '../services/eventService';
@@ -15,21 +14,13 @@ const OrganizerEventEditPage = () => {
 
   const [event, setEvent] = useState(null);
   const [categories, setCategories] = useState([]);
-  const [venues, setVenues] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isVenueSubmitting, setIsVenueSubmitting] = useState(false);
-  const [showVenueForm, setShowVenueForm] = useState(false);
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
 
   const loadDirectories = async () => {
-    const [categoriesData, venuesData] = await Promise.all([
-      directoryService.getCategories(),
-      directoryService.getVenues()
-    ]);
+    const categoriesData = await directoryService.getCategories();
     setCategories(Array.isArray(categoriesData) ? categoriesData : []);
-    setVenues(Array.isArray(venuesData) ? venuesData : []);
   };
 
   useEffect(() => {
@@ -63,7 +54,12 @@ const OrganizerEventEditPage = () => {
       ageRating: event.ageRating ?? 0,
       coverUrl: event.coverUrl || '',
       eventImages: Array.isArray(event.eventImages) ? event.eventImages : [],
-      venueId: event.venue?.id ?? '',
+      venueId: event.venue?.id ?? null,
+      venueAddress: event.venue?.address || '',
+      venueLatitude: event.venue?.latitude ?? null,
+      venueLongitude: event.venue?.longitude ?? null,
+      venueCityId: event.venue?.cityId ?? null,
+      venueCityName: event.venue?.cityName || '',
       categoryIds: (event.categories || []).map((category) => category.id)
     };
   }, [event]);
@@ -72,29 +68,12 @@ const OrganizerEventEditPage = () => {
     try {
       setIsSubmitting(true);
       setError('');
-      setMessage('');
       await eventService.updateEvent(id, payload);
       navigate('/organizer', { state: { message: 'Изменения сохранены. Мероприятие отправлено на модерацию.' } });
     } catch (err) {
       setError(toUserErrorMessage(err, 'Не удалось обновить мероприятие.'));
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleCreateVenue = async (payload) => {
-    try {
-      setIsVenueSubmitting(true);
-      setError('');
-      setMessage('');
-      await organizerService.createVenue(payload);
-      await loadDirectories();
-      setShowVenueForm(false);
-      setMessage('Новая площадка создана. При необходимости выберите ее в форме мероприятия.');
-    } catch (err) {
-      setError(toUserErrorMessage(err, 'Не удалось создать площадку.'));
-    } finally {
-      setIsVenueSubmitting(false);
     }
   };
 
@@ -117,31 +96,13 @@ const OrganizerEventEditPage = () => {
   return (
     <section className="container page">
       <h1>Редактирование мероприятия</h1>
-
-      <div className="inline-actions">
-        <button type="button" className="btn btn--ghost" onClick={() => setShowVenueForm((prev) => !prev)}>
-          {showVenueForm ? 'Скрыть форму площадки' : 'Создать новую площадку'}
-        </button>
-      </div>
+      <p className="page-subtitle">Обновите описание мероприятия и место проведения через адрес и карту.</p>
 
       {error && <ErrorMessage message={error} />}
-      {message && <p className="page-note page-note--success">{message}</p>}
-
-      {showVenueForm && (
-        <VenueForm
-          initialValues={null}
-          isSubmitting={isVenueSubmitting}
-          errorMessage={error}
-          submitLabel="Сохранить площадку"
-          onCancel={() => setShowVenueForm(false)}
-          onSubmit={handleCreateVenue}
-        />
-      )}
 
       <EventForm
         initialValues={initialValues}
         categories={categories}
-        venues={venues}
         isSubmitting={isSubmitting}
         submitLabel="Сохранить изменения"
         errorMessage={error}

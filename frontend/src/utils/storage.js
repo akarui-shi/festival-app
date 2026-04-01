@@ -1,8 +1,6 @@
 const TOKEN_KEY = 'festival_token';
 const USER_KEY = 'festival_user';
-const USER_CITY_KEY_PREFIX = 'festival_user_city';
-
-const buildCityKey = (userId) => `${USER_CITY_KEY_PREFIX}_${userId || 'guest'}`;
+const SELECTED_CITY_KEY = 'festival_selected_city';
 
 export const authStorage = {
   getToken() {
@@ -33,8 +31,8 @@ export const authStorage = {
     this.clearToken();
     this.clearUser();
   },
-  getPreferredCity(userId) {
-    const raw = localStorage.getItem(buildCityKey(userId));
+  getSelectedCity() {
+    const raw = localStorage.getItem(SELECTED_CITY_KEY);
     if (!raw) return null;
     try {
       return JSON.parse(raw);
@@ -42,11 +40,11 @@ export const authStorage = {
       return null;
     }
   },
-  setPreferredCity(userId, city) {
-    if (!city) return;
-    localStorage.setItem(buildCityKey(userId), JSON.stringify(city));
+  setSelectedCity(city) {
+    if (!city || !city.id) return;
+    localStorage.setItem(SELECTED_CITY_KEY, JSON.stringify(city));
   },
-  clearPreferredCity(userId) {
-    localStorage.removeItem(buildCityKey(userId));
+  clearSelectedCity() {
+    localStorage.removeItem(SELECTED_CITY_KEY);
   }
 };
