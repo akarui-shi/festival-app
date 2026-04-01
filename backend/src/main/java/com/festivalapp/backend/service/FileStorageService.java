@@ -47,6 +47,10 @@ public class FileStorageService {
         return storeImage(file, resolveEventImagesDirectory(), "/uploads/events/");
     }
 
+    public StoredFile storeEventImage(MultipartFile file) {
+        return storeImage(file, resolveEventImagesDirectory(), "/uploads/events/");
+    }
+
     public StoredFile storePublicationImage(MultipartFile file) {
         return storeImage(file, resolvePublicationImagesDirectory(), "/uploads/publications/");
     }

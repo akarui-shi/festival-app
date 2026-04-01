@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
@@ -43,6 +43,7 @@ const EventDetailsPage = () => {
   const [isRegistrationSubmitting, setIsRegistrationSubmitting] = useState(false);
 
   const [favoriteMessage, setFavoriteMessage] = useState('');
+  const [selectedGalleryIndex, setSelectedGalleryIndex] = useState(0);
 
   const loadSessions = useCallback(async () => {
     try {
@@ -169,6 +170,29 @@ const EventDetailsPage = () => {
       ? (reviews.reduce((sum, item) => sum + Number(item.rating || 0), 0) / reviews.length).toFixed(1)
       : null;
 
+  const galleryImages = useMemo(() => {
+    const fromApi = Array.isArray(event?.eventImages)
+      ? [...event.eventImages]
+          .filter((image) => image && image.imageUrl)
+          .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
+          .map((image) => image.imageUrl)
+      : [];
+
+    if (fromApi.length > 0) {
+      return fromApi;
+    }
+
+    if (event?.coverUrl) {
+      return [event.coverUrl];
+    }
+
+    return [];
+  }, [event]);
+
+  useEffect(() => {
+    setSelectedGalleryIndex(0);
+  }, [id, galleryImages.length]);
+
   const venue = event?.venue || null;
   const venueLatitude = venue ? Number(venue.latitude) : NaN;
   const venueLongitude = venue ? Number(venue.longitude) : NaN;
@@ -191,7 +215,31 @@ const EventDetailsPage = () => {
         <p><strong>Адрес:</strong> {venue?.address || 'Не указан'}</p>
       </div>
 
-      {event.coverUrl && <img src={event.coverUrl} alt={event.title} className="details-cover" />}
+      {galleryImages.length === 1 && (
+        <img src={galleryImages[0]} alt={event.title} className="details-cover" />
+      )}
+
+      {galleryImages.length > 1 && (
+        <div className="panel event-gallery">
+          <img
+            src={galleryImages[selectedGalleryIndex] || galleryImages[0]}
+            alt={`${event.title} — фото ${selectedGalleryIndex + 1}`}
+            className="event-gallery__main"
+          />
+          <div className="event-gallery__thumbs">
+            {galleryImages.map((imageUrl, index) => (
+              <button
+                key={`${imageUrl}-${index}`}
+                type="button"
+                className={`event-gallery__thumb ${index === selectedGalleryIndex ? 'event-gallery__thumb--active' : ''}`}
+                onClick={() => setSelectedGalleryIndex(index)}
+              >
+                <img src={imageUrl} alt={`Миниатюра ${index + 1}`} />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="panel">
         <h2>Описание</h2>

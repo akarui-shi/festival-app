@@ -7,6 +7,12 @@ export const uploadService = {
     return apiClient.postForm('/api/files/event-cover', formData);
   },
 
+  uploadEventImage(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.postForm('/api/files/event-image', formData);
+  },
+
   uploadPublicationImage(file) {
     const formData = new FormData();
     formData.append('file', file);

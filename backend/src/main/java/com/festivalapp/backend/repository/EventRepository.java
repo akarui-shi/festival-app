@@ -17,7 +17,7 @@ public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecific
     @EntityGraph(attributePaths = {"organizer", "categories", "venue", "venue.city"})
     List<Event> findAll(Specification<Event> specification, Sort sort);
 
-    @EntityGraph(attributePaths = {"organizer", "categories", "venue", "venue.city", "sessions", "sessions.venue", "sessions.venue.city"})
+    @EntityGraph(attributePaths = {"organizer", "categories", "venue", "venue.city", "sessions", "sessions.venue", "sessions.venue.city", "eventImages"})
     @Query("select e from Event e where e.id = :id")
     Optional<Event> findDetailedById(@Param("id") Long id);
 

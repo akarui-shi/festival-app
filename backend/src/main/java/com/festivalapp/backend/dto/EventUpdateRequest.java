@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
 import java.util.Set;
 
 @Getter
@@ -34,4 +35,6 @@ public class EventUpdateRequest {
     private Long venueId;
 
     private Set<Long> categoryIds;
+
+    private List<EventImageRequest> eventImages;
 }

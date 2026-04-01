@@ -19,6 +19,7 @@ public class EventDetailsResponse {
     private LocalDateTime createdAt;
     private EventStatus status;
     private String coverUrl;
+    private List<EventImageResponse> eventImages;
     private OrganizerSummary organizer;
     private VenueResponse venue;
     private List<CategoryResponse> categories;

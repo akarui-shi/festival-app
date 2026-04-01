@@ -27,6 +27,12 @@ public class FileUploadController {
         return buildUploadResponse(storedFile);
     }
 
+    @PostMapping(value = "/event-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<FileUploadResponse> uploadEventImage(@RequestPart("file") @NotNull MultipartFile file) {
+        FileStorageService.StoredFile storedFile = fileStorageService.storeEventImage(file);
+        return buildUploadResponse(storedFile);
+    }
+
     @PostMapping(value = "/publication-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<FileUploadResponse> uploadPublicationImage(@RequestPart("file") @NotNull MultipartFile file) {
         FileStorageService.StoredFile storedFile = fileStorageService.storePublicationImage(file);

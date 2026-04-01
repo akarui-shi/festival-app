@@ -3,11 +3,14 @@ package com.festivalapp.backend.service;
 import com.festivalapp.backend.dto.EventCreateRequest;
 import com.festivalapp.backend.dto.CategoryResponse;
 import com.festivalapp.backend.dto.EventDetailsResponse;
+import com.festivalapp.backend.dto.EventImageRequest;
+import com.festivalapp.backend.dto.EventImageResponse;
 import com.festivalapp.backend.dto.EventShortResponse;
 import com.festivalapp.backend.dto.EventUpdateRequest;
 import com.festivalapp.backend.dto.VenueResponse;
 import com.festivalapp.backend.entity.Category;
 import com.festivalapp.backend.entity.Event;
+import com.festivalapp.backend.entity.EventImage;
 import com.festivalapp.backend.entity.EventStatus;
 import com.festivalapp.backend.entity.Organizer;
 import com.festivalapp.backend.entity.RoleName;
@@ -17,6 +20,7 @@ import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
 import com.festivalapp.backend.repository.CategoryRepository;
 import com.festivalapp.backend.repository.EventCategoryRepository;
+import com.festivalapp.backend.repository.EventImageRepository;
 import com.festivalapp.backend.repository.EventRepository;
 import com.festivalapp.backend.repository.FavoriteRepository;
 import com.festivalapp.backend.repository.OrganizerRepository;
@@ -53,6 +57,7 @@ public class EventService {
 
     private final EventRepository eventRepository;
     private final EventCategoryRepository eventCategoryRepository;
+    private final EventImageRepository eventImageRepository;
     private final OrganizerRepository organizerRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
@@ -150,7 +155,6 @@ public class EventService {
             .shortDescription(request.getShortDescription())
             .fullDescription(request.getFullDescription())
             .ageRating(request.getAgeRating())
-            .coverUrl(request.getCoverUrl())
             .createdAt(LocalDateTime.now())
             .status(targetStatus)
             .organizer(organizer)
@@ -158,6 +162,7 @@ public class EventService {
             .categories(categories)
             .build();
 
+        syncEventImages(event, request.getEventImages(), request.getCoverUrl());
         return toShortResponse(eventRepository.save(event));
     }
 
@@ -194,8 +199,8 @@ public class EventService {
             event.setAgeRating(request.getAgeRating());
             contentUpdated = true;
         }
-        if (request.getCoverUrl() != null) {
-            event.setCoverUrl(request.getCoverUrl());
+        if (request.getEventImages() != null || request.getCoverUrl() != null) {
+            syncEventImages(event, request.getEventImages(), request.getCoverUrl());
             contentUpdated = true;
         }
         if (request.getStatus() != null) {
@@ -275,6 +280,7 @@ public class EventService {
         publicationRepository.deleteByEventId(id);
         sessionRepository.deleteByEventId(id);
         eventCategoryRepository.deleteByEventId(id);
+        eventImageRepository.deleteByEventId(id);
 
         eventRepository.delete(event);
 
@@ -518,6 +524,7 @@ public class EventService {
             .createdAt(event.getCreatedAt())
             .status(event.getStatus())
             .coverUrl(event.getCoverUrl())
+            .eventImages(toEventImageResponses(event.getEventImages()))
             .organizer(toOrganizerSummary(event.getOrganizer()))
             .venue(toVenueResponse(event.getVenue()))
             .categories(toCategoryResponses(event.getCategories()))
@@ -563,5 +570,156 @@ public class EventService {
             .cityId(venue.getCity() != null ? venue.getCity().getId() : null)
             .cityName(venue.getCity() != null ? venue.getCity().getName() : null)
             .build();
+    }
+
+    private void syncEventImages(Event event, List<EventImageRequest> imageRequests, String fallbackCoverUrl) {
+        List<EventImage> normalizedImages = normalizeEventImages(event, imageRequests, fallbackCoverUrl);
+        event.getEventImages().clear();
+        event.getEventImages().addAll(normalizedImages);
+        event.setCoverUrl(resolveCoverUrl(normalizedImages));
+    }
+
+    private List<EventImage> normalizeEventImages(Event event,
+                                                  List<EventImageRequest> imageRequests,
+                                                  String fallbackCoverUrl) {
+        if (imageRequests != null) {
+            List<EventImageRequest> validRequests = imageRequests.stream()
+                .filter(Objects::nonNull)
+                .filter(request -> StringUtils.hasText(request.getImageUrl()))
+                .toList();
+
+            if (validRequests.isEmpty()) {
+                if (StringUtils.hasText(fallbackCoverUrl)) {
+                    return List.of(EventImage.builder()
+                        .event(event)
+                        .imageUrl(fallbackCoverUrl.trim())
+                        .isCover(true)
+                        .sortOrder(0)
+                        .build());
+                }
+                return List.of();
+            }
+
+            int coverIndex = findCoverIndex(validRequests);
+            List<EventImage> images = new ArrayList<>();
+            for (int index = 0; index < validRequests.size(); index++) {
+                EventImageRequest request = validRequests.get(index);
+                int sortOrder = request.getSortOrder() != null ? request.getSortOrder() : index;
+                images.add(EventImage.builder()
+                    .event(event)
+                    .imageUrl(request.getImageUrl().trim())
+                    .isCover(index == coverIndex)
+                    .sortOrder(sortOrder)
+                    .build());
+            }
+            return images;
+        }
+
+        if (fallbackCoverUrl != null) {
+            String normalizedCoverUrl = normalizeOptional(fallbackCoverUrl);
+            if (normalizedCoverUrl == null) {
+                return List.of();
+            }
+
+            List<EventImage> existingImages = new ArrayList<>(event.getEventImages());
+            if (existingImages.isEmpty()) {
+                return List.of(EventImage.builder()
+                    .event(event)
+                    .imageUrl(normalizedCoverUrl)
+                    .isCover(true)
+                    .sortOrder(0)
+                    .build());
+            }
+
+            for (int index = 0; index < existingImages.size(); index++) {
+                EventImage image = existingImages.get(index);
+                image.setEvent(event);
+                image.setCover(false);
+                image.setSortOrder(index + 1);
+            }
+
+            EventImage coverImage = existingImages.stream()
+                .filter(image -> normalizedCoverUrl.equals(image.getImageUrl()))
+                .findFirst()
+                .orElse(null);
+            if (coverImage == null) {
+                coverImage = EventImage.builder()
+                    .event(event)
+                    .imageUrl(normalizedCoverUrl)
+                    .isCover(true)
+                    .sortOrder(0)
+                    .build();
+                existingImages.add(0, coverImage);
+            } else {
+                coverImage.setCover(true);
+                coverImage.setSortOrder(0);
+            }
+
+            return existingImages.stream()
+                .sorted(Comparator.comparing(EventImage::getSortOrder, Comparator.nullsLast(Integer::compareTo)))
+                .toList();
+        }
+
+        if (!StringUtils.hasText(event.getCoverUrl())) {
+            return new ArrayList<>(event.getEventImages());
+        }
+
+        if (event.getEventImages().isEmpty()) {
+            return List.of(EventImage.builder()
+                .event(event)
+                .imageUrl(event.getCoverUrl().trim())
+                .isCover(true)
+                .sortOrder(0)
+                .build());
+        }
+
+        return new ArrayList<>(event.getEventImages());
+    }
+
+    private int findCoverIndex(List<EventImageRequest> imageRequests) {
+        for (int index = 0; index < imageRequests.size(); index++) {
+            if (Boolean.TRUE.equals(imageRequests.get(index).getIsCover())) {
+                return index;
+            }
+        }
+        return 0;
+    }
+
+    private String resolveCoverUrl(List<EventImage> images) {
+        if (images == null || images.isEmpty()) {
+            return null;
+        }
+        return images.stream()
+            .filter(EventImage::isCover)
+            .map(EventImage::getImageUrl)
+            .filter(StringUtils::hasText)
+            .findFirst()
+            .orElseGet(() -> images.stream()
+                .map(EventImage::getImageUrl)
+                .filter(StringUtils::hasText)
+                .findFirst()
+                .orElse(null));
+    }
+
+    private String normalizeOptional(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private List<EventImageResponse> toEventImageResponses(List<EventImage> images) {
+        if (images == null || images.isEmpty()) {
+            return List.of();
+        }
+        return images.stream()
+            .sorted(Comparator.comparing(EventImage::getSortOrder, Comparator.nullsLast(Integer::compareTo)))
+            .map(image -> EventImageResponse.builder()
+                .id(image.getId())
+                .imageUrl(image.getImageUrl())
+                .isCover(image.isCover())
+                .sortOrder(image.getSortOrder())
+                .build())
+            .toList();
     }
 }

@@ -2,12 +2,20 @@ import { Link } from 'react-router-dom';
 
 const EventCard = ({ event, onFavoriteClick, favoriteButtonText, isFavoriteButtonLoading = false }) => {
   const resolvedFavoriteText = favoriteButtonText || 'В избранное';
+  const resolvedCoverUrl = event.coverUrl
+    || (Array.isArray(event.eventImages)
+      ? event.eventImages.find((image) => image?.isCover)?.imageUrl || event.eventImages[0]?.imageUrl
+      : '');
+  const ageLabel = Number.isFinite(Number(event.ageRating))
+    ? `${Number(event.ageRating)}+`
+    : 'не указано';
+  const venueAddress = event.venueAddress?.trim() || 'Адрес не указан';
 
   return (
     <article className="event-card">
       <div className="event-card__image-wrap">
-        {event.coverUrl ? (
-          <img src={event.coverUrl} alt={event.title} className="event-card__image" />
+        {resolvedCoverUrl ? (
+          <img src={resolvedCoverUrl} alt={event.title} className="event-card__image" />
         ) : (
           <div className="event-card__placeholder">Нет изображения</div>
         )}
@@ -18,9 +26,8 @@ const EventCard = ({ event, onFavoriteClick, favoriteButtonText, isFavoriteButto
         <p className="event-card__description">{event.shortDescription || 'Описание пока не добавлено.'}</p>
 
         <div className="event-card__meta">
-          <span>Возраст {event.ageRating ?? '-'}</span>
-          {event.venueName && <span>Площадка: {event.venueName}</span>}
-          {event.venueAddress && <span>Адрес: {event.venueAddress}</span>}
+          <span>Возрастное ограничение: {ageLabel}</span>
+          <span className="event-card__address">Адрес площадки: {venueAddress}</span>
         </div>
 
         <div className="event-card__actions">

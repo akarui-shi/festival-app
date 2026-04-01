@@ -62,6 +62,7 @@ const OrganizerEventEditPage = () => {
       fullDescription: event.fullDescription || '',
       ageRating: event.ageRating ?? 0,
       coverUrl: event.coverUrl || '',
+      eventImages: Array.isArray(event.eventImages) ? event.eventImages : [],
       venueId: event.venue?.id ?? '',
       categoryIds: (event.categories || []).map((category) => category.id)
     };
