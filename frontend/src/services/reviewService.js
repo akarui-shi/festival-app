@@ -1,4 +1,3 @@
-import { adminService } from './adminService';
 import { apiClient } from './apiClient';
 
 export const reviewService = {
@@ -8,13 +7,5 @@ export const reviewService = {
 
   createReview(payload) {
     return apiClient.post('/api/reviews', payload);
-  },
-
-  getAdminReviews(status) {
-    return adminService.getAdminReviews(status);
-  },
-
-  updateReviewStatus(reviewId, status) {
-    return adminService.updateReviewStatus(reviewId, status);
   }
 };

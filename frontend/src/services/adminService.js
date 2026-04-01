@@ -20,14 +20,6 @@ const toQueryString = (params = {}) => {
 };
 
 export const adminService = {
-  getAdminReviews(status) {
-    return apiClient.get(`/api/admin/reviews${withStatusQuery(status)}`);
-  },
-
-  updateReviewStatus(reviewId, status) {
-    return apiClient.patch(`/api/reviews/${reviewId}/status`, { status });
-  },
-
   getAdminPublications(status) {
     return apiClient.get(`/api/admin/publications${withStatusQuery(status)}`);
   },

@@ -22,6 +22,10 @@ export const publicationService = {
     return apiClient.get(`/api/publications/${id}`, { auth: false });
   },
 
+  createPublication(payload) {
+    return apiClient.post('/api/publications', payload);
+  },
+
   getAdminPublications(status) {
     return adminService.getAdminPublications(status);
   },

@@ -5,6 +5,7 @@ import com.festivalapp.backend.dto.PublicationDetailsResponse;
 import com.festivalapp.backend.dto.PublicationShortResponse;
 import com.festivalapp.backend.dto.PublicationUpdateRequest;
 import com.festivalapp.backend.entity.Event;
+import com.festivalapp.backend.entity.Organizer;
 import com.festivalapp.backend.entity.Publication;
 import com.festivalapp.backend.entity.PublicationStatus;
 import com.festivalapp.backend.entity.RoleName;
@@ -12,6 +13,7 @@ import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
 import com.festivalapp.backend.repository.EventRepository;
+import com.festivalapp.backend.repository.OrganizerRepository;
 import com.festivalapp.backend.repository.PublicationRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import jakarta.persistence.criteria.Predicate;
@@ -38,17 +40,20 @@ public class PublicationService {
 
     private final PublicationRepository publicationRepository;
     private final EventRepository eventRepository;
+    private final OrganizerRepository organizerRepository;
     private final UserRepository userRepository;
 
     @Transactional
     public PublicationDetailsResponse create(PublicationCreateRequest request, String actorIdentifier) {
         User actor = loadActor(actorIdentifier);
         Event event = resolveEventOrNull(request.getEventId());
+        validateCreateAccess(actor, event);
 
         Publication publication = Publication.builder()
             .title(request.getTitle())
             .content(request.getContent())
-            .status(PublicationStatus.PENDING)
+            // Keep publication flow simple: publish immediately after creation.
+            .status(PublicationStatus.PUBLISHED)
             .createdAt(LocalDateTime.now())
             .author(actor)
             .event(event)
@@ -102,11 +107,12 @@ public class PublicationService {
             publication.setContent(request.getContent());
         }
         if (request.getEventId() != null) {
-            publication.setEvent(resolveEventOrNull(request.getEventId()));
+            Event event = resolveEventOrNull(request.getEventId());
+            validateCreateAccess(actor, event);
+            publication.setEvent(event);
         }
 
-        // On edit we return publication back to moderation flow.
-        publication.setStatus(PublicationStatus.PENDING);
+        publication.setStatus(PublicationStatus.PUBLISHED);
 
         Publication saved = publicationRepository.save(publication);
         return toDetailsResponse(saved);
@@ -200,9 +206,39 @@ public class PublicationService {
         throw new AccessDeniedException("Access denied");
     }
 
+    private void validateCreateAccess(User actor, Event event) {
+        if (hasRole(actor, RoleName.ROLE_ADMIN)) {
+            return;
+        }
+
+        if (!hasRole(actor, RoleName.ROLE_ORGANIZER)) {
+            throw new AccessDeniedException("Only organizers or admins can manage publications");
+        }
+
+        if (event == null) {
+            throw new BadRequestException("Event ID is required for organizer publication");
+        }
+
+        Organizer actorOrganizer = resolveActorOrganizer(actor);
+        if (actorOrganizer == null) {
+            throw new ResourceNotFoundException("Organizer profile not found for current user");
+        }
+
+        if (event.getOrganizer() == null || !Objects.equals(event.getOrganizer().getId(), actorOrganizer.getId())) {
+            throw new AccessDeniedException("Organizer can create publications only for own events");
+        }
+    }
+
     private boolean hasRole(User user, RoleName roleName) {
         return user.getUserRoles().stream()
             .anyMatch(userRole -> userRole.getRole().getName() == roleName);
+    }
+
+    private Organizer resolveActorOrganizer(User actor) {
+        if (actor.getOrganizer() != null) {
+            return actor.getOrganizer();
+        }
+        return organizerRepository.findByUserId(actor.getId()).orElse(null);
     }
 
     private PublicationShortResponse toShortResponse(Publication publication) {

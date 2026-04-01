@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
 import EmptyState from '../components/EmptyState';
 import PublicationCard from '../components/PublicationCard';
 import { publicationService } from '../services/publicationService';
+import { useAuth } from '../context/AuthContext';
+import { ROLE } from '../utils/roles';
 import { toUserErrorMessage } from '../utils/errorMessages';
 
 const PublicationsPage = () => {
+  const { hasRole } = useAuth();
+  const canCreatePublication = hasRole([ROLE.ORGANIZER, ROLE.ADMIN]);
+
   const [publications, setPublications] = useState([]);
   const [titleFilter, setTitleFilter] = useState('');
   const [appliedTitle, setAppliedTitle] = useState('');
@@ -32,7 +38,14 @@ const PublicationsPage = () => {
 
   return (
     <section className="container page">
-      <h1>Статьи и публикации</h1>
+      <div className="page-header-row">
+        <h1>Статьи и публикации</h1>
+        {canCreatePublication && (
+          <Link to="/publications/create" className="btn btn--primary">
+            Создать публикацию
+          </Link>
+        )}
+      </div>
       <p className="page-subtitle">Читайте новости, анонсы и материалы организаторов.</p>
 
       <form

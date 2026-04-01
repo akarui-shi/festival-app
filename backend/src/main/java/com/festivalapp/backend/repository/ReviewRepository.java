@@ -16,17 +16,10 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @EntityGraph(attributePaths = {"user", "event"})
     List<Review> findByEventIdAndStatusOrderByCreatedAtDesc(Long eventId, ReviewStatus status);
 
-    boolean existsByUserIdAndEventIdAndStatusIn(Long userId, Long eventId, List<ReviewStatus> statuses);
+    boolean existsByUserIdAndEventIdAndStatusNot(Long userId, Long eventId, ReviewStatus status);
 
     @EntityGraph(attributePaths = {"user", "event"})
     Optional<Review> findWithUserAndEventById(Long id);
-
-    @EntityGraph(attributePaths = {"user", "event"})
-    List<Review> findByStatusOrderByCreatedAtDesc(ReviewStatus status);
-
-    @EntityGraph(attributePaths = {"user", "event"})
-    @Query("select r from Review r order by r.createdAt desc")
-    List<Review> findAllWithUserAndEventOrderByCreatedAtDesc();
 
     @Modifying
     @Query("delete from Review r where r.event.id = :eventId")

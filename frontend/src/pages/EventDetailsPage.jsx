@@ -154,7 +154,7 @@ const EventDetailsPage = () => {
         text: reviewForm.text.trim() || null
       });
       setReviewForm({ rating: '5', text: '' });
-      setReviewMessage('Спасибо! Ваш отзыв отправлен на модерацию.');
+      setReviewMessage('Спасибо! Ваш отзыв опубликован.');
       await loadReviews();
     } catch (err) {
       setReviewsError(toUserErrorMessage(err, 'Не удалось отправить отзыв.'));

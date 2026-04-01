@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
 import { publicationService } from '../services/publicationService';
-import { formatDateTime, formatStatus } from '../utils/formatters';
+import { formatDateTime } from '../utils/formatters';
 import { toUserErrorMessage } from '../utils/errorMessages';
 
 const PublicationDetailsPage = () => {
@@ -55,7 +55,6 @@ const PublicationDetailsPage = () => {
       <div className="panel details-grid">
         <p><strong>Автор:</strong> {publication.authorName || '-'}</p>
         <p><strong>Дата:</strong> {formatDateTime(publication.createdAt)}</p>
-        <p><strong>Статус:</strong> {formatStatus(publication.status)}</p>
         {publication.eventId ? (
           <p>
             <strong>Мероприятие:</strong>{' '}

@@ -21,14 +21,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class ReviewService {
-
-    private static final Set<ReviewStatus> ACTIVE_REVIEW_STATUSES =
-        Set.of(ReviewStatus.PENDING, ReviewStatus.APPROVED, ReviewStatus.REJECTED);
 
     private final ReviewRepository reviewRepository;
     private final EventRepository eventRepository;
@@ -41,10 +37,10 @@ public class ReviewService {
         Event event = eventRepository.findById(request.getEventId())
             .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + request.getEventId()));
 
-        boolean duplicateActiveReview = reviewRepository.existsByUserIdAndEventIdAndStatusIn(
+        boolean duplicateActiveReview = reviewRepository.existsByUserIdAndEventIdAndStatusNot(
             user.getId(),
             event.getId(),
-            List.copyOf(ACTIVE_REVIEW_STATUSES)
+            ReviewStatus.DELETED
         );
         if (duplicateActiveReview) {
             throw new BadRequestException("Duplicate review: user already has active review for this event");
@@ -55,7 +51,8 @@ public class ReviewService {
             .event(event)
             .rating(request.getRating())
             .text(request.getText())
-            .status(ReviewStatus.PENDING)
+            // Reviews are public right after creation.
+            .status(ReviewStatus.APPROVED)
             .createdAt(LocalDateTime.now())
             .build();
 
@@ -64,7 +61,7 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
-    public List<ReviewResponse> getApprovedByEvent(Long eventId) {
+    public List<ReviewResponse> getByEvent(Long eventId) {
         if (!eventRepository.existsById(eventId)) {
             throw new ResourceNotFoundException("Event not found: " + eventId);
         }
@@ -87,18 +84,11 @@ public class ReviewService {
             throw new BadRequestException("Cannot edit deleted review");
         }
 
-        boolean changed = false;
         if (rating != null) {
             review.setRating(rating);
-            changed = true;
         }
         if (text != null) {
             review.setText(text);
-            changed = true;
-        }
-
-        if (changed) {
-            review.setStatus(ReviewStatus.PENDING);
         }
 
         Review saved = reviewRepository.save(review);
@@ -118,30 +108,8 @@ public class ReviewService {
 
         return Map.of(
             "message", "Review deleted successfully",
-            "reviewId", reviewId,
-            "status", review.getStatus()
+            "reviewId", reviewId
         );
-    }
-
-    @Transactional
-    public ReviewResponse updateStatus(Long reviewId, ReviewStatus status) {
-        Review review = reviewRepository.findWithUserAndEventById(reviewId)
-            .orElseThrow(() -> new ResourceNotFoundException("Review not found: " + reviewId));
-
-        review.setStatus(status);
-        Review saved = reviewRepository.save(review);
-        return toResponse(saved);
-    }
-
-    @Transactional(readOnly = true)
-    public List<ReviewResponse> getAllForAdmin(ReviewStatus status) {
-        List<Review> reviews = status == null
-            ? reviewRepository.findAllWithUserAndEventOrderByCreatedAtDesc()
-            : reviewRepository.findByStatusOrderByCreatedAtDesc(status);
-
-        return reviews.stream()
-            .map(this::toResponse)
-            .toList();
     }
 
     private User loadActor(String actorIdentifier) {
@@ -176,7 +144,6 @@ public class ReviewService {
             .rating(review.getRating())
             .text(review.getText())
             .createdAt(review.getCreatedAt())
-            .status(review.getStatus())
             .eventId(review.getEvent() != null ? review.getEvent().getId() : null)
             .build();
     }

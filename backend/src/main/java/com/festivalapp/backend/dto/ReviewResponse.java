@@ -1,6 +1,5 @@
 package com.festivalapp.backend.dto;
 
-import com.festivalapp.backend.entity.ReviewStatus;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -16,6 +15,5 @@ public class ReviewResponse {
     private Integer rating;
     private String text;
     private LocalDateTime createdAt;
-    private ReviewStatus status;
     private Long eventId;
 }

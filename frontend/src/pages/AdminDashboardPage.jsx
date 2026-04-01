@@ -3,13 +3,11 @@ import AdminTabs from '../components/AdminTabs';
 import AdminEmptyState from '../components/AdminEmptyState';
 import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
-import ReviewModerationCard from '../components/ReviewModerationCard';
 import PublicationModerationCard from '../components/PublicationModerationCard';
 import UserManagementTable from '../components/UserManagementTable';
 import CategoryForm from '../components/CategoryForm';
 import CityForm from '../components/CityForm';
 import VenueForm from '../components/VenueForm';
-import { reviewService } from '../services/reviewService';
 import { publicationService } from '../services/publicationService';
 import { userService } from '../services/userService';
 import { categoryService } from '../services/categoryService';
@@ -17,7 +15,6 @@ import { cityService } from '../services/cityService';
 import { venueService } from '../services/venueService';
 
 const TABS = [
-  { key: 'reviews', label: 'Отзывы' },
   { key: 'publications', label: 'Публикации' },
   { key: 'users', label: 'Пользователи' },
   { key: 'categories', label: 'Категории' },
@@ -25,7 +22,6 @@ const TABS = [
   { key: 'venues', label: 'Площадки' }
 ];
 
-const REVIEW_STATUSES = ['', 'PENDING', 'APPROVED', 'REJECTED', 'DELETED'];
 const PUBLICATION_STATUSES = ['', 'PENDING', 'PUBLISHED', 'REJECTED', 'DELETED'];
 
 const normalizeRoles = (roles) => (Array.isArray(roles) ? [...new Set(roles)].sort() : []);
@@ -40,22 +36,19 @@ const sameRoleSet = (left, right) => {
 };
 
 const AdminDashboardPage = () => {
-  const [activeTab, setActiveTab] = useState('reviews');
+  const [activeTab, setActiveTab] = useState('publications');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
-  const [reviewStatusFilter, setReviewStatusFilter] = useState('');
   const [publicationStatusFilter, setPublicationStatusFilter] = useState('');
 
-  const [reviews, setReviews] = useState([]);
   const [publications, setPublications] = useState([]);
   const [users, setUsers] = useState([]);
   const [categories, setCategories] = useState([]);
   const [cities, setCities] = useState([]);
   const [venues, setVenues] = useState([]);
 
-  const [reviewAction, setReviewAction] = useState({ id: null, status: '' });
   const [publicationAction, setPublicationAction] = useState({ id: null, status: '' });
   const [savingUserId, setSavingUserId] = useState(null);
 
@@ -64,11 +57,6 @@ const AdminDashboardPage = () => {
   const [editingVenue, setEditingVenue] = useState(null);
   const [dictionarySubmitting, setDictionarySubmitting] = useState(false);
   const [dictionaryDeleting, setDictionaryDeleting] = useState({ type: '', id: null });
-
-  const loadReviews = useCallback(async () => {
-    const data = await reviewService.getAdminReviews(reviewStatusFilter || undefined);
-    setReviews(Array.isArray(data) ? data : []);
-  }, [reviewStatusFilter]);
 
   const loadPublications = useCallback(async () => {
     const data = await publicationService.getAdminPublications(publicationStatusFilter || undefined);
@@ -101,9 +89,7 @@ const AdminDashboardPage = () => {
         setIsLoading(true);
         setError('');
 
-        if (activeTab === 'reviews') {
-          await loadReviews();
-        } else if (activeTab === 'publications') {
+        if (activeTab === 'publications') {
           await loadPublications();
         } else if (activeTab === 'users') {
           await loadUsers();
@@ -122,14 +108,12 @@ const AdminDashboardPage = () => {
     };
 
     load();
-  }, [activeTab, loadReviews, loadPublications, loadUsers, loadCategories, loadCities, loadVenues]);
+  }, [activeTab, loadPublications, loadUsers, loadCategories, loadCities, loadVenues]);
 
   const currentTabLabel = useMemo(() => TABS.find((tab) => tab.key === activeTab)?.label || '', [activeTab]);
 
   const refreshCurrentTab = async () => {
-    if (activeTab === 'reviews') {
-      await loadReviews();
-    } else if (activeTab === 'publications') {
+    if (activeTab === 'publications') {
       await loadPublications();
     } else if (activeTab === 'users') {
       await loadUsers();
@@ -139,21 +123,6 @@ const AdminDashboardPage = () => {
       await loadCities();
     } else if (activeTab === 'venues') {
       await Promise.all([loadVenues(), loadCities()]);
-    }
-  };
-
-  const handleReviewStatusChange = async (reviewId, status) => {
-    try {
-      setError('');
-      setMessage('');
-      setReviewAction({ id: reviewId, status });
-      await reviewService.updateReviewStatus(reviewId, status);
-      await loadReviews();
-      setMessage('Статус отзыва обновлен.');
-    } catch (err) {
-      setError(err.message || 'Не удалось обновить статус отзыва.');
-    } finally {
-      setReviewAction({ id: null, status: '' });
     }
   };
 
@@ -308,46 +277,19 @@ const AdminDashboardPage = () => {
       <h1>Админ-панель</h1>
       <p className="page-subtitle">Раздел: {currentTabLabel}</p>
 
-      <AdminTabs tabs={TABS} activeTab={activeTab} onChange={(tab) => {
-        setActiveTab(tab);
-        setError('');
-        setMessage('');
-      }} />
+      <AdminTabs
+        tabs={TABS}
+        activeTab={activeTab}
+        onChange={(tab) => {
+          setActiveTab(tab);
+          setError('');
+          setMessage('');
+        }}
+      />
 
       {isLoading && <Loader text="Загружаем данные..." />}
       {error && <ErrorMessage message={error} />}
       {message && <p className="page-note page-note--success">{message}</p>}
-
-      {!isLoading && activeTab === 'reviews' && (
-        <div className="admin-section">
-          <label className="admin-filter">
-            Фильтр по статусу
-            <select value={reviewStatusFilter} onChange={(event) => setReviewStatusFilter(event.target.value)}>
-              <option value="">Все</option>
-              {REVIEW_STATUSES.filter(Boolean).map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {reviews.length === 0 ? (
-            <AdminEmptyState message="Нет отзывов." />
-          ) : (
-            <div className="admin-list">
-              {reviews.map((review) => (
-                <ReviewModerationCard
-                  key={review.reviewId}
-                  review={review}
-                  processingAction={reviewAction.id === review.reviewId ? reviewAction.status : ''}
-                  onUpdateStatus={handleReviewStatusChange}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {!isLoading && activeTab === 'publications' && (
         <div className="admin-section">

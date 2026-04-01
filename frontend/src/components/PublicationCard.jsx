@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { formatDateTime, formatStatus } from '../utils/formatters';
+import { formatDateTime } from '../utils/formatters';
 
 const PublicationCard = ({ publication }) => {
   return (
@@ -13,7 +13,6 @@ const PublicationCard = ({ publication }) => {
       <div className="publication-card__meta">
         <span>Автор: {publication.authorName || '-'}</span>
         <span>Дата: {formatDateTime(publication.createdAt)}</span>
-        <span>Статус: {formatStatus(publication.status)}</span>
       </div>
 
       {publication.eventId && (
