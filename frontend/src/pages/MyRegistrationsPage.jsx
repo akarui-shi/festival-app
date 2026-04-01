@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import EmptyState from '../components/EmptyState';
-import ErrorMessage from '../components/ErrorMessage';
+import AlertMessage from '../components/AlertMessage';
 import Loader from '../components/Loader';
 import RegistrationCard from '../components/RegistrationCard';
 import { registrationService } from '../services/registrationService';
+import { toUserErrorMessage } from '../utils/errorMessages';
 
 const MyRegistrationsPage = () => {
   const [registrations, setRegistrations] = useState([]);
@@ -19,7 +20,7 @@ const MyRegistrationsPage = () => {
       const data = await registrationService.getMyRegistrations();
       setRegistrations(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err.message || 'Не удалось загрузить регистрации.');
+      setError(toUserErrorMessage(err, 'Не удалось загрузить регистрации.'));
     } finally {
       setIsLoading(false);
     }
@@ -40,7 +41,7 @@ const MyRegistrationsPage = () => {
       );
       setMessage('Регистрация успешно отменена.');
     } catch (err) {
-      setError(err.message || 'Не удалось отменить регистрацию.');
+      setError(toUserErrorMessage(err, 'Не удалось отменить регистрацию.'));
     } finally {
       setCancelingId(null);
     }
@@ -51,8 +52,15 @@ const MyRegistrationsPage = () => {
       <h1>Мои регистрации</h1>
 
       {isLoading && <Loader text="Загружаем ваши регистрации..." />}
-      {error && <ErrorMessage message={error} />}
-      {message && <p className="page-note page-note--success">{message}</p>}
+      {error && <AlertMessage type="error" message={error} onClose={() => setError('')} />}
+      {message && (
+        <AlertMessage
+          type="success"
+          message={message}
+          autoHideMs={2600}
+          onClose={() => setMessage('')}
+        />
+      )}
 
       {!isLoading && !error && registrations.length === 0 && <EmptyState message="У вас пока нет регистраций." />}
 
@@ -73,4 +81,3 @@ const MyRegistrationsPage = () => {
 };
 
 export default MyRegistrationsPage;
-

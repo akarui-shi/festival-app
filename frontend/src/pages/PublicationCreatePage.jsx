@@ -208,7 +208,7 @@ const PublicationCreatePage = () => {
           </label>
           <p className="muted">Поддерживаются JPG, PNG, WEBP, GIF до 5 МБ.</p>
 
-          {isUploadingImage && <p className="page-note">Загружаем изображение...</p>}
+          {isUploadingImage && <AlertMessage type="info" message="Загружаем изображение..." />}
           {uploadError && <AlertMessage type="error" message={uploadError} onClose={() => setUploadError('')} />}
           {uploadMessage && <AlertMessage type="success" message={uploadMessage} autoHideMs={2500} onClose={() => setUploadMessage('')} />}
 

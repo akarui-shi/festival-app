@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import EmptyState from '../components/EmptyState';
-import ErrorMessage from '../components/ErrorMessage';
+import AlertMessage from '../components/AlertMessage';
 import Loader from '../components/Loader';
 import EventCard from '../components/EventCard';
 import { favoriteService } from '../services/favoriteService';
+import { toUserErrorMessage } from '../utils/errorMessages';
 
 const FavoritesPage = () => {
   const [favorites, setFavorites] = useState([]);
@@ -19,7 +20,7 @@ const FavoritesPage = () => {
       const data = await favoriteService.getMyFavorites();
       setFavorites(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err.message || 'Не удалось загрузить избранное.');
+      setError(toUserErrorMessage(err, 'Не удалось загрузить избранное.'));
     } finally {
       setIsLoading(false);
     }
@@ -38,7 +39,7 @@ const FavoritesPage = () => {
       setFavorites((prev) => prev.filter((item) => item.eventId !== eventId));
       setMessage('Удалено из избранного.');
     } catch (err) {
-      setError(err.message || 'Не удалось удалить из избранного.');
+      setError(toUserErrorMessage(err, 'Не удалось удалить из избранного.'));
     } finally {
       setRemovingEventId(null);
     }
@@ -49,8 +50,15 @@ const FavoritesPage = () => {
       <h1>Избранное</h1>
 
       {isLoading && <Loader text="Загружаем избранное..." />}
-      {error && <ErrorMessage message={error} />}
-      {message && <p className="page-note page-note--success">{message}</p>}
+      {error && <AlertMessage type="error" message={error} onClose={() => setError('')} />}
+      {message && (
+        <AlertMessage
+          type="success"
+          message={message}
+          autoHideMs={2600}
+          onClose={() => setMessage('')}
+        />
+      )}
 
       {!isLoading && !error && favorites.length === 0 && <EmptyState message="Нет избранных мероприятий." />}
 

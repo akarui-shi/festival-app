@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
 import Loader from '../components/Loader';
-import ErrorMessage from '../components/ErrorMessage';
+import AlertMessage from '../components/AlertMessage';
 import EmptyState from '../components/EmptyState';
 import PublicationCard from '../components/PublicationCard';
 import { publicationService } from '../services/publicationService';
@@ -57,7 +57,14 @@ const PublicationsPage = () => {
         )}
       </div>
       <p className="page-subtitle">Читайте новости, анонсы и материалы организаторов.</p>
-      {message && <p className="page-note page-note--success">{message}</p>}
+      {message && (
+        <AlertMessage
+          type="success"
+          message={message}
+          autoHideMs={3000}
+          onClose={() => setMessage('')}
+        />
+      )}
 
       <form
         className="panel publications-filter"
@@ -91,7 +98,7 @@ const PublicationsPage = () => {
       </form>
 
       {isLoading && <Loader text="Загружаем публикации..." />}
-      {error && <ErrorMessage message={error} />}
+      {error && <AlertMessage type="error" message={error} onClose={() => setError('')} />}
       {!isLoading && !error && publications.length === 0 && <EmptyState message="Публикации пока не найдены." />}
 
       {!isLoading && !error && publications.length > 0 && (

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { YMaps, useYMaps } from '@pbe/react-yandex-maps';
-import ErrorMessage from './ErrorMessage';
+import AlertMessage from './AlertMessage';
 import SearchableCitySelect from './SearchableCitySelect';
 import VenueMap from './VenueMap';
 import { buildYandexMapsQuery, YANDEX_MAPS_API_KEY } from '../utils/config';
@@ -257,7 +257,14 @@ const VenueFormContent = ({
       </label>
 
       {isResolvingAddress && <p className="muted">Определяем координаты по адресу...</p>}
-      {geoMessage && <p className="page-note page-note--success">{geoMessage}</p>}
+      {geoMessage && (
+        <AlertMessage
+          type="success"
+          message={geoMessage}
+          autoHideMs={2400}
+          onClose={() => setGeoMessage('')}
+        />
+      )}
 
       {coordinates ? (
         <div className="venue-form-map">
@@ -275,7 +282,13 @@ const VenueFormContent = ({
         <p className="muted">После выбора адреса из подсказок координаты будут определены автоматически.</p>
       )}
 
-      {(localError || errorMessage) && <ErrorMessage message={localError || errorMessage} />}
+      {(localError || errorMessage) && (
+        <AlertMessage
+          type="error"
+          message={localError || errorMessage}
+          onClose={() => setLocalError('')}
+        />
+      )}
 
       <div className="inline-actions">
         {onCancel && (

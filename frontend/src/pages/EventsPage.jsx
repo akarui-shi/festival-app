@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import EventCard from '../components/EventCard';
 import Loader from '../components/Loader';
-import ErrorMessage from '../components/ErrorMessage';
+import AlertMessage from '../components/AlertMessage';
 import EmptyState from '../components/EmptyState';
 import { eventService } from '../services/eventService';
 import { favoriteService } from '../services/favoriteService';
 import { categoryService } from '../services/categoryService';
 import { useAuth } from '../context/AuthContext';
 import { useCity } from '../context/CityContext';
+import { toUserErrorMessage } from '../utils/errorMessages';
 
 const DEFAULT_FILTERS = {
   title: '',
@@ -60,7 +61,7 @@ const EventsPage = () => {
       const data = await eventService.getEvents(buildEventQueryParams(currentFilters, cityId));
       setEvents(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err.message || 'Не удалось загрузить мероприятия.');
+      setError(toUserErrorMessage(err, 'Не удалось загрузить мероприятия.'));
     } finally {
       setIsLoading(false);
     }
@@ -132,7 +133,7 @@ const EventsPage = () => {
         setMessage('Добавлено в избранное.');
       }
     } catch (err) {
-      setError(err.message || 'Не удалось обновить избранное.');
+      setError(toUserErrorMessage(err, 'Не удалось обновить избранное.'));
     } finally {
       setFavoriteActionEventId(null);
     }
@@ -198,8 +199,15 @@ const EventsPage = () => {
 
       {isCityLoading && <Loader text="Определяем выбранный город..." />}
       {isLoading && <Loader text="Загружаем мероприятия..." />}
-      {error && <ErrorMessage message={error} />}
-      {message && <p className="page-note page-note--success">{message}</p>}
+      {error && <AlertMessage type="error" message={error} onClose={() => setError('')} />}
+      {message && (
+        <AlertMessage
+          type="success"
+          message={message}
+          autoHideMs={2600}
+          onClose={() => setMessage('')}
+        />
+      )}
 
       {!isCityLoading && !selectedCity && <EmptyState message="Выберите город в шапке, чтобы увидеть афишу." />}
 
