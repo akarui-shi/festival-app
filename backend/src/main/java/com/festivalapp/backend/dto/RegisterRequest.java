@@ -10,18 +10,18 @@ import lombok.Setter;
 @Setter
 public class RegisterRequest {
 
-    @NotBlank(message = "Login is required")
-    @Size(min = 3, max = 64)
+    @NotBlank(message = "Введите логин")
+    @Size(min = 3, max = 64, message = "Логин должен содержать от 3 до 64 символов")
     private String login;
 
-    @NotBlank(message = "Email is required")
-    @Email
+    @NotBlank(message = "Введите электронную почту")
+    @Email(message = "Введите корректный адрес электронной почты")
     private String email;
 
     private String phone;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 6, max = 128)
+    @NotBlank(message = "Введите пароль")
+    @Size(min = 6, max = 128, message = "Пароль должен содержать от 6 до 128 символов")
     private String password;
 
     private String firstName;

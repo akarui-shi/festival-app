@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ErrorMessage from '../components/ErrorMessage';
+import { toUserErrorMessage } from '../utils/errorMessages';
 
 const RegisterPage = () => {
   const { register } = useAuth();
@@ -33,7 +34,7 @@ const RegisterPage = () => {
       await register(formData);
       navigate('/profile', { replace: true });
     } catch (err) {
-      setError(err.message || 'Не удалось завершить регистрацию.');
+      setError(toUserErrorMessage(err, 'Не удалось завершить регистрацию.'));
     } finally {
       setIsSubmitting(false);
     }

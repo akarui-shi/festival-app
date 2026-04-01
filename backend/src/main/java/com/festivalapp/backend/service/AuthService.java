@@ -38,10 +38,10 @@ public class AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByLogin(request.getLogin())) {
-            throw new BadRequestException("Login already exists");
+            throw new BadRequestException("Логин уже занят");
         }
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("Email already exists");
+            throw new BadRequestException("Электронная почта уже используется");
         }
 
         User user = User.builder()
@@ -77,10 +77,10 @@ public class AuthService {
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByLoginOrEmailWithRoles(request.getLoginOrEmail())
-            .orElseThrow(() -> new UnauthorizedException("Invalid credentials"));
+            .orElseThrow(() -> new UnauthorizedException("Неверный логин/email или пароль"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new UnauthorizedException("Invalid credentials");
+            throw new UnauthorizedException("Неверный логин/email или пароль");
         }
 
         return AuthResponse.builder()

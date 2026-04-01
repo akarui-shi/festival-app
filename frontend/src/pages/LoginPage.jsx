@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ErrorMessage from '../components/ErrorMessage';
+import { toUserErrorMessage } from '../utils/errorMessages';
 
 const LoginPage = () => {
   const { login } = useAuth();
@@ -24,7 +25,7 @@ const LoginPage = () => {
       await login({ loginOrEmail, password });
       navigate(redirectTo, { replace: true });
     } catch (err) {
-      setError(err.message || 'Не удалось выполнить вход.');
+      setError(toUserErrorMessage(err, 'Не удалось выполнить вход.'));
     } finally {
       setIsSubmitting(false);
     }

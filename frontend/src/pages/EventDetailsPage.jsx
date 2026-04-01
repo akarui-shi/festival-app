@@ -197,6 +197,9 @@ const EventDetailsPage = () => {
   const venueLatitude = venue ? Number(venue.latitude) : NaN;
   const venueLongitude = venue ? Number(venue.longitude) : NaN;
   const hasVenueCoordinates = Number.isFinite(venueLatitude) && Number.isFinite(venueLongitude);
+  const ageLabel = Number.isFinite(Number(event?.ageRating))
+    ? `${Number(event.ageRating)}+`
+    : 'не указано';
 
   if (isLoading) return <section className="container page"><Loader text="Загружаем мероприятие..." /></section>;
   if (error) return <section className="container page"><ErrorMessage message={error} /></section>;
@@ -208,7 +211,7 @@ const EventDetailsPage = () => {
       <p className="page-subtitle">{event.shortDescription || 'Краткое описание пока не добавлено.'}</p>
 
       <div className="panel details-grid">
-        <p><strong>Возрастной рейтинг:</strong> {event.ageRating ?? '-'}</p>
+        <p><strong>Возрастное ограничение:</strong> {ageLabel}</p>
         <p><strong>Создано:</strong> {formatDateTime(event.createdAt)}</p>
         <p><strong>Организатор:</strong> {event.organizer?.name || '-'}</p>
         <p><strong>Площадка:</strong> {venue?.name || 'Не указана'}</p>

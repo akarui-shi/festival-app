@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestControllerAdvice
@@ -41,7 +42,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
+        Map<String, String> errors = new LinkedHashMap<>();
         for (FieldError error : ex.getBindingResult().getFieldErrors()) {
             errors.put(error.getField(), error.getDefaultMessage());
         }
@@ -49,19 +50,20 @@ public class GlobalExceptionHandler {
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("status", HttpStatus.BAD_REQUEST.value());
-        body.put("error", "Validation failed");
+        body.put("error", "Проверьте корректность заполнения полей");
+        body.put("message", "Проверьте корректность заполнения полей");
         body.put("details", errors);
         return ResponseEntity.badRequest().body(body);
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<Map<String, Object>> handleMissingParam(MissingServletRequestParameterException ex) {
-        return buildResponse(HttpStatus.BAD_REQUEST, "Missing required parameter: " + ex.getParameterName());
+        return buildResponse(HttpStatus.BAD_REQUEST, "Отсутствует обязательный параметр: " + ex.getParameterName());
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Map<String, Object>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        return buildResponse(HttpStatus.BAD_REQUEST, "Invalid parameter value: " + ex.getName());
+        return buildResponse(HttpStatus.BAD_REQUEST, "Некорректное значение параметра: " + ex.getName());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
@@ -74,17 +76,26 @@ public class GlobalExceptionHandler {
         if (normalized.contains("registrations")) {
             return buildResponse(HttpStatus.BAD_REQUEST, "Не удалось создать регистрацию");
         }
-        return buildResponse(HttpStatus.BAD_REQUEST, "Нарушение целостности данных");
+        if (normalized.contains("users_login_key") || normalized.contains("users.login")) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Логин уже занят");
+        }
+        if (normalized.contains("users_email_key") || normalized.contains("users.email")) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Электронная почта уже используется");
+        }
+        if (normalized.contains("users_phone_key") || normalized.contains("users.phone")) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Телефон уже используется");
+        }
+        return buildResponse(HttpStatus.BAD_REQUEST, "Не удалось сохранить данные. Проверьте введённые значения.");
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<Map<String, Object>> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
-        return buildResponse(HttpStatus.BAD_REQUEST, "File size is too large");
+        return buildResponse(HttpStatus.BAD_REQUEST, "Размер файла превышает допустимый лимит");
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleOther(Exception ex) {
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Внутренняя ошибка сервера");
     }
 
     private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String message) {

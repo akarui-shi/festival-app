@@ -12,6 +12,15 @@ const parseResponse = async (response) => {
   }
 };
 
+const pickFirstValidationMessage = (payload) => {
+  if (!payload || typeof payload !== 'object' || !payload.details || typeof payload.details !== 'object') {
+    return '';
+  }
+
+  const firstValue = Object.values(payload.details).find((value) => typeof value === 'string' && value.trim());
+  return firstValue ? firstValue.trim() : '';
+};
+
 const buildHeaders = (headers = {}, auth = true, isFormData = false) => {
   const builtHeaders = {
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
@@ -57,7 +66,9 @@ const request = async (path, options = {}) => {
   const payload = await parseResponse(response);
 
   if (!response.ok) {
+    const validationMessage = pickFirstValidationMessage(payload);
     const message =
+      validationMessage ||
       (typeof payload === 'string' && payload.trim()) ||
       (payload && typeof payload === 'object' && (payload.error || payload.message)) ||
       `Ошибка запроса. Код: ${response.status}`;
