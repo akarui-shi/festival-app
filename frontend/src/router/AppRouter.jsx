@@ -10,6 +10,9 @@ import FavoritesPage from '../pages/FavoritesPage';
 import ProfilePage from '../pages/ProfilePage';
 import MyRegistrationsPage from '../pages/MyRegistrationsPage';
 import OrganizerDashboardPage from '../pages/OrganizerDashboardPage';
+import OrganizerEventCreatePage from '../pages/OrganizerEventCreatePage';
+import OrganizerEventEditPage from '../pages/OrganizerEventEditPage';
+import OrganizerEventSessionsPage from '../pages/OrganizerEventSessionsPage';
 import AdminDashboardPage from '../pages/AdminDashboardPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import { ROLE } from '../utils/roles';
@@ -53,6 +56,30 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={[ROLE.ORGANIZER, ROLE.ADMIN]}>
             <OrganizerDashboardPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'organizer/events/create',
+        element: (
+          <ProtectedRoute allowedRoles={[ROLE.ORGANIZER, ROLE.ADMIN]}>
+            <OrganizerEventCreatePage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'organizer/events/:id/edit',
+        element: (
+          <ProtectedRoute allowedRoles={[ROLE.ORGANIZER, ROLE.ADMIN]}>
+            <OrganizerEventEditPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'organizer/events/:id/sessions',
+        element: (
+          <ProtectedRoute allowedRoles={[ROLE.ORGANIZER, ROLE.ADMIN]}>
+            <OrganizerEventSessionsPage />
           </ProtectedRoute>
         )
       },

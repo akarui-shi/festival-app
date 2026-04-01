@@ -121,6 +121,12 @@ a {
   color: var(--text);
 }
 
+.btn--danger {
+  border-color: #f2c6c0;
+  background: #fff5f3;
+  color: var(--danger);
+}
+
 .page {
   display: grid;
   gap: 16px;
@@ -291,6 +297,84 @@ a {
 .details-list {
   margin: 0;
   padding-left: 18px;
+}
+
+.page-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.organizer-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.organizer-event-card,
+.organizer-session-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.organizer-event-card h3,
+.organizer-session-card h3 {
+  margin: 0;
+}
+
+.organizer-event-card__description,
+.organizer-session-card__description {
+  margin: 0;
+  color: var(--muted);
+}
+
+.organizer-event-card__meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+
+.organizer-event-card__actions,
+.organizer-session-card__actions,
+.inline-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.organizer-session-card__meta {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.organizer-session-card__meta p {
+  margin: 0;
+}
+
+.form-section-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
 }
 
 .session-list {
@@ -486,6 +570,12 @@ a {
 
   .registration-card__actions .btn,
   .modal__actions .btn {
+    width: 100%;
+  }
+
+  .organizer-event-card__actions .btn,
+  .organizer-session-card__actions .btn,
+  .inline-actions .btn {
     width: 100%;
   }
 }

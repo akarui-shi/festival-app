@@ -19,8 +19,23 @@ export const sessionService = {
     return apiClient.get(`/api/sessions${buildQueryString(params)}`, { auth: false });
   },
 
+  getEventSessions(eventId) {
+    return this.getSessions({ eventId });
+  },
+
   getSessionById(id) {
     return apiClient.get(`/api/sessions/${id}`, { auth: false });
+  },
+
+  createSession(data) {
+    return apiClient.post('/api/sessions', data);
+  },
+
+  updateSession(id, data) {
+    return apiClient.put(`/api/sessions/${id}`, data);
+  },
+
+  deleteSession(id) {
+    return apiClient.delete(`/api/sessions/${id}`);
   }
 };
-

@@ -75,13 +75,35 @@ public class EventService {
         return toDetailsResponse(event);
     }
 
+    @Transactional(readOnly = true)
+    public List<EventShortResponse> getOrganizerEvents(String actorIdentifier) {
+        User actor = loadActor(actorIdentifier);
+        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
+
+        List<Event> events;
+        if (hasRole(actor, RoleName.ROLE_ADMIN)) {
+            events = eventRepository.findAll((Specification<Event>) null, sort);
+        } else {
+            if (!hasRole(actor, RoleName.ROLE_ORGANIZER)) {
+                throw new AccessDeniedException("Only organizers or admins can access organizer events");
+            }
+
+            Organizer organizer = resolveActorOrganizer(actor);
+            if (organizer == null) {
+                throw new ResourceNotFoundException("Organizer profile not found for current user");
+            }
+            events = eventRepository.findAllByOrganizerId(organizer.getId(), sort);
+        }
+
+        return events.stream()
+            .map(this::toShortResponse)
+            .toList();
+    }
+
     @Transactional
     public EventShortResponse create(EventCreateRequest request, String actorIdentifier) {
         User actor = loadActor(actorIdentifier);
-        boolean admin = hasRole(actor, RoleName.ROLE_ADMIN);
-        Organizer organizer = organizerRepository.findById(request.getOrganizerId())
-            .orElseThrow(() -> new ResourceNotFoundException("Organizer not found: " + request.getOrganizerId()));
-        validateCreateAccess(actor, admin, organizer);
+        Organizer organizer = resolveOrganizerForCreate(actor, request.getOrganizerId());
 
         Set<Category> categories = resolveCategories(request.getCategoryIds());
 
@@ -155,18 +177,40 @@ public class EventService {
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
-    private void validateCreateAccess(User actor, boolean admin, Organizer organizer) {
-        if (admin) {
-            return;
+    private Organizer resolveOrganizerForCreate(User actor, Long organizerId) {
+        Organizer actorOrganizer = resolveActorOrganizer(actor);
+
+        if (hasRole(actor, RoleName.ROLE_ADMIN)) {
+            if (organizerId != null) {
+                return organizerRepository.findById(organizerId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Organizer not found: " + organizerId));
+            }
+            if (actorOrganizer != null) {
+                return actorOrganizer;
+            }
+            throw new BadRequestException("Organizer ID is required for admin without organizer profile");
         }
 
         if (!hasRole(actor, RoleName.ROLE_ORGANIZER)) {
             throw new AccessDeniedException("Only organizers or admins can create events");
         }
 
-        if (actor.getOrganizer() == null || !actor.getOrganizer().getId().equals(organizer.getId())) {
+        if (actorOrganizer == null) {
+            throw new ResourceNotFoundException("Organizer profile not found for current user");
+        }
+
+        if (organizerId != null && !organizerId.equals(actorOrganizer.getId())) {
             throw new AccessDeniedException("Organizer can create events only for own organizer profile");
         }
+
+        return actorOrganizer;
+    }
+
+    private Organizer resolveActorOrganizer(User actor) {
+        if (actor.getOrganizer() != null) {
+            return actor.getOrganizer();
+        }
+        return organizerRepository.findByUserId(actor.getId()).orElse(null);
     }
 
     private void validateUpdateOrDeleteAccess(User actor, Event event) {

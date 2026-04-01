@@ -18,7 +18,7 @@ const Header = () => {
           <NavLink to="/events">Мероприятия</NavLink>
           {isAuthenticated && <NavLink to="/favorites">Избранное</NavLink>}
           {isAuthenticated && <NavLink to="/my-registrations">Мои регистрации</NavLink>}
-          {hasRole([ROLE.ORGANIZER, ROLE.ADMIN]) && <NavLink to="/organizer">Организатор</NavLink>}
+          {hasRole([ROLE.ORGANIZER, ROLE.ADMIN]) && <NavLink to="/organizer">Кабинет организатора</NavLink>}
           {hasRole([ROLE.ADMIN]) && <NavLink to="/admin">Админ</NavLink>}
         </nav>
 
