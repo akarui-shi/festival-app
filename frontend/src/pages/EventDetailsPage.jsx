@@ -5,6 +5,7 @@ import ErrorMessage from '../components/ErrorMessage';
 import EmptyState from '../components/EmptyState';
 import SessionCard from '../components/SessionCard';
 import RegistrationFormModal from '../components/RegistrationFormModal';
+import QRCodeDisplay from '../components/QRCodeDisplay';
 import { eventService } from '../services/eventService';
 import { favoriteService } from '../services/favoriteService';
 import { sessionService } from '../services/sessionService';
@@ -37,6 +38,7 @@ const EventDetailsPage = () => {
   const [registrationSession, setRegistrationSession] = useState(null);
   const [registrationError, setRegistrationError] = useState('');
   const [registrationSuccess, setRegistrationSuccess] = useState('');
+  const [registrationResult, setRegistrationResult] = useState(null);
   const [isRegistrationSubmitting, setIsRegistrationSubmitting] = useState(false);
 
   const [favoriteMessage, setFavoriteMessage] = useState('');
@@ -105,6 +107,7 @@ const EventDetailsPage = () => {
   const onOpenRegistration = (session) => {
     setRegistrationError('');
     setRegistrationSuccess('');
+    setRegistrationResult(null);
 
     if (!isAuthenticated) {
       navigate('/login', { state: { from: `/events/${id}` } });
@@ -127,7 +130,8 @@ const EventDetailsPage = () => {
       setIsRegistrationSubmitting(true);
       setRegistrationError('');
       const response = await registrationService.createRegistration(sessionId, quantity);
-      setRegistrationSuccess(`Вы успешно записаны. QR-токен: ${response.qrToken}`);
+      setRegistrationResult(response);
+      setRegistrationSuccess('Вы успешно записаны на сеанс.');
       setRegistrationSession(null);
       await loadSessions();
     } catch (err) {
@@ -211,6 +215,9 @@ const EventDetailsPage = () => {
         <h2>Сеансы</h2>
 
         {registrationSuccess && <p className="page-note page-note--success">{registrationSuccess}</p>}
+        {registrationResult?.qrToken && (
+          <QRCodeDisplay token={registrationResult.qrToken} label="QR-код для посещения" />
+        )}
         {sessionsLoading && <Loader text="Загружаем сеансы..." />}
         {!sessionsLoading && sessionsError && <ErrorMessage message={sessionsError} />}
         {!sessionsLoading && !sessionsError && sessions.length === 0 && (

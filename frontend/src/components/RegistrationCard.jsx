@@ -1,4 +1,5 @@
 import { formatDateTime, formatStatus } from '../utils/formatters';
+import QRCodeDisplay from './QRCodeDisplay';
 
 const RegistrationCard = ({ registration, onCancel, isCancelling }) => {
   const isCancelled = registration.status === 'CANCELLED';
@@ -28,10 +29,7 @@ const RegistrationCard = ({ registration, onCancel, isCancelling }) => {
         </p>
       </div>
 
-      <div className="qr-token-block">
-        <span className="qr-token-label">QR-токен</span>
-        <code className="qr-token-value">{registration.qrToken || '-'}</code>
-      </div>
+      <QRCodeDisplay token={registration.qrToken} label="QR-код регистрации" />
 
       <div className="registration-card__actions">
         <button
@@ -48,4 +46,3 @@ const RegistrationCard = ({ registration, onCancel, isCancelling }) => {
 };
 
 export default RegistrationCard;
-

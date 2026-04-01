@@ -9,7 +9,7 @@ const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const displayName = [currentUser?.firstName, currentUser?.lastName].filter(Boolean).join(' ') || currentUser?.login;
-  const showOrganizer = hasRole([ROLE.ORGANIZER, ROLE.ADMIN]);
+  const showOrganizer = hasRole([ROLE.ORGANIZER]);
   const showAdmin = hasRole([ROLE.ADMIN]);
 
   const navLinks = useMemo(
