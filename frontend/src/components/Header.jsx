@@ -19,7 +19,7 @@ const Header = () => {
           {isAuthenticated && <NavLink to="/favorites">Избранное</NavLink>}
           {isAuthenticated && <NavLink to="/my-registrations">Мои регистрации</NavLink>}
           {hasRole([ROLE.ORGANIZER, ROLE.ADMIN]) && <NavLink to="/organizer">Кабинет организатора</NavLink>}
-          {hasRole([ROLE.ADMIN]) && <NavLink to="/admin">Админ</NavLink>}
+          {hasRole([ROLE.ADMIN]) && <NavLink to="/admin">Админ-панель</NavLink>}
         </nav>
 
         <div className="auth-actions">

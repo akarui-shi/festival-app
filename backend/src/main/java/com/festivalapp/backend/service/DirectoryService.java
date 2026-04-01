@@ -48,6 +48,7 @@ public class DirectoryService {
         return CategoryResponse.builder()
             .id(category.getId())
             .name(category.getName())
+            .description(category.getDescription())
             .build();
     }
 

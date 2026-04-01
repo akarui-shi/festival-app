@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.List;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
@@ -24,4 +25,20 @@ public interface UserRepository extends JpaRepository<User, Long> {
         where u.login = :identifier or u.email = :identifier
         """)
     Optional<User> findByLoginOrEmailWithRoles(@Param("identifier") String identifier);
+
+    @Query("""
+        select distinct u from User u
+        left join fetch u.userRoles ur
+        left join fetch ur.role
+        order by u.id
+        """)
+    List<User> findAllWithRoles();
+
+    @Query("""
+        select distinct u from User u
+        left join fetch u.userRoles ur
+        left join fetch ur.role
+        where u.id = :id
+        """)
+    Optional<User> findByIdWithRoles(@Param("id") Long id);
 }

@@ -404,6 +404,7 @@ public class EventService {
             .map(category -> CategoryResponse.builder()
                 .id(category.getId())
                 .name(category.getName())
+                .description(category.getDescription())
                 .build())
             .toList();
     }

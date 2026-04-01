@@ -44,6 +44,9 @@ public class DemoDataInitializer implements CommandLineRunner {
     private static final String ORGANIZER_LOGIN = "organizer1";
     private static final String ORGANIZER_EMAIL = "organizer1@mail.com";
     private static final String ORGANIZER_PASSWORD = "Passw0rd123";
+    private static final String ADMIN_LOGIN = "admin1";
+    private static final String ADMIN_EMAIL = "admin1@mail.com";
+    private static final String ADMIN_PASSWORD = "Passw0rd123";
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -59,6 +62,7 @@ public class DemoDataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
         Organizer organizer = ensureOrganizerUserAndProfile();
+        ensureAdminUser();
 
         Category music = ensureCategory("Музыка", "Музыкальные мероприятия");
         Category theatre = ensureCategory("Театр", "Театральные постановки");
@@ -74,6 +78,36 @@ public class DemoDataInitializer implements CommandLineRunner {
             new BigDecimal("55.099900"), new BigDecimal("38.769500"));
 
         seedEventsAndSessions(organizer, music, theatre, exhibition, cityHoliday, park, cultureHouse, centralSquare);
+    }
+
+    private void ensureAdminUser() {
+        User adminUser = userRepository.findByLogin(ADMIN_LOGIN)
+            .or(() -> userRepository.findByEmail(ADMIN_EMAIL))
+            .orElseGet(() -> userRepository.save(User.builder()
+                .login(ADMIN_LOGIN)
+                .email(ADMIN_EMAIL)
+                .passwordHash(passwordEncoder.encode(ADMIN_PASSWORD))
+                .firstName("System")
+                .lastName("Admin")
+                .phone("+79990000012")
+                .createdAt(LocalDateTime.now())
+                .status(UserStatus.ACTIVE)
+                .build()));
+
+        Role adminRole = roleRepository.findByName(RoleName.ROLE_ADMIN)
+            .orElseGet(() -> roleRepository.save(Role.builder().name(RoleName.ROLE_ADMIN).build()));
+
+        UserRoleId userRoleId = UserRoleId.builder()
+            .userId(adminUser.getId())
+            .roleId(adminRole.getId())
+            .build();
+        if (userRoleRepository.findById(userRoleId).isEmpty()) {
+            userRoleRepository.save(UserRole.builder()
+                .id(userRoleId)
+                .user(adminUser)
+                .role(adminRole)
+                .build());
+        }
     }
 
     private Organizer ensureOrganizerUserAndProfile() {
