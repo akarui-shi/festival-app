@@ -6,6 +6,7 @@ import Loader from '../components/Loader';
 import OrganizerEventCard from '../components/OrganizerEventCard';
 import { organizerService } from '../services/organizerService';
 import { eventService } from '../services/eventService';
+import { toUserErrorMessage } from '../utils/errorMessages';
 
 const OrganizerDashboardPage = () => {
   const navigate = useNavigate();
@@ -17,20 +18,24 @@ const OrganizerDashboardPage = () => {
   const [message, setMessage] = useState(location.state?.message || '');
   const [deletingId, setDeletingId] = useState(null);
 
-  useEffect(() => {
-    const loadEvents = async () => {
-      try {
+  const loadEvents = async ({ withLoader = true } = {}) => {
+    try {
+      if (withLoader) {
         setIsLoading(true);
-        setError('');
-        const data = await organizerService.getMyEvents();
-        setEvents(Array.isArray(data) ? data : []);
-      } catch (err) {
-        setError(err.message || 'Не удалось загрузить мероприятия организатора.');
-      } finally {
+      }
+      setError('');
+      const data = await organizerService.getMyEvents();
+      setEvents(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(toUserErrorMessage(err, 'Не удалось загрузить мероприятия организатора.'));
+    } finally {
+      if (withLoader) {
         setIsLoading(false);
       }
-    };
+    }
+  };
 
+  useEffect(() => {
     loadEvents();
   }, []);
 
@@ -52,10 +57,10 @@ const OrganizerDashboardPage = () => {
       setError('');
       setMessage('');
       await eventService.deleteEvent(eventId);
-      setEvents((prev) => prev.filter((event) => event.id !== eventId));
+      await loadEvents({ withLoader: false });
       setMessage('Мероприятие удалено.');
     } catch (err) {
-      setError(err.message || 'Не удалось удалить мероприятие.');
+      setError(toUserErrorMessage(err, 'Не удалось удалить мероприятие.'));
     } finally {
       setDeletingId(null);
     }
@@ -95,4 +100,3 @@ const OrganizerDashboardPage = () => {
 };
 
 export default OrganizerDashboardPage;
-

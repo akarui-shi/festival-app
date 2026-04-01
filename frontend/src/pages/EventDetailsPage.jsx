@@ -9,8 +9,10 @@ import { eventService } from '../services/eventService';
 import { favoriteService } from '../services/favoriteService';
 import { sessionService } from '../services/sessionService';
 import { registrationService } from '../services/registrationService';
+import { reviewService } from '../services/reviewService';
 import { useAuth } from '../context/AuthContext';
 import { formatDateTime, formatStatus } from '../utils/formatters';
+import { toUserErrorMessage } from '../utils/errorMessages';
 
 const EventDetailsPage = () => {
   const { id } = useParams();
@@ -24,6 +26,13 @@ const EventDetailsPage = () => {
   const [sessions, setSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [sessionsError, setSessionsError] = useState('');
+
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [reviewsError, setReviewsError] = useState('');
+  const [reviewForm, setReviewForm] = useState({ rating: '5', text: '' });
+  const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState('');
 
   const [registrationSession, setRegistrationSession] = useState(null);
   const [registrationError, setRegistrationError] = useState('');
@@ -39,9 +48,22 @@ const EventDetailsPage = () => {
       const data = await sessionService.getSessions({ eventId: id });
       setSessions(Array.isArray(data) ? data : []);
     } catch (err) {
-      setSessionsError(err.message || 'Не удалось загрузить сеансы.');
+      setSessionsError(toUserErrorMessage(err, 'Не удалось загрузить сеансы.'));
     } finally {
       setSessionsLoading(false);
+    }
+  }, [id]);
+
+  const loadReviews = useCallback(async () => {
+    try {
+      setReviewsLoading(true);
+      setReviewsError('');
+      const data = await reviewService.getReviewsByEvent(id);
+      setReviews(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setReviewsError(toUserErrorMessage(err, 'Не удалось загрузить отзывы.'));
+    } finally {
+      setReviewsLoading(false);
     }
   }, [id]);
 
@@ -53,7 +75,7 @@ const EventDetailsPage = () => {
         const data = await eventService.getEventById(id);
         setEvent(data);
       } catch (err) {
-        setError(err.message || 'Не удалось загрузить детали мероприятия.');
+        setError(toUserErrorMessage(err, 'Не удалось загрузить детали мероприятия.'));
       } finally {
         setIsLoading(false);
       }
@@ -66,13 +88,17 @@ const EventDetailsPage = () => {
     loadSessions();
   }, [loadSessions]);
 
+  useEffect(() => {
+    loadReviews();
+  }, [loadReviews]);
+
   const onAddFavorite = async () => {
     try {
       setFavoriteMessage('');
       await favoriteService.addFavorite(event.id);
       setFavoriteMessage('Добавлено в избранное.');
     } catch (err) {
-      setFavoriteMessage(err.message || 'Не удалось добавить в избранное.');
+      setFavoriteMessage(toUserErrorMessage(err, 'Не удалось добавить в избранное.'));
     }
   };
 
@@ -105,11 +131,38 @@ const EventDetailsPage = () => {
       setRegistrationSession(null);
       await loadSessions();
     } catch (err) {
-      setRegistrationError(err.message || 'Не удалось записаться на сеанс.');
+      setRegistrationError(toUserErrorMessage(err, 'Не удалось записаться на сеанс.'));
     } finally {
       setIsRegistrationSubmitting(false);
     }
   };
+
+  const onSubmitReview = async (submitEvent) => {
+    submitEvent.preventDefault();
+
+    try {
+      setIsReviewSubmitting(true);
+      setReviewsError('');
+      setReviewMessage('');
+      await reviewService.createReview({
+        eventId: Number(id),
+        rating: Number(reviewForm.rating),
+        text: reviewForm.text.trim() || null
+      });
+      setReviewForm({ rating: '5', text: '' });
+      setReviewMessage('Спасибо! Ваш отзыв отправлен на модерацию.');
+      await loadReviews();
+    } catch (err) {
+      setReviewsError(toUserErrorMessage(err, 'Не удалось отправить отзыв.'));
+    } finally {
+      setIsReviewSubmitting(false);
+    }
+  };
+
+  const averageRating =
+    reviews.length > 0
+      ? (reviews.reduce((sum, item) => sum + Number(item.rating || 0), 0) / reviews.length).toFixed(1)
+      : null;
 
   if (isLoading) return <section className="container page"><Loader text="Загружаем мероприятие..." /></section>;
   if (error) return <section className="container page"><ErrorMessage message={error} /></section>;
@@ -171,6 +224,71 @@ const EventDetailsPage = () => {
             ))}
           </div>
         )}
+      </div>
+
+      <div className="panel">
+        <h2>Отзывы</h2>
+        <p className="page-subtitle">
+          Средняя оценка: <strong>{averageRating || '-'}</strong> ({reviews.length})
+        </p>
+
+        {reviewsLoading && <Loader text="Загружаем отзывы..." />}
+        {!reviewsLoading && reviewsError && <ErrorMessage message={reviewsError} />}
+        {!reviewsLoading && !reviewsError && reviews.length === 0 && (
+          <EmptyState message="Пока нет опубликованных отзывов." />
+        )}
+
+        {!reviewsLoading && !reviewsError && reviews.length > 0 && (
+          <div className="reviews-list">
+            {reviews.map((review) => (
+              <article key={review.reviewId} className="review-item">
+                <div className="review-item__head">
+                  <strong>{review.userDisplayName || `Пользователь #${review.userId}`}</strong>
+                  <span>Оценка: {review.rating}/5</span>
+                </div>
+                <p>{review.text || 'Текст отзыва не указан.'}</p>
+                <small>{formatDateTime(review.createdAt)}</small>
+              </article>
+            ))}
+          </div>
+        )}
+
+        {isAuthenticated ? (
+          <form className="form review-form" onSubmit={onSubmitReview}>
+            <label>
+              Оценка
+              <select
+                value={reviewForm.rating}
+                onChange={(event) => setReviewForm((prev) => ({ ...prev, rating: event.target.value }))}
+                required
+              >
+                <option value="5">5</option>
+                <option value="4">4</option>
+                <option value="3">3</option>
+                <option value="2">2</option>
+                <option value="1">1</option>
+              </select>
+            </label>
+
+            <label>
+              Отзыв
+              <textarea
+                rows={3}
+                value={reviewForm.text}
+                onChange={(event) => setReviewForm((prev) => ({ ...prev, text: event.target.value }))}
+                placeholder="Поделитесь впечатлениями"
+              />
+            </label>
+
+            <button className="btn btn--primary" type="submit" disabled={isReviewSubmitting}>
+              {isReviewSubmitting ? 'Отправляем...' : 'Оставить отзыв'}
+            </button>
+          </form>
+        ) : (
+          <p className="muted">Чтобы оставить отзыв, войдите в аккаунт.</p>
+        )}
+
+        {reviewMessage && <p className="page-note page-note--success">{reviewMessage}</p>}
       </div>
 
       {isAuthenticated && (

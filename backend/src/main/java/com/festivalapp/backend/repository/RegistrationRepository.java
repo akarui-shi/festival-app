@@ -2,6 +2,7 @@ package com.festivalapp.backend.repository;
 
 import com.festivalapp.backend.entity.Registration;
 import com.festivalapp.backend.entity.RegistrationStatus;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -54,4 +55,8 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
     List<Registration> findAllBySessionIdWithUser(@Param("sessionId") Long sessionId);
 
     long countBySessionIdAndStatusIn(Long sessionId, Collection<RegistrationStatus> statuses);
+
+    @Modifying
+    @Query("delete from Registration r where r.session.event.id = :eventId")
+    void deleteByEventId(@Param("eventId") Long eventId);
 }

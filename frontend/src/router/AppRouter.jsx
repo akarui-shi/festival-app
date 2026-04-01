@@ -6,6 +6,8 @@ import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
 import EventsPage from '../pages/EventsPage';
 import EventDetailsPage from '../pages/EventDetailsPage';
+import PublicationsPage from '../pages/PublicationsPage';
+import PublicationDetailsPage from '../pages/PublicationDetailsPage';
 import FavoritesPage from '../pages/FavoritesPage';
 import ProfilePage from '../pages/ProfilePage';
 import MyRegistrationsPage from '../pages/MyRegistrationsPage';
@@ -27,6 +29,8 @@ const router = createBrowserRouter([
       { path: 'register', element: <RegisterPage /> },
       { path: 'events', element: <EventsPage /> },
       { path: 'events/:id', element: <EventDetailsPage /> },
+      { path: 'publications', element: <PublicationsPage /> },
+      { path: 'publications/:id', element: <PublicationDetailsPage /> },
       {
         path: 'favorites',
         element: (

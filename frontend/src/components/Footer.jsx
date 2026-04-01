@@ -14,6 +14,7 @@ const Footer = () => {
           <nav className="app-footer__nav">
             <Link to="/">Главная</Link>
             <Link to="/events">Мероприятия</Link>
+            <Link to="/publications">Публикации</Link>
             <Link to="/favorites">Избранное</Link>
             <Link to="/profile">Профиль</Link>
           </nav>

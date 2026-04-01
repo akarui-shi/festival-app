@@ -6,6 +6,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -33,4 +34,8 @@ public interface SessionRepository extends JpaRepository<Session, Long>, JpaSpec
                                      @Param("startAt") LocalDateTime startAt,
                                      @Param("endAt") LocalDateTime endAt,
                                      @Param("excludeSessionId") Long excludeSessionId);
+
+    @Modifying
+    @Query("delete from Session s where s.event.id = :eventId")
+    void deleteByEventId(@Param("eventId") Long eventId);
 }

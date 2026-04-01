@@ -589,6 +589,92 @@ a {
   flex-wrap: wrap;
 }
 
+.reviews-list {
+  display: grid;
+  gap: 10px;
+}
+
+.review-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  background: #fff;
+}
+
+.review-item p {
+  margin: 8px 0;
+}
+
+.review-item__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.review-form {
+  margin-top: 12px;
+}
+
+.publication-list {
+  display: grid;
+  gap: 12px;
+}
+
+.publication-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.publication-card h3 {
+  margin: 0;
+}
+
+.publication-card__preview {
+  margin: 0;
+  color: var(--muted);
+}
+
+.publication-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.publication-card__event-link {
+  margin: 0;
+  font-size: 14px;
+}
+
+.publication-content p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.publications-filter {
+  display: grid;
+  gap: 10px;
+}
+
+.publications-filter label {
+  display: grid;
+  gap: 6px;
+}
+
+.publications-filter input {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: #fff;
+}
+
 .details-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));

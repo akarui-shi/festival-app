@@ -16,6 +16,7 @@ const Header = () => {
     () => [
       { to: '/', label: 'Главная' },
       { to: '/events', label: 'Мероприятия' },
+      { to: '/publications', label: 'Публикации' },
       ...(isAuthenticated ? [{ to: '/favorites', label: 'Избранное' }] : []),
       ...(isAuthenticated ? [{ to: '/my-registrations', label: 'Мои регистрации' }] : []),
       ...(showOrganizer ? [{ to: '/organizer', label: 'Кабинет организатора' }] : []),

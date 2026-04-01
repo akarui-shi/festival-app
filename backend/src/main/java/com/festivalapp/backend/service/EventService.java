@@ -17,8 +17,14 @@ import com.festivalapp.backend.entity.Venue;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
 import com.festivalapp.backend.repository.CategoryRepository;
+import com.festivalapp.backend.repository.EventCategoryRepository;
 import com.festivalapp.backend.repository.EventRepository;
+import com.festivalapp.backend.repository.FavoriteRepository;
 import com.festivalapp.backend.repository.OrganizerRepository;
+import com.festivalapp.backend.repository.PublicationRepository;
+import com.festivalapp.backend.repository.RegistrationRepository;
+import com.festivalapp.backend.repository.ReviewRepository;
+import com.festivalapp.backend.repository.SessionRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
@@ -47,9 +53,15 @@ import java.util.stream.Collectors;
 public class EventService {
 
     private final EventRepository eventRepository;
+    private final EventCategoryRepository eventCategoryRepository;
     private final OrganizerRepository organizerRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final RegistrationRepository registrationRepository;
+    private final SessionRepository sessionRepository;
+    private final ReviewRepository reviewRepository;
+    private final FavoriteRepository favoriteRepository;
+    private final PublicationRepository publicationRepository;
 
     @Transactional(readOnly = true)
     public List<EventShortResponse> getAll(String title,
@@ -165,7 +177,16 @@ public class EventService {
             .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + id));
         validateUpdateOrDeleteAccess(actor, event);
 
+        // Remove dependent records explicitly to avoid FK conflicts on event deletion.
+        registrationRepository.deleteByEventId(id);
+        reviewRepository.deleteByEventId(id);
+        favoriteRepository.deleteByEventId(id);
+        publicationRepository.deleteByEventId(id);
+        sessionRepository.deleteByEventId(id);
+        eventCategoryRepository.deleteByEventId(id);
+
         eventRepository.delete(event);
+
         return Map.of(
             "message", "Event deleted successfully",
             "eventId", id
