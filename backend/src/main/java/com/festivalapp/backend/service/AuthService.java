@@ -1,9 +1,9 @@
 package com.festivalapp.backend.service;
 
 import com.festivalapp.backend.dto.AuthResponse;
+import com.festivalapp.backend.dto.CurrentUserResponse;
 import com.festivalapp.backend.dto.LoginRequest;
 import com.festivalapp.backend.dto.RegisterRequest;
-import com.festivalapp.backend.dto.UserResponse;
 import com.festivalapp.backend.entity.Role;
 import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.User;
@@ -11,6 +11,7 @@ import com.festivalapp.backend.entity.UserRole;
 import com.festivalapp.backend.entity.UserRoleId;
 import com.festivalapp.backend.entity.UserStatus;
 import com.festivalapp.backend.exception.BadRequestException;
+import com.festivalapp.backend.exception.UnauthorizedException;
 import com.festivalapp.backend.repository.RoleRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import com.festivalapp.backend.repository.UserRoleRepository;
@@ -21,6 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -58,44 +61,51 @@ public class AuthService {
         Role residentRole = roleRepository.findByName(RoleName.ROLE_RESIDENT)
             .orElseGet(() -> roleRepository.save(Role.builder().name(RoleName.ROLE_RESIDENT).build()));
 
-        userRoleRepository.save(UserRole.builder()
+        UserRole userRole = userRoleRepository.save(UserRole.builder()
             .id(UserRoleId.builder().userId(savedUser.getId()).roleId(residentRole.getId()).build())
             .user(savedUser)
             .role(residentRole)
             .build());
+        savedUser.getUserRoles().add(userRole);
 
         return AuthResponse.builder()
             .token(jwtService.generateToken(savedUser.getLogin()))
-            .user(toUserResponse(savedUser))
+            .user(toCurrentUserResponse(savedUser))
             .build();
     }
 
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByLogin(request.getUsername())
-            .or(() -> userRepository.findByEmail(request.getUsername()))
-            .orElseThrow(() -> new BadRequestException("Invalid credentials"));
+        User user = userRepository.findByLoginOrEmailWithRoles(request.getLoginOrEmail())
+            .orElseThrow(() -> new UnauthorizedException("Invalid credentials"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new BadRequestException("Invalid credentials");
+            throw new UnauthorizedException("Invalid credentials");
         }
 
         return AuthResponse.builder()
             .token(jwtService.generateToken(user.getLogin()))
-            .user(toUserResponse(user))
+            .user(toCurrentUserResponse(user))
             .build();
     }
 
-    private UserResponse toUserResponse(User user) {
-        return UserResponse.builder()
+    private CurrentUserResponse toCurrentUserResponse(User user) {
+        Set<String> roles = user.getUserRoles().stream()
+            .map(userRole -> normalizeRoleName(userRole.getRole().getName().name()))
+            .collect(Collectors.toSet());
+
+        return CurrentUserResponse.builder()
             .id(user.getId())
             .login(user.getLogin())
             .email(user.getEmail())
             .phone(user.getPhone())
             .firstName(user.getFirstName())
             .lastName(user.getLastName())
-            .avatarUrl(user.getAvatarUrl())
-            .status(user.getStatus())
+            .roles(roles)
             .build();
+    }
+
+    private String normalizeRoleName(String roleName) {
+        return roleName.startsWith("ROLE_") ? roleName.substring(5) : roleName;
     }
 }

@@ -1,19 +1,19 @@
 package com.festivalapp.backend.dto;
 
-import com.festivalapp.backend.entity.UserStatus;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.util.Set;
+
 @Getter
 @Builder
-public class UserResponse {
+public class CurrentUserResponse {
 
     private Long id;
     private String login;
     private String email;
-    private String phone;
     private String firstName;
     private String lastName;
-    private String avatarUrl;
-    private UserStatus status;
+    private String phone;
+    private Set<String> roles;
 }

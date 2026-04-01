@@ -10,5 +10,5 @@ import lombok.Getter;
 public class AuthResponse {
 
     private String token;
-    private UserResponse user;
+    private CurrentUserResponse user;
 }

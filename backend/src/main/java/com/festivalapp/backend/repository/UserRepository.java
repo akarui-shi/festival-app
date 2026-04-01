@@ -2,6 +2,8 @@ package com.festivalapp.backend.repository;
 
 import com.festivalapp.backend.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
@@ -14,4 +16,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByLogin(String login);
 
     Optional<User> findByEmail(String email);
+
+    @Query("""
+        select distinct u from User u
+        left join fetch u.userRoles ur
+        left join fetch ur.role
+        where u.login = :identifier or u.email = :identifier
+        """)
+    Optional<User> findByLoginOrEmailWithRoles(@Param("identifier") String identifier);
 }
