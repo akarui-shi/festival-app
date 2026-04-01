@@ -7,6 +7,18 @@ const withStatusQuery = (status) => {
   return `?status=${encodeURIComponent(status)}`;
 };
 
+const toQueryString = (params = {}) => {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') {
+      return;
+    }
+    searchParams.append(key, String(value));
+  });
+  const query = searchParams.toString();
+  return query ? `?${query}` : '';
+};
+
 export const adminService = {
   getAdminReviews(status) {
     return apiClient.get(`/api/admin/reviews${withStatusQuery(status)}`);
@@ -56,6 +68,10 @@ export const adminService = {
     return apiClient.get('/api/cities', { auth: false });
   },
 
+  searchCities(params = {}) {
+    return apiClient.get(`/api/cities${toQueryString(params)}`, { auth: false });
+  },
+
   createCity(data) {
     return apiClient.post('/api/admin/cities', data);
   },
@@ -84,4 +100,3 @@ export const adminService = {
     return apiClient.delete(`/api/admin/venues/${id}`);
   }
 };
-

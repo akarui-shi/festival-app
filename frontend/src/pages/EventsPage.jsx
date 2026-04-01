@@ -4,10 +4,10 @@ import EventCard from '../components/EventCard';
 import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
 import EmptyState from '../components/EmptyState';
+import SearchableCitySelect from '../components/SearchableCitySelect';
 import { eventService } from '../services/eventService';
 import { favoriteService } from '../services/favoriteService';
 import { categoryService } from '../services/categoryService';
-import { cityService } from '../services/cityService';
 import { venueService } from '../services/venueService';
 import { useAuth } from '../context/AuthContext';
 
@@ -35,8 +35,8 @@ const EventsPage = () => {
 
   const [events, setEvents] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [cities, setCities] = useState([]);
   const [venues, setVenues] = useState([]);
+  const [selectedCity, setSelectedCity] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFiltersLoading, setIsFiltersLoading] = useState(true);
   const [error, setError] = useState('');
@@ -75,14 +75,12 @@ const EventsPage = () => {
     const loadDictionaries = async () => {
       try {
         setIsFiltersLoading(true);
-        const [categoriesResult, citiesResult, venuesResult] = await Promise.allSettled([
+        const [categoriesResult, venuesResult] = await Promise.allSettled([
           categoryService.getCategories(),
-          cityService.getCities(),
           venueService.getVenues()
         ]);
 
         setCategories(categoriesResult.status === 'fulfilled' && Array.isArray(categoriesResult.value) ? categoriesResult.value : []);
-        setCities(citiesResult.status === 'fulfilled' && Array.isArray(citiesResult.value) ? citiesResult.value : []);
         setVenues(venuesResult.status === 'fulfilled' && Array.isArray(venuesResult.value) ? venuesResult.value : []);
       } finally {
         setIsFiltersLoading(false);
@@ -159,6 +157,7 @@ const EventsPage = () => {
   const handleResetFilters = () => {
     setFilters(DEFAULT_FILTERS);
     setAppliedFilters(DEFAULT_FILTERS);
+    setSelectedCity(null);
   };
 
   return (
@@ -191,17 +190,19 @@ const EventsPage = () => {
             </select>
           </label>
 
-          <label>
-            Город
-            <select name="cityId" value={filters.cityId} onChange={handleFilterInput} disabled={isFiltersLoading}>
-              <option value="">Все города</option>
-              {cities.map((city) => (
-                <option key={city.id} value={city.id}>
-                  {city.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <SearchableCitySelect
+            label="Город"
+            selectedCity={selectedCity}
+            onSelect={(city) => {
+              setSelectedCity(city);
+              setFilters((prev) => ({ ...prev, cityId: String(city.id) }));
+            }}
+            onClear={() => {
+              setSelectedCity(null);
+              setFilters((prev) => ({ ...prev, cityId: '' }));
+            }}
+            disabled={isFiltersLoading}
+          />
 
           <label>
             Площадка

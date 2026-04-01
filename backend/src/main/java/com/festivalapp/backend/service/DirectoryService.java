@@ -12,8 +12,10 @@ import com.festivalapp.backend.repository.VenueRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -38,8 +40,21 @@ public class DirectoryService {
     }
 
     @Transactional(readOnly = true)
-    public List<CityResponse> getCities() {
-        return cityRepository.findAllByOrderByNameAsc().stream()
+    public List<CityResponse> getCities(String query, Integer limit) {
+        List<City> cities;
+        if (StringUtils.hasText(query)) {
+            int safeLimit = limit == null ? 50 : Math.max(1, Math.min(limit, 200));
+            String normalizedQuery = query.trim().toLowerCase(Locale.ROOT);
+            cities = cityRepository.findAllByOrderByNameAsc().stream()
+                .filter(city -> containsIgnoreCase(city.getName(), normalizedQuery)
+                    || containsIgnoreCase(city.getRegion(), normalizedQuery))
+                .limit(safeLimit)
+                .toList();
+        } else {
+            cities = cityRepository.findAllByOrderByNameAsc();
+        }
+
+        return cities.stream()
             .map(this::toCityResponse)
             .toList();
     }
@@ -70,5 +85,12 @@ public class DirectoryService {
             .region(city.getRegion())
             .country(city.getCountry())
             .build();
+    }
+
+    private boolean containsIgnoreCase(String value, String query) {
+        if (!StringUtils.hasText(value) || !StringUtils.hasText(query)) {
+            return false;
+        }
+        return value.toLowerCase(Locale.ROOT).contains(query);
     }
 }
