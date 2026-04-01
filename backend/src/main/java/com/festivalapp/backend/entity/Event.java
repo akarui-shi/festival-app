@@ -88,4 +88,8 @@ public class Event {
     @Builder.Default
     @OneToMany(mappedBy = "event")
     private Set<Favorite> favorites = new HashSet<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "event")
+    private Set<Publication> publications = new HashSet<>();
 }

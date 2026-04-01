@@ -1,8 +1,8 @@
 package com.festivalapp.backend.entity;
 
-public enum PublicationStatus {
+public enum ReviewStatus {
     PENDING,
-    PUBLISHED,
+    APPROVED,
     REJECTED,
     DELETED
 }
