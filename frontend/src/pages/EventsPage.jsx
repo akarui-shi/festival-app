@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import EventCard from '../components/EventCard';
 import Loader from '../components/Loader';
@@ -6,35 +6,95 @@ import ErrorMessage from '../components/ErrorMessage';
 import EmptyState from '../components/EmptyState';
 import { eventService } from '../services/eventService';
 import { favoriteService } from '../services/favoriteService';
+import { categoryService } from '../services/categoryService';
+import { cityService } from '../services/cityService';
+import { venueService } from '../services/venueService';
 import { useAuth } from '../context/AuthContext';
+
+const DEFAULT_FILTERS = {
+  title: '',
+  categoryId: '',
+  cityId: '',
+  venueId: '',
+  status: ''
+};
+
+const EVENT_STATUSES = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
+
+const buildEventQueryParams = (filters) => ({
+  title: filters.title.trim() || undefined,
+  categoryId: filters.categoryId || undefined,
+  cityId: filters.cityId || undefined,
+  venueId: filters.venueId || undefined,
+  status: filters.status || undefined
+});
 
 const EventsPage = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const [events, setEvents] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [venues, setVenues] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFiltersLoading, setIsFiltersLoading] = useState(true);
   const [error, setError] = useState('');
   const [favoriteIds, setFavoriteIds] = useState([]);
   const [favoriteActionEventId, setFavoriteActionEventId] = useState(null);
   const [message, setMessage] = useState('');
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState(DEFAULT_FILTERS);
+
+  const hasActiveFilters = useMemo(
+    () =>
+      Boolean(
+        appliedFilters.title ||
+          appliedFilters.categoryId ||
+          appliedFilters.cityId ||
+          appliedFilters.venueId ||
+          appliedFilters.status
+      ),
+    [appliedFilters]
+  );
+
+  const loadEvents = useCallback(async (currentFilters) => {
+    try {
+      setIsLoading(true);
+      setError('');
+      const data = await eventService.getEvents(buildEventQueryParams(currentFilters));
+      setEvents(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(err.message || 'Не удалось загрузить мероприятия.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const load = async () => {
+    const loadDictionaries = async () => {
       try {
-        setIsLoading(true);
-        setError('');
-        const data = await eventService.getEvents();
-        setEvents(Array.isArray(data) ? data : []);
-      } catch (err) {
-        setError(err.message || 'Не удалось загрузить мероприятия.');
+        setIsFiltersLoading(true);
+        const [categoriesResult, citiesResult, venuesResult] = await Promise.allSettled([
+          categoryService.getCategories(),
+          cityService.getCities(),
+          venueService.getVenues()
+        ]);
+
+        setCategories(categoriesResult.status === 'fulfilled' && Array.isArray(categoriesResult.value) ? categoriesResult.value : []);
+        setCities(citiesResult.status === 'fulfilled' && Array.isArray(citiesResult.value) ? citiesResult.value : []);
+        setVenues(venuesResult.status === 'fulfilled' && Array.isArray(venuesResult.value) ? venuesResult.value : []);
       } finally {
-        setIsLoading(false);
+        setIsFiltersLoading(false);
       }
     };
 
-    load();
+    loadDictionaries();
   }, []);
+
+  useEffect(() => {
+    loadEvents(appliedFilters);
+  }, [appliedFilters, loadEvents]);
 
   const loadFavorites = useCallback(async () => {
     if (!isAuthenticated) {
@@ -86,9 +146,97 @@ const EventsPage = () => {
     }
   };
 
+  const handleFilterInput = (event) => {
+    const { name, value } = event.target;
+    setFilters((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleApplyFilters = (event) => {
+    event.preventDefault();
+    setAppliedFilters({ ...filters, title: filters.title.trim() });
+  };
+
+  const handleResetFilters = () => {
+    setFilters(DEFAULT_FILTERS);
+    setAppliedFilters(DEFAULT_FILTERS);
+  };
+
   return (
     <section className="container page">
       <h1>Мероприятия</h1>
+      <p className="page-subtitle">Найдите событие по названию, категории, городу, площадке или статусу.</p>
+
+      <form className="events-filters panel" onSubmit={handleApplyFilters}>
+        <div className="events-filters__grid">
+          <label>
+            Поиск по названию
+            <input
+              type="text"
+              name="title"
+              value={filters.title}
+              onChange={handleFilterInput}
+              placeholder="Например, джаз или фестиваль"
+            />
+          </label>
+
+          <label>
+            Категория
+            <select name="categoryId" value={filters.categoryId} onChange={handleFilterInput} disabled={isFiltersLoading}>
+              <option value="">Все категории</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Город
+            <select name="cityId" value={filters.cityId} onChange={handleFilterInput} disabled={isFiltersLoading}>
+              <option value="">Все города</option>
+              {cities.map((city) => (
+                <option key={city.id} value={city.id}>
+                  {city.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Площадка
+            <select name="venueId" value={filters.venueId} onChange={handleFilterInput} disabled={isFiltersLoading}>
+              <option value="">Все площадки</option>
+              {venues.map((venue) => (
+                <option key={venue.id} value={venue.id}>
+                  {venue.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Статус
+            <select name="status" value={filters.status} onChange={handleFilterInput}>
+              <option value="">Все статусы</option>
+              {EVENT_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="events-filters__actions">
+          <button type="submit" className="btn btn--primary" disabled={isLoading}>
+            Применить фильтры
+          </button>
+          <button type="button" className="btn btn--ghost" onClick={handleResetFilters} disabled={!hasActiveFilters && !filters.title && !filters.categoryId && !filters.cityId && !filters.venueId && !filters.status}>
+            Сбросить фильтры
+          </button>
+        </div>
+      </form>
 
       {isLoading && <Loader text="Загружаем мероприятия..." />}
       {error && <ErrorMessage message={error} />}
