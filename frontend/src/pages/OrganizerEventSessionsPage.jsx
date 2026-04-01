@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import EmptyState from '../components/EmptyState';
-import ErrorMessage from '../components/ErrorMessage';
+import AlertMessage from '../components/AlertMessage';
 import Loader from '../components/Loader';
 import OrganizerSessionCard from '../components/OrganizerSessionCard';
 import SessionForm from '../components/SessionForm';
 import { organizerService } from '../services/organizerService';
 import { sessionService } from '../services/sessionService';
+import { toUserErrorMessage } from '../utils/errorMessages';
 
 const OrganizerEventSessionsPage = () => {
   const { id } = useParams();
@@ -35,7 +36,7 @@ const OrganizerEventSessionsPage = () => {
       setEvent(eventData);
       setSessions(Array.isArray(sessionsData) ? sessionsData : []);
     } catch (err) {
-      setError(err.message || 'Не удалось загрузить сеансы мероприятия.');
+      setError(toUserErrorMessage(err, 'Не удалось загрузить сеансы мероприятия.'));
     } finally {
       setIsLoading(false);
     }
@@ -65,7 +66,7 @@ const OrganizerEventSessionsPage = () => {
       await loadData();
       setMessage('Сеанс создан.');
     } catch (err) {
-      setError(err.message || 'Не удалось создать сеанс.');
+      setError(toUserErrorMessage(err, 'Не удалось создать сеанс.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -85,7 +86,7 @@ const OrganizerEventSessionsPage = () => {
       await loadData();
       setMessage('Сеанс обновлен.');
     } catch (err) {
-      setError(err.message || 'Не удалось обновить сеанс.');
+      setError(toUserErrorMessage(err, 'Не удалось обновить сеанс.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -105,7 +106,7 @@ const OrganizerEventSessionsPage = () => {
       setSessions((prev) => prev.filter((session) => session.id !== sessionId));
       setMessage('Сеанс удален.');
     } catch (err) {
-      setError(err.message || 'Не удалось удалить сеанс.');
+      setError(toUserErrorMessage(err, 'Не удалось удалить сеанс.'));
     } finally {
       setDeletingId(null);
     }
@@ -122,7 +123,7 @@ const OrganizerEventSessionsPage = () => {
   if (error && !event) {
     return (
       <section className="container page">
-        <ErrorMessage message={error} />
+        <AlertMessage type="error" message={error} onClose={() => setError('')} />
       </section>
     );
   }
@@ -136,8 +137,15 @@ const OrganizerEventSessionsPage = () => {
         </button>
       </div>
 
-      {error && <ErrorMessage message={error} />}
-      {message && <p className="page-note page-note--success">{message}</p>}
+      {error && <AlertMessage type="error" message={error} onClose={() => setError('')} />}
+      {message && (
+        <AlertMessage
+          type="success"
+          message={message}
+          autoHideMs={2600}
+          onClose={() => setMessage('')}
+        />
+      )}
 
       <div className="inline-actions">
         <button type="button" className="btn btn--primary" onClick={() => setShowCreateForm((prev) => !prev)}>
@@ -163,7 +171,6 @@ const OrganizerEventSessionsPage = () => {
           initialValues={createInitialValues}
           isSubmitting={isSubmitting}
           submitLabel="Создать сеанс"
-          errorMessage={error}
           onCancel={() => {
             setShowCreateForm(false);
             setError('');
@@ -177,7 +184,6 @@ const OrganizerEventSessionsPage = () => {
           initialValues={editingSession}
           isSubmitting={isSubmitting}
           submitLabel="Сохранить сеанс"
-          errorMessage={error}
           onCancel={() => {
             setEditingSession(null);
             setError('');

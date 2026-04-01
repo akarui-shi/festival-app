@@ -1,43 +1,51 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { formatRole } from '../utils/formatters';
 import Loader from '../components/Loader';
-import ErrorMessage from '../components/ErrorMessage';
+import AlertMessage from '../components/AlertMessage';
+import { toUserErrorMessage } from '../utils/errorMessages';
+import { useNotification } from '../context/NotificationContext';
 
 const ProfilePage = () => {
   const { currentUser, refreshCurrentUser } = useAuth();
+  const { notifySuccess, notifyError } = useNotification();
   const [profile, setProfile] = useState(currentUser);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadProfile = async () => {
+  const loadProfile = useCallback(
+    async (withLoader = true, withSuccessNotice = false) => {
       try {
-        setIsLoading(true);
+        if (withLoader) {
+          setIsLoading(true);
+        } else {
+          setIsRefreshing(true);
+        }
         setError('');
         const response = await refreshCurrentUser();
-        if (isMounted) {
-          setProfile(response);
+        setProfile(response);
+        if (withSuccessNotice) {
+          notifySuccess('Данные профиля успешно обновлены.');
         }
       } catch (err) {
-        if (isMounted) {
-          setError(err.message || 'Не удалось загрузить профиль.');
-        }
+        const message = toUserErrorMessage(err, 'Не удалось загрузить профиль.');
+        setError(message);
+        notifyError(message);
       } finally {
-        if (isMounted) {
+        if (withLoader) {
           setIsLoading(false);
+        } else {
+          setIsRefreshing(false);
         }
       }
-    };
+    },
+    [notifyError, notifySuccess, refreshCurrentUser]
+  );
 
-    loadProfile();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [refreshCurrentUser]);
+  useEffect(() => {
+    void loadProfile(true, false);
+  }, [loadProfile]);
 
   if (isLoading) {
     return (
@@ -50,14 +58,24 @@ const ProfilePage = () => {
   if (error) {
     return (
       <section className="container page">
-        <ErrorMessage message={error} />
+        <AlertMessage type="error" message={error} onClose={() => setError('')} />
       </section>
     );
   }
 
   return (
     <section className="container page">
-      <h1>Профиль</h1>
+      <div className="page-header-row">
+        <h1>Профиль</h1>
+        <button
+          type="button"
+          className="btn btn--ghost"
+          onClick={() => loadProfile(false, true)}
+          disabled={isRefreshing}
+        >
+          {isRefreshing ? 'Обновляем...' : 'Обновить данные'}
+        </button>
+      </div>
       <div className="panel">
         <p><strong>Логин:</strong> {profile?.login || '-'}</p>
         <p><strong>Электронная почта:</strong> {profile?.email || '-'}</p>

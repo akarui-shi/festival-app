@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import EventCard from '../components/EventCard';
 import Loader from '../components/Loader';
-import ErrorMessage from '../components/ErrorMessage';
+import AlertMessage from '../components/AlertMessage';
 import EmptyState from '../components/EmptyState';
 import { useAuth } from '../context/AuthContext';
 import { useCity } from '../context/CityContext';
@@ -11,6 +11,7 @@ import { eventService } from '../services/eventService';
 import { cityService } from '../services/cityService';
 import { venueService } from '../services/venueService';
 import { userService } from '../services/userService';
+import { toUserErrorMessage } from '../utils/errorMessages';
 
 const FALLBACK_USER_COUNT = 1200;
 
@@ -69,7 +70,7 @@ const HomePage = () => {
         const loadedCities = citiesResult.status === 'fulfilled' && Array.isArray(citiesResult.value) ? citiesResult.value : [];
         const loadedVenues = venuesResult.status === 'fulfilled' && Array.isArray(venuesResult.value) ? venuesResult.value : [];
         if (eventsResult.status === 'rejected') {
-          setError(eventsResult.reason?.message || 'Не удалось загрузить список мероприятий.');
+          setError(toUserErrorMessage(eventsResult.reason, 'Не удалось загрузить список мероприятий.'));
         }
 
         let usersCount = FALLBACK_USER_COUNT;
@@ -85,7 +86,7 @@ const HomePage = () => {
           usersCount
         });
       } catch (err) {
-        setError(err.message || 'Не удалось загрузить данные главной страницы.');
+        setError(toUserErrorMessage(err, 'Не удалось загрузить данные главной страницы.'));
       } finally {
         setIsLoading(false);
       }
@@ -170,7 +171,7 @@ const HomePage = () => {
       <section className="container home-section">
         <h2>Город в цифрах</h2>
         {isLoading && <Loader text="Загружаем статистику..." />}
-        {error && <ErrorMessage message={error} />}
+        {error && <AlertMessage type="error" message={error} onClose={() => setError('')} />}
         {!isLoading && (
           <div className="home-stats">
             <article className="home-stat-card">
@@ -244,8 +245,17 @@ const HomePage = () => {
             </button>
           </form>
 
-          {subscriptionError && <ErrorMessage message={subscriptionError} />}
-          {subscriptionMessage && <p className="page-note page-note--success">{subscriptionMessage}</p>}
+          {subscriptionError && (
+            <AlertMessage type="error" message={subscriptionError} onClose={() => setSubscriptionError('')} />
+          )}
+          {subscriptionMessage && (
+            <AlertMessage
+              type="success"
+              message={subscriptionMessage}
+              autoHideMs={3000}
+              onClose={() => setSubscriptionMessage('')}
+            />
+          )}
         </div>
       </section>
     </div>

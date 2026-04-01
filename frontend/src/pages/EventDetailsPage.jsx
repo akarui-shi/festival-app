@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Loader from '../components/Loader';
-import ErrorMessage from '../components/ErrorMessage';
+import AlertMessage from '../components/AlertMessage';
 import EmptyState from '../components/EmptyState';
 import SessionCard from '../components/SessionCard';
 import RegistrationFormModal from '../components/RegistrationFormModal';
@@ -42,7 +42,7 @@ const EventDetailsPage = () => {
   const [registrationResult, setRegistrationResult] = useState(null);
   const [isRegistrationSubmitting, setIsRegistrationSubmitting] = useState(false);
 
-  const [favoriteMessage, setFavoriteMessage] = useState('');
+  const [favoriteNotice, setFavoriteNotice] = useState(null);
   const [selectedGalleryIndex, setSelectedGalleryIndex] = useState(0);
 
   const loadSessions = useCallback(async () => {
@@ -98,11 +98,11 @@ const EventDetailsPage = () => {
 
   const onAddFavorite = async () => {
     try {
-      setFavoriteMessage('');
+      setFavoriteNotice(null);
       await favoriteService.addFavorite(event.id);
-      setFavoriteMessage('Добавлено в избранное.');
+      setFavoriteNotice({ type: 'success', message: 'Добавлено в избранное.' });
     } catch (err) {
-      setFavoriteMessage(toUserErrorMessage(err, 'Не удалось добавить в избранное.'));
+      setFavoriteNotice({ type: 'error', message: toUserErrorMessage(err, 'Не удалось добавить в избранное.') });
     }
   };
 
@@ -110,6 +110,7 @@ const EventDetailsPage = () => {
     setRegistrationError('');
     setRegistrationSuccess('');
     setRegistrationResult(null);
+    setFavoriteNotice(null);
 
     if (!isAuthenticated) {
       navigate('/login', { state: { from: `/events/${id}` } });
@@ -202,7 +203,7 @@ const EventDetailsPage = () => {
     : 'не указано';
 
   if (isLoading) return <section className="container page"><Loader text="Загружаем мероприятие..." /></section>;
-  if (error) return <section className="container page"><ErrorMessage message={error} /></section>;
+  if (error) return <section className="container page"><AlertMessage type="error" message={error} onClose={() => setError('')} /></section>;
   if (!event) return null;
 
   return (
@@ -307,12 +308,21 @@ const EventDetailsPage = () => {
       <div className="panel">
         <h2>Сеансы</h2>
 
-        {registrationSuccess && <p className="page-note page-note--success">{registrationSuccess}</p>}
+        {registrationSuccess && (
+          <AlertMessage
+            type="success"
+            message={registrationSuccess}
+            autoHideMs={3200}
+            onClose={() => setRegistrationSuccess('')}
+          />
+        )}
         {registrationResult?.qrToken && (
           <QRCodeDisplay token={registrationResult.qrToken} label="QR-код для посещения" />
         )}
         {sessionsLoading && <Loader text="Загружаем сеансы..." />}
-        {!sessionsLoading && sessionsError && <ErrorMessage message={sessionsError} />}
+        {!sessionsLoading && sessionsError && (
+          <AlertMessage type="error" message={sessionsError} onClose={() => setSessionsError('')} />
+        )}
         {!sessionsLoading && !sessionsError && sessions.length === 0 && (
           <EmptyState message="Сеансы пока не добавлены." />
         )}
@@ -333,7 +343,9 @@ const EventDetailsPage = () => {
         </p>
 
         {reviewsLoading && <Loader text="Загружаем отзывы..." />}
-        {!reviewsLoading && reviewsError && <ErrorMessage message={reviewsError} />}
+        {!reviewsLoading && reviewsError && (
+          <AlertMessage type="error" message={reviewsError} onClose={() => setReviewsError('')} />
+        )}
         {!reviewsLoading && !reviewsError && reviews.length === 0 && (
           <EmptyState message="Пока нет опубликованных отзывов." />
         )}
@@ -388,7 +400,14 @@ const EventDetailsPage = () => {
           <p className="muted">Чтобы оставить отзыв, войдите в аккаунт.</p>
         )}
 
-        {reviewMessage && <p className="page-note page-note--success">{reviewMessage}</p>}
+        {reviewMessage && (
+          <AlertMessage
+            type="success"
+            message={reviewMessage}
+            autoHideMs={3000}
+            onClose={() => setReviewMessage('')}
+          />
+        )}
       </div>
 
       {isAuthenticated && (
@@ -396,7 +415,14 @@ const EventDetailsPage = () => {
           <button className="btn btn--primary" type="button" onClick={onAddFavorite}>
             Добавить в избранное
           </button>
-          {favoriteMessage && <p className="page-note">{favoriteMessage}</p>}
+          {favoriteNotice && (
+            <AlertMessage
+              type={favoriteNotice.type}
+              message={favoriteNotice.message}
+              autoHideMs={favoriteNotice.type === 'success' ? 2800 : 0}
+              onClose={() => setFavoriteNotice(null)}
+            />
+          )}
         </div>
       )}
 

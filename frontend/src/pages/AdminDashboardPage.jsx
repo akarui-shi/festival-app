@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import AdminTabs from '../components/AdminTabs';
 import AdminEmptyState from '../components/AdminEmptyState';
 import Loader from '../components/Loader';
-import ErrorMessage from '../components/ErrorMessage';
+import AlertMessage from '../components/AlertMessage';
 import AdminEventModerationCard from '../components/AdminEventModerationCard';
 import PublicationModerationCard from '../components/PublicationModerationCard';
 import UserManagementTable from '../components/UserManagementTable';
@@ -12,6 +12,7 @@ import { publicationService } from '../services/publicationService';
 import { userService } from '../services/userService';
 import { categoryService } from '../services/categoryService';
 import { formatStatus } from '../utils/formatters';
+import { toUserErrorMessage } from '../utils/errorMessages';
 
 const TABS = [
   { key: 'events', label: 'Мероприятия' },
@@ -90,7 +91,7 @@ const AdminDashboardPage = () => {
           await loadCategories();
         }
       } catch (err) {
-        setError(err.message || 'Не удалось загрузить данные админ-панели.');
+        setError(toUserErrorMessage(err, 'Не удалось загрузить данные админ-панели.'));
       } finally {
         setIsLoading(false);
       }
@@ -110,7 +111,7 @@ const AdminDashboardPage = () => {
       await loadEvents();
       setMessage('Статус мероприятия обновлен.');
     } catch (err) {
-      setError(err.message || 'Не удалось обновить статус мероприятия.');
+      setError(toUserErrorMessage(err, 'Не удалось обновить статус мероприятия.'));
     } finally {
       setEventAction({ id: null, status: '' });
     }
@@ -125,7 +126,7 @@ const AdminDashboardPage = () => {
       await loadPublications();
       setMessage('Статус публикации обновлен.');
     } catch (err) {
-      setError(err.message || 'Не удалось обновить статус публикации.');
+      setError(toUserErrorMessage(err, 'Не удалось обновить статус публикации.'));
     } finally {
       setPublicationAction({ id: null, status: '' });
     }
@@ -157,7 +158,7 @@ const AdminDashboardPage = () => {
       setUsers((prev) => prev.map((user) => (user.id === userId ? updatedUser : user)));
       setMessage('Пользователь обновлен.');
     } catch (err) {
-      setError(err.message || 'Не удалось сохранить изменения пользователя.');
+      setError(toUserErrorMessage(err, 'Не удалось сохранить изменения пользователя.'));
     } finally {
       setSavingUserId(null);
     }
@@ -180,7 +181,7 @@ const AdminDashboardPage = () => {
       setEditingCategory(null);
       await loadCategories();
     } catch (err) {
-      setError(err.message || 'Не удалось сохранить категорию.');
+      setError(toUserErrorMessage(err, 'Не удалось сохранить категорию.'));
     } finally {
       setDictionarySubmitting(false);
     }
@@ -200,7 +201,7 @@ const AdminDashboardPage = () => {
       await loadCategories();
       setMessage('Категория удалена.');
     } catch (err) {
-      setError(err.message || 'Не удалось удалить категорию.');
+      setError(toUserErrorMessage(err, 'Не удалось удалить категорию.'));
     } finally {
       setDeletingCategoryId(null);
     }
@@ -223,8 +224,15 @@ const AdminDashboardPage = () => {
       />
 
       {isLoading && <Loader text="Загружаем данные..." />}
-      {error && <ErrorMessage message={error} />}
-      {message && <p className="page-note page-note--success">{message}</p>}
+      {error && <AlertMessage type="error" message={error} onClose={() => setError('')} />}
+      {message && (
+        <AlertMessage
+          type="success"
+          message={message}
+          autoHideMs={2800}
+          onClose={() => setMessage('')}
+        />
+      )}
 
       {!isLoading && activeTab === 'events' && (
         <div className="admin-section">

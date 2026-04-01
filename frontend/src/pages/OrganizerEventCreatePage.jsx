@@ -75,7 +75,6 @@ const OrganizerEventCreatePage = () => {
         categories={categories}
         isSubmitting={isSubmitting}
         submitLabel="Создать мероприятие"
-        errorMessage={error}
         onSubmit={handleSubmit}
       />
     </section>

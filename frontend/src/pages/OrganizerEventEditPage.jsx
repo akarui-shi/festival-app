@@ -112,7 +112,6 @@ const OrganizerEventEditPage = () => {
         categories={categories}
         isSubmitting={isSubmitting}
         submitLabel="Сохранить изменения"
-        errorMessage={error}
         onSubmit={handleSubmit}
       />
     </section>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Map, Placemark, YMaps, useYMaps } from '@pbe/react-yandex-maps';
-import ErrorMessage from './ErrorMessage';
+import AlertMessage from './AlertMessage';
 import { uploadService } from '../services/uploadService';
 import { cityService } from '../services/cityService';
 import { buildYandexMapsQuery, YANDEX_MAPS_API_KEY } from '../utils/config';
@@ -552,8 +552,15 @@ const EventFormContent = ({
         </div>
 
         {isResolvingLocation && <p className="muted">Определяем адрес и координаты...</p>}
-        {locationMessage && <p className="page-note page-note--success">{locationMessage}</p>}
-        {locationError && <ErrorMessage message={locationError} />}
+        {locationMessage && (
+          <AlertMessage
+            type="success"
+            message={locationMessage}
+            autoHideMs={2400}
+            onClose={() => setLocationMessage('')}
+          />
+        )}
+        {locationError && <AlertMessage type="error" message={locationError} onClose={() => setLocationError('')} />}
       </div>
 
       <div className="event-cover-upload">
@@ -569,9 +576,16 @@ const EventFormContent = ({
         </label>
         <p className="muted">Можно загрузить несколько фото. Поддерживаются JPG, PNG, WEBP, GIF до 5 МБ каждое.</p>
 
-        {isUploadingImage && <p className="page-note">Загружаем изображения...</p>}
-        {uploadError && <ErrorMessage message={uploadError} />}
-        {uploadMessage && <p className="page-note page-note--success">{uploadMessage}</p>}
+        {isUploadingImage && <AlertMessage type="info" message="Загружаем изображения..." />}
+        {uploadError && <AlertMessage type="error" message={uploadError} onClose={() => setUploadError('')} />}
+        {uploadMessage && (
+          <AlertMessage
+            type="success"
+            message={uploadMessage}
+            autoHideMs={2500}
+            onClose={() => setUploadMessage('')}
+          />
+        )}
 
         {formData.eventImages.length > 0 ? (
           <div className="event-images-grid">
@@ -620,7 +634,7 @@ const EventFormContent = ({
         </div>
       </div>
 
-      {errorMessage && <ErrorMessage message={errorMessage} />}
+      {errorMessage && <AlertMessage type="error" message={errorMessage} />}
 
       <button className="btn btn--primary" type="submit" disabled={isSubmitting || isUploadingImage || isResolvingLocation}>
         {isSubmitting ? 'Сохраняем...' : submitLabel}
