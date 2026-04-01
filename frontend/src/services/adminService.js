@@ -62,33 +62,5 @@ export const adminService = {
 
   searchCities(params = {}) {
     return apiClient.get(`/api/cities${toQueryString(params)}`, { auth: false });
-  },
-
-  createCity(data) {
-    return apiClient.post('/api/admin/cities', data);
-  },
-
-  updateCity(id, data) {
-    return apiClient.put(`/api/admin/cities/${id}`, data);
-  },
-
-  deleteCity(id) {
-    return apiClient.delete(`/api/admin/cities/${id}`);
-  },
-
-  getVenues() {
-    return apiClient.get('/api/venues', { auth: false });
-  },
-
-  createVenue(data) {
-    return apiClient.post('/api/admin/venues', data);
-  },
-
-  updateVenue(id, data) {
-    return apiClient.put(`/api/admin/venues/${id}`, data);
-  },
-
-  deleteVenue(id) {
-    return apiClient.delete(`/api/admin/venues/${id}`);
   }
 };

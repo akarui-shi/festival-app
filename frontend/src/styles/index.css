@@ -761,6 +761,15 @@ a {
   height: 320px;
 }
 
+.venue-form-map {
+  display: grid;
+  gap: 8px;
+}
+
+.venue-form-map .muted {
+  margin: 0;
+}
+
 .page-header-row {
   display: flex;
   align-items: center;

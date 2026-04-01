@@ -5,9 +5,10 @@ import ErrorMessage from '../components/ErrorMessage';
 import Loader from '../components/Loader';
 import OrganizerSessionCard from '../components/OrganizerSessionCard';
 import SessionForm from '../components/SessionForm';
-import { directoryService } from '../services/directoryService';
+import VenueForm from '../components/VenueForm';
 import { organizerService } from '../services/organizerService';
 import { sessionService } from '../services/sessionService';
+import { venueService } from '../services/venueService';
 
 const OrganizerEventSessionsPage = () => {
   const { id } = useParams();
@@ -21,8 +22,10 @@ const OrganizerEventSessionsPage = () => {
   const [message, setMessage] = useState('');
 
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showVenueForm, setShowVenueForm] = useState(false);
   const [editingSession, setEditingSession] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isVenueSubmitting, setIsVenueSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
 
   const loadData = async () => {
@@ -32,7 +35,7 @@ const OrganizerEventSessionsPage = () => {
       const [eventData, sessionsData, venuesData] = await Promise.all([
         organizerService.getMyEventById(id),
         sessionService.getEventSessions(id),
-        directoryService.getVenues()
+        venueService.getVenues()
       ]);
 
       setEvent(eventData);
@@ -116,6 +119,22 @@ const OrganizerEventSessionsPage = () => {
     }
   };
 
+  const handleCreateVenue = async (payload) => {
+    try {
+      setIsVenueSubmitting(true);
+      setError('');
+      setMessage('');
+      await organizerService.createVenue(payload);
+      setShowVenueForm(false);
+      await loadData();
+      setMessage('Площадка создана и доступна для выбора в сеансах.');
+    } catch (err) {
+      setError(err.message || 'Не удалось создать площадку.');
+    } finally {
+      setIsVenueSubmitting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <section className="container page">
@@ -144,11 +163,14 @@ const OrganizerEventSessionsPage = () => {
       {error && <ErrorMessage message={error} />}
       {message && <p className="page-note page-note--success">{message}</p>}
 
-      {!showCreateForm && (
-        <button type="button" className="btn btn--primary" onClick={() => setShowCreateForm(true)}>
-          Добавить сеанс
+      <div className="inline-actions">
+        <button type="button" className="btn btn--primary" onClick={() => setShowCreateForm((prev) => !prev)}>
+          {showCreateForm ? 'Скрыть форму сеанса' : 'Добавить сеанс'}
         </button>
-      )}
+        <button type="button" className="btn btn--ghost" onClick={() => setShowVenueForm((prev) => !prev)}>
+          {showVenueForm ? 'Скрыть форму площадки' : 'Создать площадку'}
+        </button>
+      </div>
 
       {showCreateForm && (
         <SessionForm
@@ -162,6 +184,20 @@ const OrganizerEventSessionsPage = () => {
             setError('');
           }}
           onSubmit={handleCreateSession}
+        />
+      )}
+
+      {showVenueForm && (
+        <VenueForm
+          initialValues={null}
+          isSubmitting={isVenueSubmitting}
+          errorMessage={error}
+          submitLabel="Создать площадку"
+          onCancel={() => {
+            setShowVenueForm(false);
+            setError('');
+          }}
+          onSubmit={handleCreateVenue}
         />
       )}
 

@@ -1,5 +1,7 @@
 package com.festivalapp.backend.dto;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -11,7 +13,7 @@ import java.math.BigDecimal;
 
 @Getter
 @Setter
-public class AdminVenueUpsertRequest {
+public class OrganizerVenueCreateRequest {
 
     @NotBlank(message = "Venue name is required")
     @Size(max = 255, message = "Venue name is too long")
@@ -24,11 +26,16 @@ public class AdminVenueUpsertRequest {
     @Size(max = 500, message = "Venue contacts is too long")
     private String contacts;
 
+    @DecimalMin(value = "-90.0", message = "Latitude must be >= -90")
+    @DecimalMax(value = "90.0", message = "Latitude must be <= 90")
+    private BigDecimal latitude;
+
+    @DecimalMin(value = "-180.0", message = "Longitude must be >= -180")
+    @DecimalMax(value = "180.0", message = "Longitude must be <= 180")
+    private BigDecimal longitude;
+
     @Min(value = 0, message = "Capacity must be >= 0")
     private Integer capacity;
-
-    private BigDecimal latitude;
-    private BigDecimal longitude;
 
     @NotNull(message = "City ID is required")
     private Long cityId;

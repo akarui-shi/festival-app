@@ -39,6 +39,9 @@ public class Venue {
     @Column(nullable = false)
     private String address;
 
+    @Column(length = 500)
+    private String contacts;
+
     private BigDecimal latitude;
 
     private BigDecimal longitude;

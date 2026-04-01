@@ -171,6 +171,7 @@ public class AdminManagementService {
         Venue saved = venueRepository.save(Venue.builder()
             .name(normalizeRequired(request.getName(), "Venue name is required"))
             .address(normalizeRequired(request.getAddress(), "Venue address is required"))
+            .contacts(normalizeOptional(request.getContacts()))
             .capacity(request.getCapacity())
             .latitude(request.getLatitude())
             .longitude(request.getLongitude())
@@ -188,6 +189,7 @@ public class AdminManagementService {
 
         venue.setName(normalizeRequired(request.getName(), "Venue name is required"));
         venue.setAddress(normalizeRequired(request.getAddress(), "Venue address is required"));
+        venue.setContacts(normalizeOptional(request.getContacts()));
         venue.setCapacity(request.getCapacity());
         venue.setLatitude(request.getLatitude());
         venue.setLongitude(request.getLongitude());
@@ -324,6 +326,9 @@ public class AdminManagementService {
             .id(venue.getId())
             .name(venue.getName())
             .address(venue.getAddress())
+            .contacts(venue.getContacts())
+            .latitude(venue.getLatitude())
+            .longitude(venue.getLongitude())
             .capacity(venue.getCapacity())
             .cityId(venue.getCity() != null ? venue.getCity().getId() : null)
             .cityName(venue.getCity() != null ? venue.getCity().getName() : null)

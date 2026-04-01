@@ -10,17 +10,5 @@ export const cityService = {
 
   searchCities(params = {}) {
     return adminService.searchCities(params);
-  },
-
-  createCity(data) {
-    return adminService.createCity(data);
-  },
-
-  updateCity(id, data) {
-    return adminService.updateCity(id, data);
-  },
-
-  deleteCity(id) {
-    return adminService.deleteCity(id);
   }
 };

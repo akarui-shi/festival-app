@@ -6,20 +6,14 @@ import ErrorMessage from '../components/ErrorMessage';
 import PublicationModerationCard from '../components/PublicationModerationCard';
 import UserManagementTable from '../components/UserManagementTable';
 import CategoryForm from '../components/CategoryForm';
-import CityForm from '../components/CityForm';
-import VenueForm from '../components/VenueForm';
 import { publicationService } from '../services/publicationService';
 import { userService } from '../services/userService';
 import { categoryService } from '../services/categoryService';
-import { cityService } from '../services/cityService';
-import { venueService } from '../services/venueService';
 
 const TABS = [
   { key: 'publications', label: 'Публикации' },
   { key: 'users', label: 'Пользователи' },
-  { key: 'categories', label: 'Категории' },
-  { key: 'cities', label: 'Города' },
-  { key: 'venues', label: 'Площадки' }
+  { key: 'categories', label: 'Категории' }
 ];
 
 const PUBLICATION_STATUSES = ['', 'PENDING', 'PUBLISHED', 'REJECTED', 'DELETED'];
@@ -42,21 +36,15 @@ const AdminDashboardPage = () => {
   const [message, setMessage] = useState('');
 
   const [publicationStatusFilter, setPublicationStatusFilter] = useState('');
-
   const [publications, setPublications] = useState([]);
   const [users, setUsers] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [cities, setCities] = useState([]);
-  const [venues, setVenues] = useState([]);
 
   const [publicationAction, setPublicationAction] = useState({ id: null, status: '' });
   const [savingUserId, setSavingUserId] = useState(null);
-
   const [editingCategory, setEditingCategory] = useState(null);
-  const [editingCity, setEditingCity] = useState(null);
-  const [editingVenue, setEditingVenue] = useState(null);
   const [dictionarySubmitting, setDictionarySubmitting] = useState(false);
-  const [dictionaryDeleting, setDictionaryDeleting] = useState({ type: '', id: null });
+  const [deletingCategoryId, setDeletingCategoryId] = useState(null);
 
   const loadPublications = useCallback(async () => {
     const data = await publicationService.getAdminPublications(publicationStatusFilter || undefined);
@@ -73,16 +61,6 @@ const AdminDashboardPage = () => {
     setCategories(Array.isArray(data) ? data : []);
   }, []);
 
-  const loadCities = useCallback(async () => {
-    const data = await cityService.getCities();
-    setCities(Array.isArray(data) ? data : []);
-  }, []);
-
-  const loadVenues = useCallback(async () => {
-    const data = await venueService.getVenues();
-    setVenues(Array.isArray(data) ? data : []);
-  }, []);
-
   useEffect(() => {
     const load = async () => {
       try {
@@ -95,10 +73,6 @@ const AdminDashboardPage = () => {
           await loadUsers();
         } else if (activeTab === 'categories') {
           await loadCategories();
-        } else if (activeTab === 'cities') {
-          await loadCities();
-        } else if (activeTab === 'venues') {
-          await Promise.all([loadVenues(), loadCities()]);
         }
       } catch (err) {
         setError(err.message || 'Не удалось загрузить данные админ-панели.');
@@ -108,23 +82,9 @@ const AdminDashboardPage = () => {
     };
 
     load();
-  }, [activeTab, loadPublications, loadUsers, loadCategories, loadCities, loadVenues]);
+  }, [activeTab, loadPublications, loadUsers, loadCategories]);
 
   const currentTabLabel = useMemo(() => TABS.find((tab) => tab.key === activeTab)?.label || '', [activeTab]);
-
-  const refreshCurrentTab = async () => {
-    if (activeTab === 'publications') {
-      await loadPublications();
-    } else if (activeTab === 'users') {
-      await loadUsers();
-    } else if (activeTab === 'categories') {
-      await loadCategories();
-    } else if (activeTab === 'cities') {
-      await loadCities();
-    } else if (activeTab === 'venues') {
-      await Promise.all([loadVenues(), loadCities()]);
-    }
-  };
 
   const handlePublicationStatusChange = async (publicationId, status) => {
     try {
@@ -196,79 +156,23 @@ const AdminDashboardPage = () => {
     }
   };
 
-  const handleCitySubmit = async (payload) => {
-    try {
-      setDictionarySubmitting(true);
-      setError('');
-      setMessage('');
-
-      if (editingCity) {
-        await cityService.updateCity(editingCity.id, payload);
-        setMessage('Город обновлен.');
-      } else {
-        await cityService.createCity(payload);
-        setMessage('Город создан.');
-      }
-
-      setEditingCity(null);
-      await loadCities();
-    } catch (err) {
-      setError(err.message || 'Не удалось сохранить город.');
-    } finally {
-      setDictionarySubmitting(false);
-    }
-  };
-
-  const handleVenueSubmit = async (payload) => {
-    try {
-      setDictionarySubmitting(true);
-      setError('');
-      setMessage('');
-
-      if (editingVenue) {
-        await venueService.updateVenue(editingVenue.id, payload);
-        setMessage('Площадка обновлена.');
-      } else {
-        await venueService.createVenue(payload);
-        setMessage('Площадка создана.');
-      }
-
-      setEditingVenue(null);
-      await loadVenues();
-    } catch (err) {
-      setError(err.message || 'Не удалось сохранить площадку.');
-    } finally {
-      setDictionarySubmitting(false);
-    }
-  };
-
-  const handleDeleteDictionaryItem = async (type, id) => {
-    const confirmed = window.confirm('Удалить запись?');
+  const handleDeleteCategory = async (id) => {
+    const confirmed = window.confirm('Удалить категорию?');
     if (!confirmed) {
       return;
     }
 
     try {
-      setDictionaryDeleting({ type, id });
+      setDeletingCategoryId(id);
       setError('');
       setMessage('');
-
-      if (type === 'category') {
-        await categoryService.deleteCategory(id);
-        setMessage('Категория удалена.');
-      } else if (type === 'city') {
-        await cityService.deleteCity(id);
-        setMessage('Город удален.');
-      } else if (type === 'venue') {
-        await venueService.deleteVenue(id);
-        setMessage('Площадка удалена.');
-      }
-
-      await refreshCurrentTab();
+      await categoryService.deleteCategory(id);
+      await loadCategories();
+      setMessage('Категория удалена.');
     } catch (err) {
-      setError(err.message || 'Не удалось удалить запись.');
+      setError(err.message || 'Не удалось удалить категорию.');
     } finally {
-      setDictionaryDeleting({ type: '', id: null });
+      setDeletingCategoryId(null);
     }
   };
 
@@ -276,6 +180,7 @@ const AdminDashboardPage = () => {
     <section className="container page">
       <h1>Админ-панель</h1>
       <p className="page-subtitle">Раздел: {currentTabLabel}</p>
+      <p className="muted">Управление городами и площадками перенесено в кабинет организатора.</p>
 
       <AdminTabs
         tabs={TABS}
@@ -363,95 +268,10 @@ const AdminDashboardPage = () => {
                     <button
                       type="button"
                       className="btn btn--danger"
-                      onClick={() => handleDeleteDictionaryItem('category', category.id)}
-                      disabled={dictionaryDeleting.type === 'category' && dictionaryDeleting.id === category.id}
+                      onClick={() => handleDeleteCategory(category.id)}
+                      disabled={deletingCategoryId === category.id}
                     >
-                      {dictionaryDeleting.type === 'category' && dictionaryDeleting.id === category.id ? 'Удаляем...' : 'Удалить'}
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {!isLoading && activeTab === 'cities' && (
-        <div className="admin-section">
-          <CityForm
-            initialValues={editingCity}
-            isSubmitting={dictionarySubmitting}
-            errorMessage={error}
-            submitLabel={editingCity ? 'Сохранить город' : 'Создать город'}
-            onCancel={editingCity ? () => setEditingCity(null) : null}
-            onSubmit={handleCitySubmit}
-          />
-
-          {cities.length === 0 ? (
-            <AdminEmptyState message="Нет записей в справочнике." />
-          ) : (
-            <div className="admin-list">
-              {cities.map((city) => (
-                <article key={city.id} className="admin-dictionary-item">
-                  <div>
-                    <strong>{city.name}</strong>
-                    <p className="muted">Регион: {city.region || '-'} | Страна: {city.country || '-'}</p>
-                  </div>
-                  <div className="inline-actions">
-                    <button type="button" className="btn btn--ghost" onClick={() => setEditingCity(city)}>
-                      Редактировать
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn--danger"
-                      onClick={() => handleDeleteDictionaryItem('city', city.id)}
-                      disabled={dictionaryDeleting.type === 'city' && dictionaryDeleting.id === city.id}
-                    >
-                      {dictionaryDeleting.type === 'city' && dictionaryDeleting.id === city.id ? 'Удаляем...' : 'Удалить'}
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {!isLoading && activeTab === 'venues' && (
-        <div className="admin-section">
-          <VenueForm
-            initialValues={editingVenue}
-            cities={cities}
-            isSubmitting={dictionarySubmitting}
-            errorMessage={error}
-            submitLabel={editingVenue ? 'Сохранить площадку' : 'Создать площадку'}
-            onCancel={editingVenue ? () => setEditingVenue(null) : null}
-            onSubmit={handleVenueSubmit}
-          />
-
-          {venues.length === 0 ? (
-            <AdminEmptyState message="Нет записей в справочнике." />
-          ) : (
-            <div className="admin-list">
-              {venues.map((venue) => (
-                <article key={venue.id} className="admin-dictionary-item">
-                  <div>
-                    <strong>{venue.name}</strong>
-                    <p className="muted">
-                      {venue.address} | Город: {venue.cityName || '-'} | Вместимость: {venue.capacity ?? '-'}
-                    </p>
-                  </div>
-                  <div className="inline-actions">
-                    <button type="button" className="btn btn--ghost" onClick={() => setEditingVenue(venue)}>
-                      Редактировать
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn--danger"
-                      onClick={() => handleDeleteDictionaryItem('venue', venue.id)}
-                      disabled={dictionaryDeleting.type === 'venue' && dictionaryDeleting.id === venue.id}
-                    >
-                      {dictionaryDeleting.type === 'venue' && dictionaryDeleting.id === venue.id ? 'Удаляем...' : 'Удалить'}
+                      {deletingCategoryId === category.id ? 'Удаляем...' : 'Удалить'}
                     </button>
                   </div>
                 </article>

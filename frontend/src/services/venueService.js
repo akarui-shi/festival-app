@@ -1,20 +1,7 @@
-import { adminService } from './adminService';
+import { apiClient } from './apiClient';
 
 export const venueService = {
   getVenues() {
-    return adminService.getVenues();
-  },
-
-  createVenue(data) {
-    return adminService.createVenue(data);
-  },
-
-  updateVenue(id, data) {
-    return adminService.updateVenue(id, data);
-  },
-
-  deleteVenue(id) {
-    return adminService.deleteVenue(id);
+    return apiClient.get('/api/venues', { auth: false });
   }
 };
-
