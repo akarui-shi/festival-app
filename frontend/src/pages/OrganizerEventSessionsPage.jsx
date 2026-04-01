@@ -6,7 +6,7 @@ import Loader from '../components/Loader';
 import OrganizerSessionCard from '../components/OrganizerSessionCard';
 import SessionForm from '../components/SessionForm';
 import { directoryService } from '../services/directoryService';
-import { eventService } from '../services/eventService';
+import { organizerService } from '../services/organizerService';
 import { sessionService } from '../services/sessionService';
 
 const OrganizerEventSessionsPage = () => {
@@ -30,7 +30,7 @@ const OrganizerEventSessionsPage = () => {
       setIsLoading(true);
       setError('');
       const [eventData, sessionsData, venuesData] = await Promise.all([
-        eventService.getEventById(id),
+        organizerService.getMyEventById(id),
         sessionService.getEventSessions(id),
         directoryService.getVenues()
       ]);
@@ -204,4 +204,3 @@ const OrganizerEventSessionsPage = () => {
 };
 
 export default OrganizerEventSessionsPage;
-

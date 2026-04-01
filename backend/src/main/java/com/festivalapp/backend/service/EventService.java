@@ -71,8 +71,19 @@ public class EventService {
                                            String status,
                                            String sortBy,
                                            String sortDir) {
-        EventStatus eventStatus = parseStatus(status);
-        Specification<Event> specification = buildSpecification(title, categoryId, venueId, cityId, eventStatus);
+        EventStatus requestedStatus = parseStatus(status);
+        // Public feed must expose only published events regardless of caller.
+        if (requestedStatus != null && requestedStatus != EventStatus.PUBLISHED) {
+            return List.of();
+        }
+
+        Specification<Event> specification = buildSpecification(
+            title,
+            categoryId,
+            venueId,
+            cityId,
+            EventStatus.PUBLISHED
+        );
         Sort sort = buildSort(sortBy, sortDir);
 
         return eventRepository.findAll(specification, sort).stream()
@@ -84,6 +95,19 @@ public class EventService {
     public EventDetailsResponse getById(Long id) {
         Event event = eventRepository.findDetailedById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + id));
+        if (event.getStatus() != EventStatus.PUBLISHED) {
+            throw new ResourceNotFoundException("Event not found: " + id);
+        }
+        return toDetailsResponse(event);
+    }
+
+    @Transactional(readOnly = true)
+    public EventDetailsResponse getOrganizerEventById(Long id, String actorIdentifier) {
+        User actor = loadActor(actorIdentifier);
+        Event event = eventRepository.findDetailedById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + id));
+
+        validateOrganizerViewAccess(actor, event);
         return toDetailsResponse(event);
     }
 
@@ -247,6 +271,22 @@ public class EventService {
         if (actor.getOrganizer() == null || event.getOrganizer() == null
             || !actor.getOrganizer().getId().equals(event.getOrganizer().getId())) {
             throw new AccessDeniedException("Organizer can manage only own events");
+        }
+    }
+
+    private void validateOrganizerViewAccess(User actor, Event event) {
+        if (hasRole(actor, RoleName.ROLE_ADMIN)) {
+            return;
+        }
+
+        if (!hasRole(actor, RoleName.ROLE_ORGANIZER)) {
+            throw new AccessDeniedException("Only organizers or admins can access organizer events");
+        }
+
+        Organizer actorOrganizer = resolveActorOrganizer(actor);
+        if (actorOrganizer == null || event.getOrganizer() == null
+            || !actorOrganizer.getId().equals(event.getOrganizer().getId())) {
+            throw new AccessDeniedException("Organizer can access only own events");
         }
     }
 

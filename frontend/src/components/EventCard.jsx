@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { formatStatus } from '../utils/formatters';
 
 const EventCard = ({ event, onFavoriteClick, favoriteButtonText, isFavoriteButtonLoading = false }) => {
   const resolvedFavoriteText = favoriteButtonText || 'В избранное';
@@ -20,7 +19,6 @@ const EventCard = ({ event, onFavoriteClick, favoriteButtonText, isFavoriteButto
 
         <div className="event-card__meta">
           <span>Возраст {event.ageRating ?? '-'}</span>
-          <span>{formatStatus(event.status)}</span>
         </div>
 
         <div className="event-card__actions">

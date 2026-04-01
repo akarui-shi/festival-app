@@ -4,6 +4,7 @@ import EventForm from '../components/EventForm';
 import Loader from '../components/Loader';
 import ErrorMessage from '../components/ErrorMessage';
 import { eventService } from '../services/eventService';
+import { organizerService } from '../services/organizerService';
 import { directoryService } from '../services/directoryService';
 
 const OrganizerEventEditPage = () => {
@@ -22,7 +23,7 @@ const OrganizerEventEditPage = () => {
         setIsLoading(true);
         setError('');
         const [eventData, categoriesData] = await Promise.all([
-          eventService.getEventById(id),
+          organizerService.getMyEventById(id),
           directoryService.getCategories()
         ]);
         setEvent(eventData);
@@ -98,4 +99,3 @@ const OrganizerEventEditPage = () => {
 };
 
 export default OrganizerEventEditPage;
-

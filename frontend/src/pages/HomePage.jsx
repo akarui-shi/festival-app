@@ -123,12 +123,28 @@ const HomePage = () => {
             </p>
 
             <div className="home-actions">
-              <Link to="/events" className="btn btn--primary">
-                Смотреть мероприятия
-              </Link>
-              <Link to="/register" className="btn btn--ghost">
-                Зарегистрироваться
-              </Link>
+              {!isAuthenticated ? (
+                <>
+                  <Link to="/register" className="btn btn--primary">
+                    Зарегистрироваться
+                  </Link>
+                  <Link to="/login" className="btn btn--ghost">
+                    Войти
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link to="/events" className="btn btn--primary">
+                    Мероприятия
+                  </Link>
+                  <Link to="/my-registrations" className="btn btn--ghost">
+                    Мои регистрации
+                  </Link>
+                  <Link to="/profile" className="btn btn--ghost">
+                    Личный кабинет
+                  </Link>
+                </>
+              )}
             </div>
           </div>
 

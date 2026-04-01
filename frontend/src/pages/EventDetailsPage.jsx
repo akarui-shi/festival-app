@@ -12,7 +12,7 @@ import { sessionService } from '../services/sessionService';
 import { registrationService } from '../services/registrationService';
 import { reviewService } from '../services/reviewService';
 import { useAuth } from '../context/AuthContext';
-import { formatDateTime, formatStatus } from '../utils/formatters';
+import { formatDateTime } from '../utils/formatters';
 import { toUserErrorMessage } from '../utils/errorMessages';
 
 const EventDetailsPage = () => {
@@ -178,7 +178,6 @@ const EventDetailsPage = () => {
       <p className="page-subtitle">{event.shortDescription || 'Краткое описание пока не добавлено.'}</p>
 
       <div className="panel details-grid">
-        <p><strong>Статус:</strong> {formatStatus(event.status)}</p>
         <p><strong>Возрастной рейтинг:</strong> {event.ageRating ?? '-'}</p>
         <p><strong>Создано:</strong> {formatDateTime(event.createdAt)}</p>
         <p><strong>Организатор:</strong> {event.organizer?.name || '-'}</p>

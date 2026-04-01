@@ -15,18 +15,14 @@ const DEFAULT_FILTERS = {
   title: '',
   categoryId: '',
   cityId: '',
-  venueId: '',
-  status: ''
+  venueId: ''
 };
-
-const EVENT_STATUSES = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
 
 const buildEventQueryParams = (filters) => ({
   title: filters.title.trim() || undefined,
   categoryId: filters.categoryId || undefined,
   cityId: filters.cityId || undefined,
-  venueId: filters.venueId || undefined,
-  status: filters.status || undefined
+  venueId: filters.venueId || undefined
 });
 
 const EventsPage = () => {
@@ -50,10 +46,9 @@ const EventsPage = () => {
     () =>
       Boolean(
         appliedFilters.title ||
-          appliedFilters.categoryId ||
+        appliedFilters.categoryId ||
           appliedFilters.cityId ||
-          appliedFilters.venueId ||
-          appliedFilters.status
+          appliedFilters.venueId
       ),
     [appliedFilters]
   );
@@ -163,7 +158,7 @@ const EventsPage = () => {
   return (
     <section className="container page">
       <h1>Мероприятия</h1>
-      <p className="page-subtitle">Найдите событие по названию, категории, городу, площадке или статусу.</p>
+      <p className="page-subtitle">Найдите событие по названию, категории, городу или площадке.</p>
 
       <form className="events-filters panel" onSubmit={handleApplyFilters}>
         <div className="events-filters__grid">
@@ -216,24 +211,13 @@ const EventsPage = () => {
             </select>
           </label>
 
-          <label>
-            Статус
-            <select name="status" value={filters.status} onChange={handleFilterInput}>
-              <option value="">Все статусы</option>
-              {EVENT_STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-          </label>
         </div>
 
         <div className="events-filters__actions">
           <button type="submit" className="btn btn--primary" disabled={isLoading}>
             Применить фильтры
           </button>
-          <button type="button" className="btn btn--ghost" onClick={handleResetFilters} disabled={!hasActiveFilters && !filters.title && !filters.categoryId && !filters.cityId && !filters.venueId && !filters.status}>
+          <button type="button" className="btn btn--ghost" onClick={handleResetFilters} disabled={!hasActiveFilters && !filters.title && !filters.categoryId && !filters.cityId && !filters.venueId}>
             Сбросить фильтры
           </button>
         </div>
