@@ -169,7 +169,7 @@ const EventDetailsPage = () => {
       ? (reviews.reduce((sum, item) => sum + Number(item.rating || 0), 0) / reviews.length).toFixed(1)
       : null;
 
-  const venue = event.venue || null;
+  const venue = event?.venue || null;
   const venueLatitude = venue ? Number(venue.latitude) : NaN;
   const venueLongitude = venue ? Number(venue.longitude) : NaN;
   const hasVenueCoordinates = Number.isFinite(venueLatitude) && Number.isFinite(venueLongitude);
@@ -224,13 +224,7 @@ const EventDetailsPage = () => {
       <div className="panel">
         <h2>Карта площадки</h2>
 
-        {sessionsLoading && <Loader text="Готовим карту..." />}
-        {!sessionsLoading && sessionsError && <ErrorMessage message={sessionsError} />}
-        {!sessionsLoading && !sessionsError && sessions.length === 0 && (
-          <EmptyState message="Сеансы пока не добавлены." />
-        )}
-
-        {!sessionsLoading && !sessionsError && venue && (
+        {venue && (
           <>
             <div className="venue-map__meta">
               <p>
@@ -254,7 +248,7 @@ const EventDetailsPage = () => {
           </>
         )}
 
-        {!sessionsLoading && !sessionsError && !venue && (
+        {!venue && (
           <p className="muted">Координаты площадки пока не указаны.</p>
         )}
       </div>

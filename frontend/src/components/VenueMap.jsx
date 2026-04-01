@@ -1,33 +1,36 @@
-import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
-import L from 'leaflet';
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import { Map, Placemark, YMaps } from '@pbe/react-yandex-maps';
+import { buildYandexMapsQuery } from '../utils/config';
 
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow
-});
+const VenueMap = ({ venueName, address, latitude, longitude, height = 320 }) => {
+  const lat = Number(latitude);
+  const lon = Number(longitude);
 
-const VenueMap = ({ venueName, address, latitude, longitude }) => {
-  const position = [latitude, longitude];
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return null;
+  }
 
   return (
     <div className="venue-map-wrap">
-      <MapContainer center={position} zoom={15} scrollWheelZoom={false} className="venue-map">
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <Marker position={position}>
-          <Popup>
-            <strong>{venueName}</strong>
-            <br />
-            {address || 'Адрес не указан'}
-          </Popup>
-        </Marker>
-      </MapContainer>
+      <YMaps query={buildYandexMapsQuery()}>
+        <Map
+          state={{ center: [lat, lon], zoom: 15, controls: ['zoomControl'] }}
+          width="100%"
+          height={height}
+          className="venue-map"
+        >
+          <Placemark
+            geometry={[lat, lon]}
+            properties={{
+              balloonContentHeader: venueName || 'Площадка',
+              balloonContentBody: address || 'Адрес не указан'
+            }}
+            options={{
+              preset: 'islands#dotIcon',
+              iconColor: '#111111'
+            }}
+          />
+        </Map>
+      </YMaps>
     </div>
   );
 };

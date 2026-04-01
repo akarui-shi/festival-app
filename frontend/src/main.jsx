@@ -2,7 +2,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { AuthProvider } from './context/AuthContext';
 import AppRouter from './router/AppRouter';
-import 'leaflet/dist/leaflet.css';
 import './styles/index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
