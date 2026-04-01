@@ -8,21 +8,18 @@ import SearchableCitySelect from '../components/SearchableCitySelect';
 import { eventService } from '../services/eventService';
 import { favoriteService } from '../services/favoriteService';
 import { categoryService } from '../services/categoryService';
-import { venueService } from '../services/venueService';
 import { useAuth } from '../context/AuthContext';
 
 const DEFAULT_FILTERS = {
   title: '',
   categoryId: '',
-  cityId: '',
-  venueId: ''
+  cityId: ''
 };
 
 const buildEventQueryParams = (filters) => ({
   title: filters.title.trim() || undefined,
   categoryId: filters.categoryId || undefined,
-  cityId: filters.cityId || undefined,
-  venueId: filters.venueId || undefined
+  cityId: filters.cityId || undefined
 });
 
 const EventsPage = () => {
@@ -31,7 +28,6 @@ const EventsPage = () => {
 
   const [events, setEvents] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [venues, setVenues] = useState([]);
   const [selectedCity, setSelectedCity] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFiltersLoading, setIsFiltersLoading] = useState(true);
@@ -47,8 +43,7 @@ const EventsPage = () => {
       Boolean(
         appliedFilters.title ||
         appliedFilters.categoryId ||
-          appliedFilters.cityId ||
-          appliedFilters.venueId
+          appliedFilters.cityId
       ),
     [appliedFilters]
   );
@@ -70,13 +65,9 @@ const EventsPage = () => {
     const loadDictionaries = async () => {
       try {
         setIsFiltersLoading(true);
-        const [categoriesResult, venuesResult] = await Promise.allSettled([
-          categoryService.getCategories(),
-          venueService.getVenues()
-        ]);
+        const [categoriesResult] = await Promise.allSettled([categoryService.getCategories()]);
 
         setCategories(categoriesResult.status === 'fulfilled' && Array.isArray(categoriesResult.value) ? categoriesResult.value : []);
-        setVenues(venuesResult.status === 'fulfilled' && Array.isArray(venuesResult.value) ? venuesResult.value : []);
       } finally {
         setIsFiltersLoading(false);
       }
@@ -158,7 +149,7 @@ const EventsPage = () => {
   return (
     <section className="container page">
       <h1>Мероприятия</h1>
-      <p className="page-subtitle">Найдите событие по названию, категории, городу или площадке.</p>
+      <p className="page-subtitle">Найдите событие по названию, категории или городу.</p>
 
       <form className="events-filters panel" onSubmit={handleApplyFilters}>
         <div className="events-filters__grid">
@@ -198,26 +189,13 @@ const EventsPage = () => {
             }}
             disabled={isFiltersLoading}
           />
-
-          <label>
-            Площадка
-            <select name="venueId" value={filters.venueId} onChange={handleFilterInput} disabled={isFiltersLoading}>
-              <option value="">Все площадки</option>
-              {venues.map((venue) => (
-                <option key={venue.id} value={venue.id}>
-                  {venue.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
         </div>
 
         <div className="events-filters__actions">
           <button type="submit" className="btn btn--primary" disabled={isLoading}>
             Применить фильтры
           </button>
-          <button type="button" className="btn btn--ghost" onClick={handleResetFilters} disabled={!hasActiveFilters && !filters.title && !filters.categoryId && !filters.cityId && !filters.venueId}>
+          <button type="button" className="btn btn--ghost" onClick={handleResetFilters} disabled={!hasActiveFilters && !filters.title && !filters.categoryId && !filters.cityId}>
             Сбросить фильтры
           </button>
         </div>

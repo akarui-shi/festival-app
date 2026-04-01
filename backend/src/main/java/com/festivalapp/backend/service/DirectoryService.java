@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
@@ -48,6 +49,7 @@ public class DirectoryService {
             cities = cityRepository.findAllByOrderByNameAsc().stream()
                 .filter(city -> containsIgnoreCase(city.getName(), normalizedQuery)
                     || containsIgnoreCase(city.getRegion(), normalizedQuery))
+                .sorted(citySearchComparator(normalizedQuery))
                 .limit(safeLimit)
                 .toList();
         } else {
@@ -92,5 +94,41 @@ public class DirectoryService {
             return false;
         }
         return value.toLowerCase(Locale.ROOT).contains(query);
+    }
+
+    private Comparator<City> citySearchComparator(String normalizedQuery) {
+        return Comparator
+            .comparingInt((City city) -> matchPriority(city, normalizedQuery))
+            .thenComparing(city -> normalize(city.getName()))
+            .thenComparing(city -> normalize(city.getRegion()));
+    }
+
+    private int matchPriority(City city, String normalizedQuery) {
+        String normalizedName = normalize(city.getName());
+        String normalizedRegion = normalize(city.getRegion());
+
+        if (normalizedName.equals(normalizedQuery)) {
+            return 0;
+        }
+        if (normalizedName.startsWith(normalizedQuery)) {
+            return 1;
+        }
+        if (normalizedName.contains(normalizedQuery)) {
+            return 2;
+        }
+        if (normalizedRegion.startsWith(normalizedQuery)) {
+            return 3;
+        }
+        if (normalizedRegion.contains(normalizedQuery)) {
+            return 4;
+        }
+        return 5;
+    }
+
+    private String normalize(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+        return value.trim().toLowerCase(Locale.ROOT);
     }
 }

@@ -452,6 +452,11 @@ a {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 10px;
+  align-items: start;
+}
+
+.events-filters__grid > * {
+  min-width: 0;
 }
 
 .events-filters__grid label {
@@ -477,15 +482,22 @@ a {
 
 .searchable-city-select {
   position: relative;
+  min-width: 0;
+}
+
+.searchable-city-select label {
+  min-width: 0;
 }
 
 .searchable-city-select__control {
   display: flex;
   gap: 8px;
+  min-width: 0;
 }
 
 .searchable-city-select__control input {
   flex: 1 1 auto;
+  min-width: 0;
 }
 
 .searchable-city-select__clear {
@@ -493,7 +505,11 @@ a {
 }
 
 .searchable-city-select__dropdown {
-  margin-top: 6px;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 40;
   border: 1px solid var(--border);
   background: #fff;
   border-radius: 10px;
