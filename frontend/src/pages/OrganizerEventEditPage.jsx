@@ -2,15 +2,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import EventForm from '../components/EventForm';
 import Loader from '../components/Loader';
-import ErrorMessage from '../components/ErrorMessage';
+import AlertMessage from '../components/AlertMessage';
 import { eventService } from '../services/eventService';
 import { organizerService } from '../services/organizerService';
 import { directoryService } from '../services/directoryService';
 import { toUserErrorMessage } from '../utils/errorMessages';
+import { useNotification } from '../context/NotificationContext';
 
 const OrganizerEventEditPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { notifySuccess, notifyError } = useNotification();
 
   const [event, setEvent] = useState(null);
   const [categories, setCategories] = useState([]);
@@ -34,7 +36,9 @@ const OrganizerEventEditPage = () => {
         setEvent(eventData);
         await loadDirectories();
       } catch (err) {
-        setError(toUserErrorMessage(err, 'Не удалось загрузить мероприятие.'));
+        const message = toUserErrorMessage(err, 'Не удалось загрузить мероприятие.');
+        setError(message);
+        notifyError(message);
       } finally {
         setIsLoading(false);
       }
@@ -69,9 +73,12 @@ const OrganizerEventEditPage = () => {
       setIsSubmitting(true);
       setError('');
       await eventService.updateEvent(id, payload);
-      navigate('/organizer', { state: { message: 'Изменения сохранены. Мероприятие отправлено на модерацию.' } });
+      notifySuccess('Изменения сохранены. Мероприятие отправлено на модерацию.');
+      navigate('/organizer');
     } catch (err) {
-      setError(toUserErrorMessage(err, 'Не удалось обновить мероприятие.'));
+      const message = toUserErrorMessage(err, 'Не удалось обновить мероприятие.');
+      setError(message);
+      notifyError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -88,7 +95,7 @@ const OrganizerEventEditPage = () => {
   if (error && !event) {
     return (
       <section className="container page">
-        <ErrorMessage message={error} />
+        <AlertMessage type="error" message={error} onClose={() => setError('')} />
       </section>
     );
   }
@@ -98,7 +105,7 @@ const OrganizerEventEditPage = () => {
       <h1>Редактирование мероприятия</h1>
       <p className="page-subtitle">Обновите описание мероприятия и место проведения через адрес и карту.</p>
 
-      {error && <ErrorMessage message={error} />}
+      {error && <AlertMessage type="error" message={error} onClose={() => setError('')} />}
 
       <EventForm
         initialValues={initialValues}

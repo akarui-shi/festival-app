@@ -1,5 +1,7 @@
-const ErrorMessage = ({ message = 'Что-то пошло не так.' }) => {
-  return <div className="error-message">{message}</div>;
+import AlertMessage from './AlertMessage';
+
+const ErrorMessage = ({ message = 'Что-то пошло не так.', onClose }) => {
+  return <AlertMessage type="error" message={message} onClose={onClose} />;
 };
 
 export default ErrorMessage;

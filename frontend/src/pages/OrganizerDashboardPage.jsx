@@ -1,21 +1,21 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import EmptyState from '../components/EmptyState';
-import ErrorMessage from '../components/ErrorMessage';
+import AlertMessage from '../components/AlertMessage';
 import Loader from '../components/Loader';
 import OrganizerEventCard from '../components/OrganizerEventCard';
 import { organizerService } from '../services/organizerService';
 import { eventService } from '../services/eventService';
 import { toUserErrorMessage } from '../utils/errorMessages';
+import { useNotification } from '../context/NotificationContext';
 
 const OrganizerDashboardPage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { notifySuccess, notifyError, notifyInfo } = useNotification();
 
   const [events, setEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [message, setMessage] = useState(location.state?.message || '');
   const [deletingId, setDeletingId] = useState(null);
   const [archivingId, setArchivingId] = useState(null);
 
@@ -28,7 +28,9 @@ const OrganizerDashboardPage = () => {
       const data = await organizerService.getMyEvents();
       setEvents(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(toUserErrorMessage(err, 'Не удалось загрузить мероприятия организатора.'));
+      const message = toUserErrorMessage(err, 'Не удалось загрузить мероприятия организатора.');
+      setError(message);
+      notifyError(message);
     } finally {
       if (withLoader) {
         setIsLoading(false);
@@ -40,28 +42,23 @@ const OrganizerDashboardPage = () => {
     loadEvents();
   }, []);
 
-  useEffect(() => {
-    if (!location.state?.message) {
-      return;
-    }
-    window.history.replaceState({}, document.title);
-  }, [location.state]);
-
   const handleDelete = async (eventId) => {
     const confirmed = window.confirm('Удалить мероприятие? Это действие нельзя отменить.');
     if (!confirmed) {
+      notifyInfo('Удаление мероприятия отменено.');
       return;
     }
 
     try {
       setDeletingId(eventId);
       setError('');
-      setMessage('');
       await eventService.deleteEvent(eventId);
       await loadEvents({ withLoader: false });
-      setMessage('Мероприятие удалено.');
+      notifySuccess('Мероприятие удалено.');
     } catch (err) {
-      setError(toUserErrorMessage(err, 'Не удалось удалить мероприятие.'));
+      const message = toUserErrorMessage(err, 'Не удалось удалить мероприятие.');
+      setError(message);
+      notifyError(message);
     } finally {
       setDeletingId(null);
     }
@@ -70,18 +67,20 @@ const OrganizerDashboardPage = () => {
   const handleArchive = async (eventId) => {
     const confirmed = window.confirm('Отправить мероприятие в архив?');
     if (!confirmed) {
+      notifyInfo('Архивирование мероприятия отменено.');
       return;
     }
 
     try {
       setArchivingId(eventId);
       setError('');
-      setMessage('');
       await eventService.archiveEvent(eventId);
       await loadEvents({ withLoader: false });
-      setMessage('Мероприятие отправлено в архив.');
+      notifySuccess('Мероприятие отправлено в архив.');
     } catch (err) {
-      setError(toUserErrorMessage(err, 'Не удалось отправить мероприятие в архив.'));
+      const message = toUserErrorMessage(err, 'Не удалось отправить мероприятие в архив.');
+      setError(message);
+      notifyError(message);
     } finally {
       setArchivingId(null);
     }
@@ -97,8 +96,7 @@ const OrganizerDashboardPage = () => {
       </div>
 
       {isLoading && <Loader text="Загружаем ваши мероприятия..." />}
-      {error && <ErrorMessage message={error} />}
-      {message && <p className="page-note page-note--success">{message}</p>}
+      {error && <AlertMessage type="error" message={error} onClose={() => setError('')} />}
 
       {!isLoading && !error && events.length === 0 && <EmptyState message="У вас пока нет мероприятий." />}
 

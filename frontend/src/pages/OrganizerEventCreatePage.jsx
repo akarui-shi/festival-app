@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import EventForm from '../components/EventForm';
 import Loader from '../components/Loader';
-import ErrorMessage from '../components/ErrorMessage';
+import AlertMessage from '../components/AlertMessage';
 import { eventService } from '../services/eventService';
 import { directoryService } from '../services/directoryService';
 import { toUserErrorMessage } from '../utils/errorMessages';
+import { useNotification } from '../context/NotificationContext';
 
 const OrganizerEventCreatePage = () => {
   const navigate = useNavigate();
+  const { notifySuccess, notifyError } = useNotification();
 
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -27,7 +29,9 @@ const OrganizerEventCreatePage = () => {
         setError('');
         await loadDirectories();
       } catch (err) {
-        setError(toUserErrorMessage(err, 'Не удалось загрузить справочники.'));
+        const message = toUserErrorMessage(err, 'Не удалось загрузить справочники.');
+        setError(message);
+        notifyError(message);
       } finally {
         setIsLoading(false);
       }
@@ -41,9 +45,12 @@ const OrganizerEventCreatePage = () => {
       setIsSubmitting(true);
       setError('');
       await eventService.createEvent(payload);
-      navigate('/organizer', { state: { message: 'Мероприятие создано и отправлено на модерацию.' } });
+      notifySuccess('Мероприятие создано и отправлено на модерацию.');
+      navigate('/organizer');
     } catch (err) {
-      setError(toUserErrorMessage(err, 'Не удалось создать мероприятие.'));
+      const message = toUserErrorMessage(err, 'Не удалось создать мероприятие.');
+      setError(message);
+      notifyError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -62,7 +69,7 @@ const OrganizerEventCreatePage = () => {
       <h1>Создание мероприятия</h1>
       <p className="page-subtitle">Укажите адрес проведения, выберите точку на карте и заполните описание мероприятия.</p>
 
-      {error && <ErrorMessage message={error} />}
+      {error && <AlertMessage type="error" message={error} onClose={() => setError('')} />}
 
       <EventForm
         categories={categories}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import ErrorMessage from '../components/ErrorMessage';
+import AlertMessage from '../components/AlertMessage';
 import { toUserErrorMessage } from '../utils/errorMessages';
 
 const RegisterPage = () => {
@@ -17,7 +17,7 @@ const RegisterPage = () => {
     phone: ''
   });
 
-  const [error, setError] = useState('');
+  const [formNotice, setFormNotice] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const onChange = (event) => {
@@ -27,14 +27,17 @@ const RegisterPage = () => {
 
   const onSubmit = async (event) => {
     event.preventDefault();
-    setError('');
+    setFormNotice(null);
     setIsSubmitting(true);
 
     try {
       await register(formData);
       navigate('/profile', { replace: true });
     } catch (err) {
-      setError(toUserErrorMessage(err, 'Не удалось завершить регистрацию.'));
+      setFormNotice({
+        type: 'error',
+        message: toUserErrorMessage(err, 'Не удалось завершить регистрацию.')
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -88,7 +91,13 @@ const RegisterPage = () => {
           <input name="phone" value={formData.phone} onChange={onChange} placeholder="+7 (900) 000-00-00" />
         </label>
 
-        {error && <ErrorMessage message={error} />}
+        {formNotice && (
+          <AlertMessage
+            type={formNotice.type}
+            message={formNotice.message}
+            onClose={() => setFormNotice(null)}
+          />
+        )}
 
         <button className="btn btn--primary" type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Создаём аккаунт...' : 'Зарегистрироваться'}

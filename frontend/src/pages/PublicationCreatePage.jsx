@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Loader from '../components/Loader';
-import ErrorMessage from '../components/ErrorMessage';
+import AlertMessage from '../components/AlertMessage';
 import { publicationService } from '../services/publicationService';
 import { organizerService } from '../services/organizerService';
 import { uploadService } from '../services/uploadService';
 import { useAuth } from '../context/AuthContext';
 import { ROLE } from '../utils/roles';
 import { toUserErrorMessage } from '../utils/errorMessages';
+import { useNotification } from '../context/NotificationContext';
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 
@@ -22,6 +23,7 @@ const readFileAsDataUrl = (file) =>
 const PublicationCreatePage = () => {
   const navigate = useNavigate();
   const { hasRole } = useAuth();
+  const { notifySuccess, notifyError } = useNotification();
 
   const isAdmin = hasRole([ROLE.ADMIN]);
   const isOrganizer = hasRole([ROLE.ORGANIZER]);
@@ -51,7 +53,9 @@ const PublicationCreatePage = () => {
         const data = await organizerService.getMyEvents();
         setEvents(Array.isArray(data) ? data : []);
       } catch (err) {
-        setError(toUserErrorMessage(err, 'Не удалось загрузить мероприятия для выбора.'));
+        const message = toUserErrorMessage(err, 'Не удалось загрузить мероприятия для выбора.');
+        setError(message);
+        notifyError(message);
       } finally {
         setIsLoading(false);
       }
@@ -85,11 +89,12 @@ const PublicationCreatePage = () => {
       };
 
       await publicationService.createPublication(payload);
-      navigate('/publications', {
-        state: { message: 'Публикация отправлена на модерацию. После одобрения она станет видимой всем пользователям.' }
-      });
+      notifySuccess('Публикация отправлена на модерацию. После одобрения она станет видимой всем пользователям.');
+      navigate('/publications');
     } catch (err) {
-      setError(toUserErrorMessage(err, 'Не удалось создать публикацию.'));
+      const message = toUserErrorMessage(err, 'Не удалось создать публикацию.');
+      setError(message);
+      notifyError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -137,7 +142,9 @@ const PublicationCreatePage = () => {
       setPreviewUrl(uploadedUrl);
       setUploadMessage('Изображение публикации загружено.');
     } catch (err) {
-      setUploadError(toUserErrorMessage(err, 'Не удалось загрузить изображение публикации.'));
+      const message = toUserErrorMessage(err, 'Не удалось загрузить изображение публикации.');
+      setUploadError(message);
+      notifyError(message);
     } finally {
       setIsUploadingImage(false);
       event.target.value = '';
@@ -164,7 +171,7 @@ const PublicationCreatePage = () => {
       <h1>Создать публикацию</h1>
       <p className="page-subtitle">Добавьте новость или статью, связанную с мероприятием.</p>
 
-      {error && <ErrorMessage message={error} />}
+      {error && <AlertMessage type="error" message={error} onClose={() => setError('')} />}
 
       <form className="panel form" onSubmit={handleSubmit}>
         <label>
@@ -202,8 +209,8 @@ const PublicationCreatePage = () => {
           <p className="muted">Поддерживаются JPG, PNG, WEBP, GIF до 5 МБ.</p>
 
           {isUploadingImage && <p className="page-note">Загружаем изображение...</p>}
-          {uploadError && <ErrorMessage message={uploadError} />}
-          {uploadMessage && <p className="page-note page-note--success">{uploadMessage}</p>}
+          {uploadError && <AlertMessage type="error" message={uploadError} onClose={() => setUploadError('')} />}
+          {uploadMessage && <AlertMessage type="success" message={uploadMessage} autoHideMs={2500} onClose={() => setUploadMessage('')} />}
 
           {previewUrl ? (
             <div className="event-cover-preview-wrap">

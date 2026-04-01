@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import ErrorMessage from '../components/ErrorMessage';
+import AlertMessage from '../components/AlertMessage';
 import { toUserErrorMessage } from '../utils/errorMessages';
 
 const LoginPage = () => {
@@ -11,21 +11,24 @@ const LoginPage = () => {
 
   const [loginOrEmail, setLoginOrEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [formNotice, setFormNotice] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const redirectTo = location.state?.from || '/profile';
 
   const onSubmit = async (event) => {
     event.preventDefault();
-    setError('');
+    setFormNotice(null);
     setIsSubmitting(true);
 
     try {
       await login({ loginOrEmail, password });
       navigate(redirectTo, { replace: true });
     } catch (err) {
-      setError(toUserErrorMessage(err, 'Не удалось выполнить вход.'));
+      setFormNotice({
+        type: 'error',
+        message: toUserErrorMessage(err, 'Не удалось выполнить вход.')
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -57,7 +60,13 @@ const LoginPage = () => {
           />
         </label>
 
-        {error && <ErrorMessage message={error} />}
+        {formNotice && (
+          <AlertMessage
+            type={formNotice.type}
+            message={formNotice.message}
+            onClose={() => setFormNotice(null)}
+          />
+        )}
 
         <button className="btn btn--primary" type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Выполняем вход...' : 'Войти'}
