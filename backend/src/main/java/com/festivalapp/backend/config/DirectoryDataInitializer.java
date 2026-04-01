@@ -8,12 +8,14 @@ import com.festivalapp.backend.repository.CityRepository;
 import com.festivalapp.backend.repository.VenueRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 @Component
+@Order(2)
 @RequiredArgsConstructor
 public class DirectoryDataInitializer implements CommandLineRunner {
 
@@ -36,15 +38,14 @@ public class DirectoryDataInitializer implements CommandLineRunner {
             Category.builder().name("Музыка").description("Музыкальные мероприятия").build(),
             Category.builder().name("Театр").description("Театральные постановки").build(),
             Category.builder().name("Выставка").description("Художественные и тематические выставки").build(),
-            Category.builder().name("Лекции").description("Образовательные мероприятия").build()
+            Category.builder().name("Городской праздник").description("Праздничные мероприятия для жителей города").build()
         ));
     }
 
     private void seedCitiesAndVenues() {
         if (cityRepository.count() == 0) {
             cityRepository.saveAll(List.of(
-                City.builder().name("Москва").region("Москва").country("Россия").build(),
-                City.builder().name("Санкт-Петербург").region("СЗФО").country("Россия").build()
+                City.builder().name("Коломна").region("Московская область").country("Россия").build()
             ));
         }
 
@@ -53,47 +54,39 @@ public class DirectoryDataInitializer implements CommandLineRunner {
         }
 
         List<City> cities = cityRepository.findAllByOrderByNameAsc();
-        City moscow = cities.stream()
-            .filter(city -> "Москва".equalsIgnoreCase(city.getName()))
+        City kolomna = cities.stream()
+            .filter(city -> "Коломна".equalsIgnoreCase(city.getName()))
             .findFirst()
             .orElseGet(() -> cityRepository.save(City.builder()
-                .name("Москва")
-                .region("Москва")
-                .country("Россия")
-                .build()));
-        City spb = cities.stream()
-            .filter(city -> "Санкт-Петербург".equalsIgnoreCase(city.getName()))
-            .findFirst()
-            .orElseGet(() -> cityRepository.save(City.builder()
-                .name("Санкт-Петербург")
-                .region("СЗФО")
+                .name("Коломна")
+                .region("Московская область")
                 .country("Россия")
                 .build()));
 
         venueRepository.saveAll(List.of(
             Venue.builder()
-                .name("Центральный парк")
-                .address("ул. Парковая, 1")
-                .capacity(2000)
-                .latitude(new BigDecimal("55.751244"))
-                .longitude(new BigDecimal("37.618423"))
-                .city(moscow)
+                .name("Городской парк")
+                .address("ул. Левшина, 15")
+                .capacity(2500)
+                .latitude(new BigDecimal("55.103200"))
+                .longitude(new BigDecimal("38.754800"))
+                .city(kolomna)
                 .build(),
             Venue.builder()
-                .name("Городской театр")
-                .address("Театральный проспект, 10")
-                .capacity(800)
-                .latitude(new BigDecimal("55.760186"))
-                .longitude(new BigDecimal("37.618711"))
-                .city(moscow)
+                .name("Дом культуры")
+                .address("ул. Октябрьской Революции, 324")
+                .capacity(900)
+                .latitude(new BigDecimal("55.100700"))
+                .longitude(new BigDecimal("38.766300"))
+                .city(kolomna)
                 .build(),
             Venue.builder()
-                .name("Лофт-пространство Север")
-                .address("наб. Невы, 25")
-                .capacity(450)
-                .latitude(new BigDecimal("59.934280"))
-                .longitude(new BigDecimal("30.335099"))
-                .city(spb)
+                .name("Центральная площадь")
+                .address("пл. Советская, 1")
+                .capacity(5000)
+                .latitude(new BigDecimal("55.099900"))
+                .longitude(new BigDecimal("38.769500"))
+                .city(kolomna)
                 .build()
         ));
     }
