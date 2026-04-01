@@ -302,9 +302,12 @@ public class SessionService {
             .eventTitle(session.getEvent() != null ? session.getEvent().getTitle() : null)
             .venueId(session.getVenue() != null ? session.getVenue().getId() : null)
             .venueName(session.getVenue() != null ? session.getVenue().getName() : null)
+            .venueAddress(session.getVenue() != null ? session.getVenue().getAddress() : null)
             .cityName(session.getVenue() != null && session.getVenue().getCity() != null
                 ? session.getVenue().getCity().getName()
                 : null)
+            .latitude(session.getVenue() != null ? session.getVenue().getLatitude() : null)
+            .longitude(session.getVenue() != null ? session.getVenue().getLongitude() : null)
             .availableSeats(availableSeats)
             .totalCapacity(totalCapacity)
             .build();
@@ -343,6 +346,8 @@ public class SessionService {
             .address(venue.getAddress())
             .cityName(venue.getCity() != null ? venue.getCity().getName() : null)
             .capacity(venue.getCapacity())
+            .latitude(venue.getLatitude())
+            .longitude(venue.getLongitude())
             .build();
     }
 

@@ -3,6 +3,7 @@ package com.festivalapp.backend.dto;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
@@ -18,7 +19,10 @@ public class SessionShortResponse {
     private String eventTitle;
     private Long venueId;
     private String venueName;
+    private String venueAddress;
     private String cityName;
+    private BigDecimal latitude;
+    private BigDecimal longitude;
     private Integer availableSeats;
     private Integer totalCapacity;
 }

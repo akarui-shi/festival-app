@@ -6,6 +6,7 @@ import EmptyState from '../components/EmptyState';
 import SessionCard from '../components/SessionCard';
 import RegistrationFormModal from '../components/RegistrationFormModal';
 import QRCodeDisplay from '../components/QRCodeDisplay';
+import VenueMap from '../components/VenueMap';
 import { eventService } from '../services/eventService';
 import { favoriteService } from '../services/favoriteService';
 import { sessionService } from '../services/sessionService';
@@ -27,6 +28,7 @@ const EventDetailsPage = () => {
   const [sessions, setSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [sessionsError, setSessionsError] = useState('');
+  const [selectedSessionId, setSelectedSessionId] = useState(null);
 
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
@@ -48,7 +50,21 @@ const EventDetailsPage = () => {
       setSessionsLoading(true);
       setSessionsError('');
       const data = await sessionService.getSessions({ eventId: id });
-      setSessions(Array.isArray(data) ? data : []);
+      const normalizedSessions = Array.isArray(data) ? data : [];
+      setSessions(normalizedSessions);
+      setSelectedSessionId((currentId) => {
+        if (normalizedSessions.length === 0) {
+          return null;
+        }
+        if (currentId && normalizedSessions.some((session) => session.id === currentId)) {
+          return currentId;
+        }
+
+        const sessionWithCoords = normalizedSessions.find(
+          (session) => Number.isFinite(Number(session.latitude)) && Number.isFinite(Number(session.longitude))
+        );
+        return sessionWithCoords ? sessionWithCoords.id : normalizedSessions[0].id;
+      });
     } catch (err) {
       setSessionsError(toUserErrorMessage(err, 'Не удалось загрузить сеансы.'));
     } finally {
@@ -168,6 +184,11 @@ const EventDetailsPage = () => {
       ? (reviews.reduce((sum, item) => sum + Number(item.rating || 0), 0) / reviews.length).toFixed(1)
       : null;
 
+  const selectedSession = sessions.find((session) => session.id === selectedSessionId) || null;
+  const venueLatitude = selectedSession ? Number(selectedSession.latitude) : NaN;
+  const venueLongitude = selectedSession ? Number(selectedSession.longitude) : NaN;
+  const hasVenueCoordinates = Number.isFinite(venueLatitude) && Number.isFinite(venueLongitude);
+
   if (isLoading) return <section className="container page"><Loader text="Загружаем мероприятие..." /></section>;
   if (error) return <section className="container page"><ErrorMessage message={error} /></section>;
   if (!event) return null;
@@ -208,6 +229,56 @@ const EventDetailsPage = () => {
           ))}
           {(event.venues || []).length === 0 && <li>Площадки пока не добавлены.</li>}
         </ul>
+      </div>
+
+      <div className="panel">
+        <h2>Карта площадки</h2>
+
+        {sessionsLoading && <Loader text="Готовим карту..." />}
+        {!sessionsLoading && sessionsError && <ErrorMessage message={sessionsError} />}
+        {!sessionsLoading && !sessionsError && sessions.length === 0 && (
+          <EmptyState message="Сеансы пока не добавлены." />
+        )}
+
+        {!sessionsLoading && !sessionsError && sessions.length > 0 && (
+          <>
+            <label className="map-session-select">
+              <span>Сеанс для отображения на карте</span>
+              <select
+                value={selectedSessionId ?? ''}
+                onChange={(event) => setSelectedSessionId(Number(event.target.value))}
+              >
+                {sessions.map((session) => (
+                  <option key={session.id} value={session.id}>
+                    {session.title} ({formatDateTime(session.startAt)})
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {selectedSession && (
+              <div className="venue-map__meta">
+                <p>
+                  <strong>Площадка:</strong> {selectedSession.venueName || '-'}
+                </p>
+                <p>
+                  <strong>Адрес:</strong> {selectedSession.venueAddress || 'Адрес не указан'}
+                </p>
+              </div>
+            )}
+
+            {selectedSession && hasVenueCoordinates ? (
+              <VenueMap
+                venueName={selectedSession.venueName || 'Площадка'}
+                address={selectedSession.venueAddress}
+                latitude={venueLatitude}
+                longitude={venueLongitude}
+              />
+            ) : (
+              <p className="muted">Координаты площадки пока не указаны.</p>
+            )}
+          </>
+        )}
       </div>
 
       <div className="panel">
