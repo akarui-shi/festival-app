@@ -1417,6 +1417,27 @@ a {
   gap: 8px;
 }
 
+.event-sessions-drafts {
+  display: grid;
+  gap: 10px;
+}
+
+.event-sessions-drafts__list {
+  display: grid;
+  gap: 8px;
+}
+
+.event-sessions-draft-row {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(170px, 1fr) minmax(130px, 1fr) minmax(130px, 1fr) minmax(110px, 0.8fr) auto;
+  align-items: end;
+}
+
 .event-location {
   display: grid;
   gap: 8px;
@@ -1952,7 +1973,7 @@ a {
 .session-form__datetime-grid {
   display: grid;
   gap: 10px;
-  grid-template-columns: minmax(180px, 1.2fr) minmax(140px, 1fr) minmax(140px, 1fr);
+  grid-template-columns: minmax(180px, 1.2fr) minmax(130px, 1fr) minmax(130px, 1fr) minmax(140px, 1fr);
 }
 
 .session-form__preview {
@@ -2167,6 +2188,10 @@ a {
     grid-template-columns: 1fr;
   }
 
+  .event-sessions-draft-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .notification-center {
     top: 74px;
     right: 12px;
@@ -2220,6 +2245,10 @@ a {
 
   .session-card__description {
     white-space: normal;
+  }
+
+  .event-sessions-draft-row {
+    grid-template-columns: 1fr;
   }
 
   .registration-card__actions,

@@ -16,13 +16,11 @@ const SessionCard = ({ session, onRegisterClick }) => {
           {timeRange}
         </button>
         <div className="session-card__details">
-          <p className="session-card__title">{session.title}</p>
           <p className="session-card__availability">
             {hasAvailableSeats
               ? `Свободно мест: ${session.availableSeats ?? '-'} / ${session.totalCapacity ?? '-'}`
               : 'Мест нет'}
           </p>
-          {session.description && <p className="session-card__description">{session.description}</p>}
         </div>
       </div>
     </article>

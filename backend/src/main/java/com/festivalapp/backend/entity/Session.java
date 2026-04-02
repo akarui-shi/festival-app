@@ -53,6 +53,9 @@ public class Session {
     @Column(name = "end_time", nullable = false)
     private LocalDateTime endTime;
 
+    @Column(name = "capacity")
+    private Integer capacity;
+
     @Builder.Default
     @OneToMany(mappedBy = "session")
     private Set<Registration> registrations = new HashSet<>();

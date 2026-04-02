@@ -11,8 +11,6 @@ import java.time.LocalDateTime;
 public class SessionDetailsResponse {
 
     private Long id;
-    private String title;
-    private String description;
     private LocalDateTime startAt;
     private LocalDateTime endAt;
     private Integer availableSeats;

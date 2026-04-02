@@ -3,11 +3,10 @@ import ErrorMessage from './ErrorMessage';
 import { formatDateTime, formatTimeRange } from '../utils/formatters';
 
 const DEFAULT_VALUES = {
-  title: '',
-  description: '',
   sessionDate: '',
   startTime: '',
-  endTime: ''
+  endTime: '',
+  capacity: ''
 };
 
 const pad = (value) => String(value).padStart(2, '0');
@@ -51,7 +50,8 @@ const SessionForm = ({
       ...initialValues,
       sessionDate: startParts.date || endParts.date || '',
       startTime: startParts.time,
-      endTime: endParts.time
+      endTime: endParts.time,
+      capacity: initialValues?.capacity ? String(initialValues.capacity) : ''
     };
   }, [initialValues]);
 
@@ -86,12 +86,16 @@ const SessionForm = ({
       setLocalError('Время окончания должно быть позже времени начала.');
       return;
     }
+    const capacity = Number(formData.capacity);
+    if (!Number.isFinite(capacity) || capacity < 1) {
+      setLocalError('Количество мест должно быть больше 0.');
+      return;
+    }
 
     onSubmit({
-      title: formData.title.trim(),
-      description: formData.description.trim(),
       startAt,
-      endAt
+      endAt,
+      capacity
     });
   };
 
@@ -102,16 +106,6 @@ const SessionForm = ({
   return (
     <form className="panel form session-form" onSubmit={handleSubmit}>
       <h3 className="session-form__title">Данные сеанса</h3>
-
-      <label>
-        Название сеанса
-        <input name="title" value={formData.title} onChange={handleChange} required />
-      </label>
-
-      <label>
-        Описание
-        <textarea name="description" value={formData.description} onChange={handleChange} rows={3} />
-      </label>
 
       <div className="session-form__datetime-grid">
         <label>
@@ -127,6 +121,18 @@ const SessionForm = ({
         <label>
           Окончание
           <input type="time" name="endTime" value={formData.endTime} onChange={handleChange} required />
+        </label>
+
+        <label>
+          Количество мест
+          <input
+            type="number"
+            min="1"
+            name="capacity"
+            value={formData.capacity}
+            onChange={handleChange}
+            required
+          />
         </label>
       </div>
 

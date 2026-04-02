@@ -306,25 +306,25 @@ public class DemoDataInitializer implements CommandLineRunner {
         List<Session> sessions = new ArrayList<>();
 
         addSession(sessions, eventsByTitle.get("Летний джаз в парке"), park,
-            "Джазовый вечер: открытие", "Открытие фестивальной музыкальной программы.", baseDate.plusHours(1), 2);
+            baseDate.plusHours(1), 2, 1200);
         addSession(sessions, eventsByTitle.get("Летний джаз в парке"), park,
-            "Джазовый вечер: финал", "Финальный сет с приглашенными музыкантами.", baseDate.plusDays(3).plusHours(2), 2);
+            baseDate.plusDays(3).plusHours(2), 2, 1500);
 
         addSession(sessions, eventsByTitle.get("Коломенский театральный вечер"), cultureHouse,
-            "Премьера спектакля", "Основной показ спектакля для жителей и гостей города.", baseDate.plusDays(1), 2);
+            baseDate.plusDays(1), 2, 700);
         addSession(sessions, eventsByTitle.get("Коломенский театральный вечер"), cultureHouse,
-            "Дополнительный показ", "Повторный показ по многочисленным просьбам.", baseDate.plusDays(4), 2);
+            baseDate.plusDays(4), 2, 650);
 
         addSession(sessions, eventsByTitle.get("Выставка \"История Коломны\""), cultureHouse,
-            "Открытие выставки", "Торжественное открытие и первая экскурсия.", baseDate.plusDays(2).minusHours(5), 3);
+            baseDate.plusDays(2).minusHours(5), 3, 500);
 
         addSession(sessions, eventsByTitle.get("Фестиваль уличного искусства"), centralSquare,
-            "Дневная программа фестиваля", "Уличные выступления, мастер-классы и интерактивы.", baseDate.plusDays(5).minusHours(4), 4);
+            baseDate.plusDays(5).minusHours(4), 4, 3200);
         addSession(sessions, eventsByTitle.get("Фестиваль уличного искусства"), centralSquare,
-            "Вечерняя концертная программа", "Хедлайнеры и вечерний open-air концерт.", baseDate.plusDays(5).plusHours(1), 3);
+            baseDate.plusDays(5).plusHours(1), 3, 2800);
 
         addSession(sessions, eventsByTitle.get("День города Коломны"), centralSquare,
-            "Праздничный концерт", "Главная сценическая программа Дня города.", baseDate.plusDays(8).minusHours(2), 4);
+            baseDate.plusDays(8).minusHours(2), 4, 4500);
 
         sessionRepository.saveAll(sessions);
     }
@@ -332,22 +332,23 @@ public class DemoDataInitializer implements CommandLineRunner {
     private void addSession(List<Session> sessions,
                             Event event,
                             Venue venue,
-                            String title,
-                            String description,
                             LocalDateTime start,
-                            int durationHours) {
+                            int durationHours,
+                            int capacity) {
         Venue resolvedVenue = event != null && event.getVenue() != null ? event.getVenue() : venue;
         if (event == null || resolvedVenue == null) {
             return;
         }
+        LocalDateTime end = start.plusHours(durationHours);
 
         sessions.add(Session.builder()
             .event(event)
             .venue(resolvedVenue)
-            .title(title)
-            .description(description)
+            .title("Сеанс " + start.toLocalTime().withSecond(0).withNano(0) + "-" + end.toLocalTime().withSecond(0).withNano(0))
+            .description(null)
             .startTime(start)
-            .endTime(start.plusHours(durationHours))
+            .endTime(end)
+            .capacity(capacity)
             .build());
     }
 

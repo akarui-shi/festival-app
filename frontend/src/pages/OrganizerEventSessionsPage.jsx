@@ -48,10 +48,9 @@ const OrganizerEventSessionsPage = () => {
 
   const createInitialValues = useMemo(
     () => ({
-      title: '',
-      description: '',
       startAt: '',
-      endAt: ''
+      endAt: '',
+      capacity: ''
     }),
     []
   );

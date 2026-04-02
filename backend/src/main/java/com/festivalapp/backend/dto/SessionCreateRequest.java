@@ -1,8 +1,7 @@
 package com.festivalapp.backend.dto;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -18,15 +17,13 @@ public class SessionCreateRequest {
     // Deprecated: venue is defined on event level. Kept for backward compatibility.
     private Long venueId;
 
-    @NotBlank(message = "Title is required")
-    @Size(max = 255, message = "Title is too long")
-    private String title;
-
-    private String description;
-
     @NotNull(message = "Start time is required")
     private LocalDateTime startAt;
 
     @NotNull(message = "End time is required")
     private LocalDateTime endAt;
+
+    @NotNull(message = "Capacity is required")
+    @Positive(message = "Capacity must be greater than 0")
+    private Integer capacity;
 }
