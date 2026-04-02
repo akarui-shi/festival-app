@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCity } from '../context/CityContext';
 import { ROLE } from '../utils/roles';
 import SearchableCitySelect from './SearchableCitySelect';
+import CitySelector from './CitySelector';
 
 const Header = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { isAuthenticated, currentUser, logout, hasRole } = useAuth();
   const {
     selectedCity,
@@ -23,11 +25,11 @@ const Header = () => {
     confirmSuggestedCity
   } = useCity();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const displayName = [currentUser?.firstName, currentUser?.lastName].filter(Boolean).join(' ') || currentUser?.login;
   const showOrganizer = hasRole([ROLE.ORGANIZER]);
   const showAdmin = hasRole([ROLE.ADMIN]);
-  const cityDisplayName = selectedCity?.name || suggestedCity?.name || 'Выберите город';
   const suggestedCityMeta = [suggestedCity?.region, suggestedCity?.country]
     .filter(Boolean)
     .join(', ');
@@ -49,23 +51,35 @@ const Header = () => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (location.pathname !== '/events') {
+      return;
+    }
+    const params = new URLSearchParams(location.search);
+    setSearchQuery(params.get('title') || '');
+  }, [location.pathname, location.search]);
+
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+    const query = searchQuery.trim();
+    navigate(query ? `/events?title=${encodeURIComponent(query)}` : '/events');
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <>
       <header className="app-header">
         <div className="container app-header__inner">
           <div className="header-brand">
+            <CitySelector
+              selectedCity={selectedCity}
+              suggestedCity={suggestedCity}
+              isLoading={isCityLoading}
+              onClick={() => openCityModal('search')}
+            />
             <Link to="/" className="logo">
               Фестиваль
             </Link>
-            <button
-              type="button"
-              className="header-city-switch"
-              onClick={() => openCityModal('search')}
-              disabled={isCityLoading}
-            >
-              <span className="header-city-switch__label">Город</span>
-              <strong className="header-city-switch__name">{cityDisplayName}</strong>
-            </button>
           </div>
 
           <button
@@ -81,42 +95,59 @@ const Header = () => {
           </button>
 
           <div className={`header-menu ${isMobileMenuOpen ? 'header-menu--open' : ''}`}>
-            <nav className="nav-links">
-              {navLinks.map((link) => (
-                <NavLink key={link.to} to={link.to}>
-                  {link.label}
-                </NavLink>
-              ))}
-            </nav>
+            <div className="header-nav-wrap">
+              <nav className="nav-links">
+                {navLinks.map((link) => (
+                  <NavLink key={link.to} to={link.to}>
+                    {link.label}
+                  </NavLink>
+                ))}
+              </nav>
+            </div>
 
-            <div className="auth-actions">
-              {isAuthenticated ? (
-                <>
-                  <span className="auth-user">{displayName}</span>
-                  <Link to="/profile" className="btn btn--ghost">
-                    Профиль
-                  </Link>
-                  <button
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      logout();
-                    }}
-                    className="btn btn--ghost"
-                    type="button"
-                  >
-                    Выйти
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link to="/login" className="btn btn--ghost">
-                    Вход
-                  </Link>
-                  <Link to="/register" className="btn btn--primary">
-                    Регистрация
-                  </Link>
-                </>
-              )}
+            <div className="header-tools">
+              <form className="header-search" onSubmit={handleSearchSubmit}>
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Поиск мероприятий"
+                  aria-label="Поиск мероприятий"
+                />
+                <button className="btn btn--primary" type="submit">
+                  Найти
+                </button>
+              </form>
+
+              <div className="auth-actions">
+                {isAuthenticated ? (
+                  <>
+                    <span className="auth-user">{displayName}</span>
+                    <Link to="/profile" className="btn btn--ghost">
+                      Профиль
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        logout();
+                      }}
+                      className="btn btn--ghost"
+                      type="button"
+                    >
+                      Выйти
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/login" className="btn btn--ghost">
+                      Вход
+                    </Link>
+                    <Link to="/register" className="btn btn--primary">
+                      Регистрация
+                    </Link>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>

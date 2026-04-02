@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import EventCard from '../components/EventCard';
 import Loader from '../components/Loader';
 import AlertMessage from '../components/AlertMessage';
@@ -35,6 +35,7 @@ const BENEFITS = [
 ];
 
 const HomePage = () => {
+  const navigate = useNavigate();
   const { isAuthenticated, hasRole } = useAuth();
   const { selectedCityId, selectedCity } = useCity();
   const isAdmin = useMemo(() => hasRole([ROLE.ADMIN]), [hasRole]);
@@ -52,6 +53,7 @@ const HomePage = () => {
   const [subscriptionEmail, setSubscriptionEmail] = useState('');
   const [subscriptionMessage, setSubscriptionMessage] = useState('');
   const [subscriptionError, setSubscriptionError] = useState('');
+  const [homeSearch, setHomeSearch] = useState('');
 
   useEffect(() => {
     const loadHomeData = async () => {
@@ -96,6 +98,7 @@ const HomePage = () => {
   }, [isAuthenticated, isAdmin, selectedCityId]);
 
   const upcomingEvents = useMemo(() => events.slice(0, 4), [events]);
+  const featuredEvents = useMemo(() => events.slice(0, 3), [events]);
 
   const handleSubscribe = (event) => {
     event.preventDefault();
@@ -111,6 +114,12 @@ const HomePage = () => {
 
     setSubscriptionMessage('Функция подписки будет подключена.');
     setSubscriptionEmail('');
+  };
+
+  const handleHomeSearch = (event) => {
+    event.preventDefault();
+    const query = homeSearch.trim();
+    navigate(query ? `/events?title=${encodeURIComponent(query)}` : '/events');
   };
 
   return (
@@ -129,6 +138,18 @@ const HomePage = () => {
                 Сейчас показываем афишу города: <strong>{selectedCity.name}</strong>
               </p>
             )}
+
+            <form className="home-quick-search" onSubmit={handleHomeSearch}>
+              <input
+                type="search"
+                value={homeSearch}
+                onChange={(event) => setHomeSearch(event.target.value)}
+                placeholder="Найти мероприятие по названию"
+              />
+              <button type="submit" className="btn btn--primary">
+                Найти
+              </button>
+            </form>
 
             <div className="home-actions">
               {!isAuthenticated ? (
@@ -215,11 +236,11 @@ const HomePage = () => {
         </div>
 
         {isLoading && <Loader text="Загружаем мероприятия..." />}
-        {!isLoading && upcomingEvents.length === 0 && <EmptyState message="Пока нет мероприятий для показа." />}
-        {!isLoading && upcomingEvents.length > 0 && (
-          <div className="event-grid">
-            {upcomingEvents.map((event) => (
-              <EventCard key={event.id} event={event} />
+        {!isLoading && featuredEvents.length === 0 && <EmptyState message="Пока нет мероприятий для показа." />}
+        {!isLoading && featuredEvents.length > 0 && (
+          <div className="event-list">
+            {featuredEvents.map((event) => (
+              <EventCard key={event.id} event={event} layout="list" />
             ))}
           </div>
         )}

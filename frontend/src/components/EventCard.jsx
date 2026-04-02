@@ -1,6 +1,13 @@
 import { Link } from 'react-router-dom';
+import { formatDateTime } from '../utils/formatters';
 
-const EventCard = ({ event, onFavoriteClick, favoriteButtonText, isFavoriteButtonLoading = false }) => {
+const EventCard = ({
+  event,
+  onFavoriteClick,
+  favoriteButtonText,
+  isFavoriteButtonLoading = false,
+  layout = 'grid'
+}) => {
   const resolvedFavoriteText = favoriteButtonText || 'В избранное';
   const resolvedCoverUrl = event.coverUrl
     || (Array.isArray(event.eventImages)
@@ -10,9 +17,12 @@ const EventCard = ({ event, onFavoriteClick, favoriteButtonText, isFavoriteButto
     ? `${Number(event.ageRating)}+`
     : 'не указано';
   const venueAddress = event.venueAddress?.trim() || 'Адрес не указан';
+  const createdAtLabel = event.createdAt ? formatDateTime(event.createdAt) : '';
+  const organizerName = event.organizerName?.trim() || '';
+  const isList = layout === 'list';
 
   return (
-    <article className="event-card">
+    <article className={`event-card ${isList ? 'event-card--list' : ''}`.trim()}>
       <div className="event-card__image-wrap">
         {resolvedCoverUrl ? (
           <img src={resolvedCoverUrl} alt={event.title} className="event-card__image" />
@@ -22,11 +32,17 @@ const EventCard = ({ event, onFavoriteClick, favoriteButtonText, isFavoriteButto
       </div>
 
       <div className="event-card__body">
-        <h3>{event.title}</h3>
+        <h3>
+          <Link to={`/events/${event.id}`} className="event-card__title-link">
+            {event.title}
+          </Link>
+        </h3>
         <p className="event-card__description">{event.shortDescription || 'Описание пока не добавлено.'}</p>
 
-        <div className="event-card__meta">
+        <div className={`event-card__meta ${isList ? 'event-card__meta--list' : ''}`.trim()}>
           <span>Возрастное ограничение: {ageLabel}</span>
+          {createdAtLabel && <span className="event-card__date">Добавлено: {createdAtLabel}</span>}
+          {organizerName && <span>Организатор: {organizerName}</span>}
           <span className="event-card__address">Адрес площадки: {venueAddress}</span>
         </div>
 
