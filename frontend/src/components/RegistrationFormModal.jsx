@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import ErrorMessage from './ErrorMessage';
+import { formatDateTime, formatTimeRange } from '../utils/formatters';
 
-const RegistrationFormModal = ({ open, session, isSubmitting, error, onClose, onSubmit }) => {
+const RegistrationFormModal = ({ open, session, event, isSubmitting, error, onClose, onSubmit }) => {
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
@@ -28,8 +29,28 @@ const RegistrationFormModal = ({ open, session, isSubmitting, error, onClose, on
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="registration-title">
       <div className="modal">
-        <h3 id="registration-title">Запись на сеанс</h3>
-        <p className="page-subtitle">{session.title}</p>
+        <h3 id="registration-title">Подтверждение записи</h3>
+        <p className="page-subtitle">Зарегистрироваться на этот сеанс?</p>
+
+        <div className="session-confirm">
+          <p>
+            <strong>Мероприятие:</strong> {event?.title || '—'}
+          </p>
+          <p>
+            <strong>Сеанс:</strong> {session.title}
+          </p>
+          <p>
+            <strong>Дата:</strong> {formatDateTime(session.startAt)}
+          </p>
+          <p>
+            <strong>Время:</strong> {formatTimeRange(session.startAt, session.endAt)}
+          </p>
+          {event?.venue?.name && (
+            <p>
+              <strong>Площадка:</strong> {event.venue.name}
+            </p>
+          )}
+        </div>
 
         <form className="form" onSubmit={handleSubmit}>
           <label>
@@ -62,4 +83,3 @@ const RegistrationFormModal = ({ open, session, isSubmitting, error, onClose, on
 };
 
 export default RegistrationFormModal;
-

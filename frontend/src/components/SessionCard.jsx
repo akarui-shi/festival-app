@@ -1,38 +1,28 @@
-import { formatDateTime } from '../utils/formatters';
+import { formatTimeRange } from '../utils/formatters';
 
 const SessionCard = ({ session, onRegisterClick }) => {
   const hasAvailableSeats = (session.availableSeats ?? 0) > 0;
+  const timeRange = formatTimeRange(session.startAt, session.endAt);
 
   return (
     <article className="session-card">
-      <div className="session-card__body">
-        <h3 className="session-card__title">{session.title}</h3>
-        <p className="session-card__description">{session.description || 'Описание сеанса пока не добавлено.'}</p>
-
-        <div className="session-card__meta">
-          <p>
-            <strong>Начало:</strong> {formatDateTime(session.startAt)}
+      <div className="session-card__time-row">
+        <button
+          className="session-card__time-chip"
+          type="button"
+          onClick={() => onRegisterClick(session)}
+          disabled={!hasAvailableSeats}
+        >
+          {timeRange}
+        </button>
+        <div className="session-card__details">
+          <p className="session-card__title">{session.title}</p>
+          <p className="session-card__availability">
+            {hasAvailableSeats
+              ? `Свободно мест: ${session.availableSeats ?? '-'} / ${session.totalCapacity ?? '-'}`
+              : 'Мест нет'}
           </p>
-          <p>
-            <strong>Окончание:</strong> {formatDateTime(session.endAt)}
-          </p>
-          <p>
-            <strong>Площадка:</strong> {session.venueName} ({session.cityName})
-          </p>
-          <p>
-            <strong>Доступные места:</strong> {session.availableSeats ?? '-'} / {session.totalCapacity ?? '-'}
-          </p>
-        </div>
-
-        <div className="session-card__actions">
-          <button
-            className="btn btn--primary"
-            type="button"
-            onClick={() => onRegisterClick(session)}
-            disabled={!hasAvailableSeats}
-          >
-            {hasAvailableSeats ? 'Записаться' : 'Мест нет'}
-          </button>
+          {session.description && <p className="session-card__description">{session.description}</p>}
         </div>
       </div>
     </article>
@@ -40,4 +30,3 @@ const SessionCard = ({ session, onRegisterClick }) => {
 };
 
 export default SessionCard;
-
