@@ -77,6 +77,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/files/event-cover").hasAnyRole("ORGANIZER", "ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/files/event-image").hasAnyRole("ORGANIZER", "ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/files/publication-image").hasAnyRole("ORGANIZER", "ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/files/avatar").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/sessions/**").hasAnyRole("ORGANIZER", "ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/sessions/**").hasAnyRole("ORGANIZER", "ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/sessions/**").hasAnyRole("ORGANIZER", "ADMIN")

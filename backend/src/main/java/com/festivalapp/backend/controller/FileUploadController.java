@@ -44,6 +44,12 @@ public class FileUploadController {
         return buildUploadResponse(storedFile);
     }
 
+    @PostMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<FileUploadResponse> uploadAvatar(@RequestPart("file") @NotNull MultipartFile file) {
+        StoredFile storedFile = fileStorageService.storeAvatar(file);
+        return buildUploadResponse(storedFile);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<byte[]> getFile(@PathVariable Long id) {
         StoredFile file = fileStorageService.loadById(id);

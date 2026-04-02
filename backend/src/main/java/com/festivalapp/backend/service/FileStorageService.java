@@ -42,6 +42,10 @@ public class FileStorageService {
         return storeImage(file, "PUBLICATION_IMAGE");
     }
 
+    public StoredFile storeAvatar(MultipartFile file) {
+        return storeImage(file, "AVATAR");
+    }
+
     public StoredFile loadById(Long id) {
         return storedFileRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Файл не найден"));

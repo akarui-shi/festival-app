@@ -15,5 +15,6 @@ public class CurrentUserResponse {
     private String firstName;
     private String lastName;
     private String phone;
+    private String avatarUrl;
     private Set<String> roles;
 }
