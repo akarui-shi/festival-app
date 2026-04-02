@@ -75,6 +75,10 @@ a {
   padding: 24px 0 40px;
 }
 
+.app-main--home {
+  padding-top: 0;
+}
+
 .app-header {
   position: sticky;
   top: 0;
@@ -2448,6 +2452,10 @@ a {
 @media (max-width: 768px) {
   .app-main {
     padding-top: 18px;
+  }
+
+  .app-main--home {
+    padding-top: 0;
   }
 
   .favorites-item {
