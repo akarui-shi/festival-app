@@ -37,9 +37,6 @@ const RegistrationFormModal = ({ open, session, event, isSubmitting, error, onCl
             <strong>Мероприятие:</strong> {event?.title || '—'}
           </p>
           <p>
-            <strong>Сеанс:</strong> {session.title}
-          </p>
-          <p>
             <strong>Дата:</strong> {formatDateTime(session.startAt)}
           </p>
           <p>

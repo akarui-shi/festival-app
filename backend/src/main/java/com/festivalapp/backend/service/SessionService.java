@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -46,6 +47,7 @@ public class SessionService {
 
     private static final Set<RegistrationStatus> ACTIVE_REGISTRATION_STATUSES =
         Set.of(RegistrationStatus.CREATED, RegistrationStatus.CONFIRMED);
+    private static final DateTimeFormatter SESSION_TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     private final SessionRepository sessionRepository;
     private final EventRepository eventRepository;
@@ -91,15 +93,17 @@ public class SessionService {
 
         validateOrganizerAccess(actor, event);
         validateSessionTimeRange(request.getStartAt(), request.getEndAt());
+        validateSessionCapacity(request.getCapacity(), venue);
         validateVenueTimeIntersection(venue.getId(), request.getStartAt(), request.getEndAt(), null);
 
         Session session = Session.builder()
             .event(event)
             .venue(venue)
-            .title(request.getTitle())
-            .description(request.getDescription())
+            .title(buildSessionTitle(request.getStartAt(), request.getEndAt()))
+            .description(null)
             .startTime(request.getStartAt())
             .endTime(request.getEndAt())
+            .capacity(request.getCapacity())
             .build();
 
         Session saved = sessionRepository.save(session);
@@ -124,22 +128,21 @@ public class SessionService {
 
         LocalDateTime targetStart = request.getStartAt() == null ? session.getStartTime() : request.getStartAt();
         LocalDateTime targetEnd = request.getEndAt() == null ? session.getEndTime() : request.getEndAt();
+        Integer targetCapacity = request.getCapacity() == null ? session.getCapacity() : request.getCapacity();
 
         validateOrganizerAccess(actor, targetEvent);
         validateSessionTimeRange(targetStart, targetEnd);
+        validateSessionCapacity(targetCapacity, targetVenue);
         validateVenueTimeIntersection(targetVenue.getId(), targetStart, targetEnd, session.getId());
-
-        if (request.getTitle() != null) {
-            session.setTitle(request.getTitle());
-        }
-        if (request.getDescription() != null) {
-            session.setDescription(request.getDescription());
-        }
 
         session.setEvent(targetEvent);
         session.setVenue(targetVenue);
         session.setStartTime(targetStart);
         session.setEndTime(targetEnd);
+        session.setCapacity(targetCapacity);
+        // Session naming/description are not managed manually anymore.
+        session.setTitle(buildSessionTitle(targetStart, targetEnd));
+        session.setDescription(null);
 
         Session updated = sessionRepository.save(session);
         int reservedSeats = getReservedSeats(updated.getId());
@@ -231,6 +234,15 @@ public class SessionService {
         }
     }
 
+    private void validateSessionCapacity(Integer capacity, Venue venue) {
+        if (capacity == null || capacity < 1) {
+            throw new BadRequestException("Session capacity must be greater than 0");
+        }
+        if (venue != null && venue.getCapacity() != null && capacity > venue.getCapacity()) {
+            throw new BadRequestException("Session capacity cannot exceed venue capacity");
+        }
+    }
+
     // Dynamic filtering for public sessions feed.
     private Specification<Session> buildSpecification(Long eventId,
                                                       Long venueId,
@@ -303,13 +315,11 @@ public class SessionService {
 
     private SessionShortResponse toShortResponse(Session session, int reservedSeats) {
         Venue effectiveVenue = resolveSessionVenue(session);
-        int totalCapacity = safeCapacity(effectiveVenue);
+        int totalCapacity = safeCapacity(session, effectiveVenue);
         int availableSeats = Math.max(totalCapacity - reservedSeats, 0);
 
         return SessionShortResponse.builder()
             .id(session.getId())
-            .title(session.getTitle())
-            .description(session.getDescription())
             .startAt(session.getStartTime())
             .endAt(session.getEndTime())
             .eventId(session.getEvent() != null ? session.getEvent().getId() : null)
@@ -329,13 +339,11 @@ public class SessionService {
 
     private SessionDetailsResponse toDetailsResponse(Session session, int reservedSeats) {
         Venue effectiveVenue = resolveSessionVenue(session);
-        int totalCapacity = safeCapacity(effectiveVenue);
+        int totalCapacity = safeCapacity(session, effectiveVenue);
         int availableSeats = Math.max(totalCapacity - reservedSeats, 0);
 
         return SessionDetailsResponse.builder()
             .id(session.getId())
-            .title(session.getTitle())
-            .description(session.getDescription())
             .startAt(session.getStartTime())
             .endAt(session.getEndTime())
             .availableSeats(availableSeats)
@@ -391,7 +399,10 @@ public class SessionService {
             .build();
     }
 
-    private int safeCapacity(Venue venue) {
+    private int safeCapacity(Session session, Venue venue) {
+        if (session != null && session.getCapacity() != null && session.getCapacity() > 0) {
+            return session.getCapacity();
+        }
         if (venue == null) {
             return 0;
         }
@@ -426,5 +437,11 @@ public class SessionService {
             return session.getEvent().getVenue();
         }
         return session.getVenue();
+    }
+
+    private String buildSessionTitle(LocalDateTime startAt, LocalDateTime endAt) {
+        String start = startAt != null ? startAt.format(SESSION_TIME_FORMATTER) : "--:--";
+        String end = endAt != null ? endAt.format(SESSION_TIME_FORMATTER) : "--:--";
+        return "Сеанс " + start + "-" + end;
     }
 }

@@ -4,13 +4,14 @@ import EventForm from '../components/EventForm';
 import Loader from '../components/Loader';
 import AlertMessage from '../components/AlertMessage';
 import { eventService } from '../services/eventService';
+import { sessionService } from '../services/sessionService';
 import { directoryService } from '../services/directoryService';
 import { toUserErrorMessage } from '../utils/errorMessages';
 import { useNotification } from '../context/NotificationContext';
 
 const OrganizerEventCreatePage = () => {
   const navigate = useNavigate();
-  const { notifySuccess, notifyError } = useNotification();
+  const { notifySuccess, notifyError, notifyWarning } = useNotification();
 
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,8 +45,39 @@ const OrganizerEventCreatePage = () => {
     try {
       setIsSubmitting(true);
       setError('');
-      await eventService.createEvent(payload);
-      notifySuccess('Мероприятие создано и отправлено на модерацию.');
+      const { sessions = [], ...eventPayload } = payload;
+      const createdEvent = await eventService.createEvent(eventPayload);
+
+      let createdSessionsCount = 0;
+      const sessionErrors = [];
+
+      if (Array.isArray(sessions) && sessions.length > 0 && createdEvent?.id) {
+        // Create sessions after event creation so organizer can publish everything in one flow.
+        for (const session of sessions) {
+          try {
+            await sessionService.createSession({
+              eventId: Number(createdEvent.id),
+              startAt: session.startAt,
+              endAt: session.endAt,
+              capacity: session.capacity
+            });
+            createdSessionsCount += 1;
+          } catch (sessionError) {
+            sessionErrors.push(toUserErrorMessage(sessionError, 'Не удалось создать один из сеансов.'));
+          }
+        }
+      }
+
+      if (sessionErrors.length > 0) {
+        notifyWarning(
+          `Мероприятие создано, но добавлены не все сеансы (${createdSessionsCount}/${sessions.length}).`
+        );
+        notifyError(sessionErrors[0]);
+      } else if (sessions.length > 0) {
+        notifySuccess(`Мероприятие создано и отправлено на модерацию. Добавлено сеансов: ${createdSessionsCount}.`);
+      } else {
+        notifySuccess('Мероприятие создано и отправлено на модерацию.');
+      }
       navigate('/organizer');
     } catch (err) {
       const message = toUserErrorMessage(err, 'Не удалось создать мероприятие.');
@@ -73,6 +105,7 @@ const OrganizerEventCreatePage = () => {
 
       <EventForm
         categories={categories}
+        allowSessionDrafts
         isSubmitting={isSubmitting}
         submitLabel="Создать мероприятие"
         onSubmit={handleSubmit}

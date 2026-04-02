@@ -27,6 +27,8 @@ const DEFAULT_VALUES = {
 };
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const EMPTY_SESSION_DRAFT = { sessionDate: '', startTime: '', endTime: '', capacity: '' };
+const pad = (value) => String(value).padStart(2, '0');
 
 const toNumberOrNull = (value) => {
   if (value === null || value === undefined || value === '') {
@@ -34,6 +36,47 @@ const toNumberOrNull = (value) => {
   }
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
+};
+
+const toDatePart = (value) => {
+  if (!value) {
+    return '';
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return '';
+  }
+  return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`;
+};
+
+const toTimePart = (value) => {
+  if (!value) {
+    return '';
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return '';
+  }
+  return parsed.toTimeString().slice(0, 5);
+};
+
+const toApiDateTime = (date, time) => {
+  if (!date || !time) {
+    return '';
+  }
+  return `${date}T${time.length === 5 ? `${time}:00` : time}`;
+};
+
+const normalizeSessionDrafts = (sessions) => {
+  if (!Array.isArray(sessions)) {
+    return [];
+  }
+  return sessions.map((session) => ({
+    sessionDate: toDatePart(session?.startAt),
+    startTime: toTimePart(session?.startAt),
+    endTime: toTimePart(session?.endAt),
+    capacity: session?.capacity ? String(session.capacity) : ''
+  }));
 };
 
 const normalizeImages = (images = []) => {
@@ -86,6 +129,7 @@ const extractAddressMetadata = (geoObject) => {
 const EventFormContent = ({
   initialValues,
   categories = [],
+  allowSessionDrafts = false,
   isSubmitting = false,
   submitLabel = 'Сохранить',
   errorMessage = '',
@@ -119,6 +163,12 @@ const EventFormContent = ({
   const [locationError, setLocationError] = useState('');
   const [locationMessage, setLocationMessage] = useState('');
   const [isResolvingLocation, setIsResolvingLocation] = useState(false);
+  const [sessionDrafts, setSessionDrafts] = useState(
+    normalizeSessionDrafts(initialValues?.sessions || []).length > 0
+      ? normalizeSessionDrafts(initialValues?.sessions || [])
+      : [EMPTY_SESSION_DRAFT]
+  );
+  const [sessionsError, setSessionsError] = useState('');
   const [mapCenter, setMapCenter] = useState(
     mergedInitialValues.venueLatitude !== null && mergedInitialValues.venueLongitude !== null
       ? [mergedInitialValues.venueLatitude, mergedInitialValues.venueLongitude]
@@ -131,12 +181,34 @@ const EventFormContent = ({
     setUploadMessage('');
     setLocationError('');
     setLocationMessage('');
+    setSessionsError('');
+    const normalizedDrafts = normalizeSessionDrafts(mergedInitialValues.sessions || []);
+    setSessionDrafts(normalizedDrafts.length > 0 ? normalizedDrafts : [EMPTY_SESSION_DRAFT]);
     if (mergedInitialValues.venueLatitude !== null && mergedInitialValues.venueLongitude !== null) {
       setMapCenter([mergedInitialValues.venueLatitude, mergedInitialValues.venueLongitude]);
     } else {
       setMapCenter(DEFAULT_MAP_CENTER);
     }
   }, [mergedInitialValues]);
+
+  const addSessionDraft = () => {
+    setSessionDrafts((prev) => [...prev, { ...EMPTY_SESSION_DRAFT }]);
+  };
+
+  const removeSessionDraft = (index) => {
+    setSessionDrafts((prev) => {
+      const next = prev.filter((_, currentIndex) => currentIndex !== index);
+      return next.length > 0 ? next : [{ ...EMPTY_SESSION_DRAFT }];
+    });
+    setSessionsError('');
+  };
+
+  const updateSessionDraft = (index, field, value) => {
+    setSessionDrafts((prev) =>
+      prev.map((draft, currentIndex) => (currentIndex === index ? { ...draft, [field]: value } : draft))
+    );
+    setSessionsError('');
+  };
 
   const resolveCityId = useCallback(async (cityName, region, country) => {
     if (!cityName) {
@@ -395,6 +467,7 @@ const EventFormContent = ({
   const handleSubmit = async (event) => {
     event.preventDefault();
     setLocationError('');
+    setSessionsError('');
 
     const venueAddress = formData.venueAddress.trim();
     if (!venueAddress) {
@@ -420,8 +493,46 @@ const EventFormContent = ({
       sortOrder: index
     }));
     const coverImageUrl = normalizedImages.find((image) => image.isCover)?.imageUrl || '';
+    let preparedSessions = [];
 
-    onSubmit({
+    if (allowSessionDrafts) {
+      const hasAnySessionValue = sessionDrafts.some(
+        (draft) => draft.sessionDate || draft.startTime || draft.endTime || draft.capacity
+      );
+
+      if (hasAnySessionValue) {
+        const invalidDraft = sessionDrafts.find(
+          (draft) => !draft.sessionDate || !draft.startTime || !draft.endTime || !draft.capacity
+        );
+        if (invalidDraft) {
+          setSessionsError('Заполните дату, время начала, окончания и количество мест для каждого сеанса.');
+          return;
+        }
+
+        preparedSessions = sessionDrafts.map((draft) => {
+          const startAt = toApiDateTime(draft.sessionDate, draft.startTime);
+          const endAt = toApiDateTime(draft.sessionDate, draft.endTime);
+          return { startAt, endAt, capacity: Number(draft.capacity) };
+        });
+
+        const invalidRange = preparedSessions.some(
+          (session) => new Date(session.endAt).getTime() <= new Date(session.startAt).getTime()
+        );
+        if (invalidRange) {
+          setSessionsError('Время окончания сеанса должно быть позже времени начала.');
+          return;
+        }
+        const invalidCapacity = preparedSessions.some(
+          (session) => !Number.isFinite(session.capacity) || session.capacity < 1
+        );
+        if (invalidCapacity) {
+          setSessionsError('Количество мест для сеанса должно быть больше 0.');
+          return;
+        }
+      }
+    }
+
+    const payload = {
       title: formData.title.trim(),
       shortDescription: formData.shortDescription.trim(),
       fullDescription: formData.fullDescription.trim(),
@@ -437,7 +548,13 @@ const EventFormContent = ({
       venueRegion: formData.venueRegion || null,
       venueCountry: formData.venueCountry || null,
       categoryIds: formData.categoryIds
-    });
+    };
+
+    if (allowSessionDrafts) {
+      payload.sessions = preparedSessions;
+    }
+
+    onSubmit(payload);
   };
 
   const markerCoordinates = useMemo(() => {
@@ -633,6 +750,78 @@ const EventFormContent = ({
           ))}
         </div>
       </div>
+
+      {allowSessionDrafts && (
+        <div className="event-sessions-drafts">
+          <p className="form-section-title">Сеансы мероприятия</p>
+          <p className="muted">Добавьте сеансы сразу при создании. Можно оставить пусто и добавить позже.</p>
+
+          <div className="event-sessions-drafts__list">
+            {sessionDrafts.map((sessionDraft, index) => (
+              <div key={`session-draft-${index}`} className="event-sessions-draft-row">
+                <label>
+                  Дата
+                  <input
+                    type="date"
+                    value={sessionDraft.sessionDate}
+                    onChange={(event) => updateSessionDraft(index, 'sessionDate', event.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </label>
+                <label>
+                  Начало
+                  <input
+                    type="time"
+                    value={sessionDraft.startTime}
+                    onChange={(event) => updateSessionDraft(index, 'startTime', event.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </label>
+                <label>
+                  Окончание
+                  <input
+                    type="time"
+                    value={sessionDraft.endTime}
+                    onChange={(event) => updateSessionDraft(index, 'endTime', event.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </label>
+                <label>
+                  Мест
+                  <input
+                    type="number"
+                    min="1"
+                    value={sessionDraft.capacity}
+                    onChange={(event) => updateSessionDraft(index, 'capacity', event.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="btn btn--ghost"
+                  onClick={() => removeSessionDraft(index)}
+                  disabled={isSubmitting}
+                >
+                  Удалить
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="inline-actions">
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={addSessionDraft}
+              disabled={isSubmitting}
+            >
+              Добавить сеанс
+            </button>
+          </div>
+
+          {sessionsError && <AlertMessage type="error" message={sessionsError} onClose={() => setSessionsError('')} />}
+        </div>
+      )}
 
       {errorMessage && <AlertMessage type="error" message={errorMessage} />}
 

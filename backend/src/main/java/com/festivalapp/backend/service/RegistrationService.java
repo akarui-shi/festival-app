@@ -19,6 +19,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,6 +31,7 @@ public class RegistrationService {
 
     private static final Set<RegistrationStatus> ACTIVE_REGISTRATION_STATUSES =
         Set.of(RegistrationStatus.CREATED, RegistrationStatus.CONFIRMED);
+    private static final DateTimeFormatter SESSION_TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     private final RegistrationRepository registrationRepository;
     private final SessionRepository sessionRepository;
@@ -137,6 +139,9 @@ public class RegistrationService {
     }
 
     private int safeCapacity(Session session) {
+        if (session != null && session.getCapacity() != null && session.getCapacity() > 0) {
+            return session.getCapacity();
+        }
         Venue venue = resolveSessionVenue(session);
         if (venue == null || venue.getCapacity() == null) {
             return 0;
@@ -152,7 +157,7 @@ public class RegistrationService {
             .registrationId(registration.getId())
             .sessionId(session.getId())
             .eventTitle(session.getEvent() != null ? session.getEvent().getTitle() : null)
-            .sessionTitle(session.getTitle())
+            .sessionTitle(buildSessionLabel(session))
             .venueName(venue != null ? venue.getName() : null)
             .startAt(session.getStartTime())
             .quantity(registration.getQuantity())
@@ -170,7 +175,7 @@ public class RegistrationService {
             .registrationId(registration.getId())
             .sessionId(session.getId())
             .eventTitle(session.getEvent() != null ? session.getEvent().getTitle() : null)
-            .sessionTitle(session.getTitle())
+            .sessionTitle(buildSessionLabel(session))
             .venueName(venue != null ? venue.getName() : null)
             .startAt(session.getStartTime())
             .quantity(registration.getQuantity())
@@ -188,6 +193,14 @@ public class RegistrationService {
             return session.getEvent().getVenue();
         }
         return session.getVenue();
+    }
+
+    private String buildSessionLabel(Session session) {
+        if (session == null || session.getStartTime() == null || session.getEndTime() == null) {
+            return "Сеанс";
+        }
+        return session.getStartTime().format(SESSION_TIME_FORMATTER)
+            + "-" + session.getEndTime().format(SESSION_TIME_FORMATTER);
     }
 
     private String resolveRegistrationIntegrityMessage(DataIntegrityViolationException ex) {

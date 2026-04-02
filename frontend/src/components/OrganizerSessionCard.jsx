@@ -1,23 +1,22 @@
-import { formatDateTime } from '../utils/formatters';
+import { formatDateTime, formatTimeRange } from '../utils/formatters';
 
 const OrganizerSessionCard = ({ session, isDeleting = false, onEdit, onDelete }) => {
   return (
     <article className="organizer-session-card">
-      <h3>{session.title}</h3>
-      <p className="organizer-session-card__description">{session.description || 'Описание не добавлено.'}</p>
+      <h3>{formatTimeRange(session.startAt, session.endAt)}</h3>
 
       <div className="organizer-session-card__meta">
         <p>
-          <strong>Начало:</strong> {formatDateTime(session.startAt)}
+          <strong>Дата начала:</strong> {formatDateTime(session.startAt)}
         </p>
         <p>
-          <strong>Окончание:</strong> {formatDateTime(session.endAt)}
+          <strong>Дата окончания:</strong> {formatDateTime(session.endAt)}
         </p>
         <p>
           <strong>Площадка:</strong> {session.venueName || '-'}
         </p>
         <p>
-          <strong>Доступно мест:</strong> {session.availableSeats ?? '-'}
+          <strong>Мест:</strong> {session.availableSeats ?? '-'} / {session.totalCapacity ?? '-'}
         </p>
       </div>
 
@@ -34,4 +33,3 @@ const OrganizerSessionCard = ({ session, isDeleting = false, onEdit, onDelete })
 };
 
 export default OrganizerSessionCard;
-
