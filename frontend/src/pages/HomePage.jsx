@@ -12,23 +12,28 @@ import { cityService } from '../services/cityService';
 import { venueService } from '../services/venueService';
 import { userService } from '../services/userService';
 import { toUserErrorMessage } from '../utils/errorMessages';
+import AppIcon from '../components/AppIcon';
 
 const FALLBACK_USER_COUNT = 1200;
 
 const BENEFITS = [
   {
+    icon: 'search',
     title: 'Удобный поиск мероприятий',
     description: 'Смотрите афишу по городу, категориям и площадкам в одном месте.'
   },
   {
+    icon: 'calendar',
     title: 'Регистрация на сеансы',
     description: 'Бронируйте места онлайн за пару кликов без звонков и очередей.'
   },
   {
+    icon: 'spark',
     title: 'QR-код для посещения',
     description: 'После записи вы получаете персональный QR-токен для быстрого входа.'
   },
   {
+    icon: 'heart',
     title: 'Избранное и отзывы',
     description: 'Сохраняйте интересные события и делитесь впечатлениями после посещения.'
   }
@@ -147,6 +152,7 @@ const HomePage = () => {
                 placeholder="Найти мероприятие по названию"
               />
               <button type="submit" className="btn btn--primary">
+                <AppIcon name="search" size={15} />
                 Найти
               </button>
             </form>
@@ -155,21 +161,26 @@ const HomePage = () => {
               {!isAuthenticated ? (
                 <>
                   <Link to="/register" className="btn btn--primary">
+                    <AppIcon name="user" size={15} />
                     Зарегистрироваться
                   </Link>
                   <Link to="/login" className="btn btn--ghost">
+                    <AppIcon name="profile" size={15} />
                     Войти
                   </Link>
                 </>
               ) : (
                 <>
                   <Link to="/events" className="btn btn--primary">
+                    <AppIcon name="calendar" size={15} />
                     Мероприятия
                   </Link>
                   <Link to="/my-registrations" className="btn btn--ghost">
+                    <AppIcon name="clock" size={15} />
                     Мои регистрации
                   </Link>
                   <Link to="/profile" className="btn btn--ghost">
+                    <AppIcon name="profile" size={15} />
                     Личный кабинет
                   </Link>
                 </>
@@ -220,6 +231,9 @@ const HomePage = () => {
         <div className="home-benefits">
           {BENEFITS.map((benefit) => (
             <article key={benefit.title} className="home-benefit-item">
+              <span className="home-benefit-item__icon">
+                <AppIcon name={benefit.icon} size={18} />
+              </span>
               <h3>{benefit.title}</h3>
               <p>{benefit.description}</p>
             </article>
