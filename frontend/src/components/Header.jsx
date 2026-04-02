@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCity } from '../context/CityContext';
@@ -25,11 +25,15 @@ const Header = () => {
     confirmSuggestedCity
   } = useCity();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const userMenuRef = useRef(null);
 
   const displayName = [currentUser?.firstName, currentUser?.lastName].filter(Boolean).join(' ') || currentUser?.login;
   const showOrganizer = hasRole([ROLE.ORGANIZER]);
   const showAdmin = hasRole([ROLE.ADMIN]);
+  const showResidentOnly = hasRole([ROLE.RESIDENT]) && !showOrganizer && !showAdmin;
+  const userInitial = (displayName?.trim()?.[0] || 'U').toUpperCase();
   const suggestedCityMeta = [suggestedCity?.region, suggestedCity?.country]
     .filter(Boolean)
     .join(', ');
@@ -38,17 +42,14 @@ const Header = () => {
     () => [
       { to: '/', label: 'Главная' },
       { to: '/events', label: 'Мероприятия' },
-      { to: '/publications', label: 'Публикации' },
-      ...(isAuthenticated ? [{ to: '/favorites', label: 'Избранное' }] : []),
-      ...(isAuthenticated ? [{ to: '/my-registrations', label: 'Мои регистрации' }] : []),
-      ...(showOrganizer ? [{ to: '/organizer', label: 'Кабинет организатора' }] : []),
-      ...(showAdmin ? [{ to: '/admin', label: 'Админ-панель' }] : [])
+      { to: '/publications', label: 'Публикации' }
     ],
-    [isAuthenticated, showOrganizer, showAdmin]
+    []
   );
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
+    setIsUserMenuOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -65,6 +66,31 @@ const Header = () => {
     navigate(query ? `/events?title=${encodeURIComponent(query)}` : '/events');
     setIsMobileMenuOpen(false);
   };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!userMenuRef.current) {
+        return;
+      }
+      if (!userMenuRef.current.contains(event.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, []);
 
   return (
     <>
@@ -121,22 +147,62 @@ const Header = () => {
 
               <div className="auth-actions">
                 {isAuthenticated ? (
-                  <>
-                    <span className="auth-user">{displayName}</span>
-                    <Link to="/profile" className="btn btn--ghost">
-                      Профиль
-                    </Link>
+                  <div className="header-user-menu" ref={userMenuRef}>
                     <button
-                      onClick={() => {
-                        setIsMobileMenuOpen(false);
-                        logout();
-                      }}
-                      className="btn btn--ghost"
                       type="button"
+                      className="header-user-trigger"
+                      aria-haspopup="menu"
+                      aria-expanded={isUserMenuOpen}
+                      onClick={() => setIsUserMenuOpen((prev) => !prev)}
                     >
-                      Выйти
+                      <span className="header-user-trigger__avatar">{userInitial}</span>
+                      <span className="header-user-trigger__label">{displayName}</span>
+                      <span className="header-user-trigger__chevron">{isUserMenuOpen ? '▴' : '▾'}</span>
                     </button>
-                  </>
+
+                    {isUserMenuOpen && (
+                      <div className="header-user-dropdown" role="menu">
+                        <Link to="/profile" className="header-user-dropdown__item" role="menuitem">
+                          Профиль
+                        </Link>
+                        <Link to="/favorites" className="header-user-dropdown__item" role="menuitem">
+                          Избранные
+                        </Link>
+                        {showOrganizer && (
+                          <Link to="/organizer" className="header-user-dropdown__item" role="menuitem">
+                            Мои мероприятия
+                          </Link>
+                        )}
+                        {showResidentOnly && (
+                          <Link to="/my-registrations" className="header-user-dropdown__item" role="menuitem">
+                            Мои регистрации
+                          </Link>
+                        )}
+                        {showOrganizer && (
+                          <Link to="/publications" className="header-user-dropdown__item" role="menuitem">
+                            Мои публикации
+                          </Link>
+                        )}
+                        {showAdmin && (
+                          <Link to="/admin" className="header-user-dropdown__item" role="menuitem">
+                            Админ-панель
+                          </Link>
+                        )}
+                        <button
+                          className="header-user-dropdown__item header-user-dropdown__item--danger"
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setIsMobileMenuOpen(false);
+                            setIsUserMenuOpen(false);
+                            logout();
+                          }}
+                        >
+                          Выйти
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <>
                     <Link to="/login" className="btn btn--ghost">
