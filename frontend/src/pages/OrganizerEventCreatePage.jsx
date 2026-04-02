@@ -8,10 +8,14 @@ import { sessionService } from '../services/sessionService';
 import { directoryService } from '../services/directoryService';
 import { toUserErrorMessage } from '../utils/errorMessages';
 import { useNotification } from '../context/NotificationContext';
+import { useAuth } from '../context/AuthContext';
+import { ROLE } from '../utils/roles';
 
 const OrganizerEventCreatePage = () => {
   const navigate = useNavigate();
   const { notifySuccess, notifyError, notifyWarning } = useNotification();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole([ROLE.ADMIN]);
 
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -92,6 +96,14 @@ const OrganizerEventCreatePage = () => {
     return (
       <section className="container page">
         <Loader text="Загружаем форму..." />
+      </section>
+    );
+  }
+
+  if (isAdmin) {
+    return (
+      <section className="container page">
+        <AlertMessage type="error" message="Администратор не может создавать мероприятия." />
       </section>
     );
   }

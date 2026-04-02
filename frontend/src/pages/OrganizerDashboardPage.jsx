@@ -8,10 +8,14 @@ import { organizerService } from '../services/organizerService';
 import { eventService } from '../services/eventService';
 import { toUserErrorMessage } from '../utils/errorMessages';
 import { useNotification } from '../context/NotificationContext';
+import { useAuth } from '../context/AuthContext';
+import { ROLE } from '../utils/roles';
 
 const OrganizerDashboardPage = () => {
   const navigate = useNavigate();
   const { notifySuccess, notifyError, notifyInfo } = useNotification();
+  const { hasRole } = useAuth();
+  const canCreateEvent = hasRole([ROLE.ORGANIZER]) && !hasRole([ROLE.ADMIN]);
 
   const [events, setEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -90,9 +94,11 @@ const OrganizerDashboardPage = () => {
     <section className="container page">
       <div className="page-header-row">
         <h1>Кабинет организатора</h1>
-        <button className="btn btn--primary" type="button" onClick={() => navigate('/organizer/events/create')}>
-          Создать мероприятие
-        </button>
+        {canCreateEvent && (
+          <button className="btn btn--primary" type="button" onClick={() => navigate('/organizer/events/create')}>
+            Создать мероприятие
+          </button>
+        )}
       </div>
 
       {isLoading && <Loader text="Загружаем ваши мероприятия..." />}

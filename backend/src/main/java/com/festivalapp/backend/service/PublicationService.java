@@ -115,7 +115,9 @@ public class PublicationService {
         }
         if (request.getEventId() != null) {
             Event event = resolveEventOrNull(request.getEventId());
-            validateCreateAccess(actor, event);
+            if (!hasRole(actor, RoleName.ROLE_ADMIN)) {
+                validateCreateAccess(actor, event);
+            }
             publication.setEvent(event);
         }
 
@@ -254,11 +256,11 @@ public class PublicationService {
 
     private void validateCreateAccess(User actor, Event event) {
         if (hasRole(actor, RoleName.ROLE_ADMIN)) {
-            return;
+            throw new AccessDeniedException("Администратор не может создавать публикации");
         }
 
         if (!hasRole(actor, RoleName.ROLE_ORGANIZER)) {
-            throw new AccessDeniedException("Only organizers or admins can manage publications");
+            throw new AccessDeniedException("Только организатор может создавать публикации");
         }
 
         if (event == null) {

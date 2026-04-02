@@ -35,7 +35,7 @@ const router = createBrowserRouter([
       {
         path: 'publications/create',
         element: (
-          <ProtectedRoute allowedRoles={[ROLE.ORGANIZER, ROLE.ADMIN]}>
+          <ProtectedRoute allowedRoles={[ROLE.ORGANIZER]}>
             <PublicationCreatePage />
           </ProtectedRoute>
         )
@@ -67,7 +67,7 @@ const router = createBrowserRouter([
       {
         path: 'organizer',
         element: (
-          <ProtectedRoute allowedRoles={[ROLE.ORGANIZER, ROLE.ADMIN]}>
+          <ProtectedRoute allowedRoles={[ROLE.ORGANIZER]}>
             <OrganizerDashboardPage />
           </ProtectedRoute>
         )
@@ -75,7 +75,7 @@ const router = createBrowserRouter([
       {
         path: 'organizer/events/create',
         element: (
-          <ProtectedRoute allowedRoles={[ROLE.ORGANIZER, ROLE.ADMIN]}>
+          <ProtectedRoute allowedRoles={[ROLE.ORGANIZER]}>
             <OrganizerEventCreatePage />
           </ProtectedRoute>
         )
@@ -83,7 +83,7 @@ const router = createBrowserRouter([
       {
         path: 'organizer/events/:id/edit',
         element: (
-          <ProtectedRoute allowedRoles={[ROLE.ORGANIZER, ROLE.ADMIN]}>
+          <ProtectedRoute allowedRoles={[ROLE.ORGANIZER]}>
             <OrganizerEventEditPage />
           </ProtectedRoute>
         )
@@ -91,7 +91,7 @@ const router = createBrowserRouter([
       {
         path: 'organizer/events/:id/sessions',
         element: (
-          <ProtectedRoute allowedRoles={[ROLE.ORGANIZER, ROLE.ADMIN]}>
+          <ProtectedRoute allowedRoles={[ROLE.ORGANIZER]}>
             <OrganizerEventSessionsPage />
           </ProtectedRoute>
         )
