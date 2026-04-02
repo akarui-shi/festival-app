@@ -13,13 +13,14 @@ import { sessionService } from '../services/sessionService';
 import { registrationService } from '../services/registrationService';
 import { reviewService } from '../services/reviewService';
 import { useAuth } from '../context/AuthContext';
+import { ROLE } from '../utils/roles';
 import { formatDateTime, formatRelativeSessionDate, formatSessionDayLabel } from '../utils/formatters';
 import { toUserErrorMessage } from '../utils/errorMessages';
 
 const EventDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, hasRole } = useAuth();
 
   const [event, setEvent] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,6 +45,8 @@ const EventDetailsPage = () => {
 
   const [favoriteNotice, setFavoriteNotice] = useState(null);
   const [selectedGalleryIndex, setSelectedGalleryIndex] = useState(0);
+  const isAdmin = hasRole([ROLE.ADMIN]);
+  const canRegisterSessions = isAuthenticated && !isAdmin;
 
   const loadSessions = useCallback(async () => {
     try {
@@ -114,6 +117,11 @@ const EventDetailsPage = () => {
 
     if (!isAuthenticated) {
       navigate('/login', { state: { from: `/events/${id}` } });
+      return;
+    }
+
+    if (isAdmin) {
+      setRegistrationError('Администратор не может регистрироваться на мероприятия.');
       return;
     }
 
@@ -350,6 +358,12 @@ const EventDetailsPage = () => {
         {registrationResult?.qrToken && (
           <QRCodeDisplay token={registrationResult.qrToken} label="QR-код для посещения" />
         )}
+        {isAuthenticated && isAdmin && (
+          <AlertMessage
+            type="info"
+            message="Для аккаунта администратора регистрация на сеансы недоступна."
+          />
+        )}
         {sessionsLoading && <Loader text="Загружаем сеансы..." />}
         {!sessionsLoading && sessionsError && (
           <AlertMessage type="error" message={sessionsError} onClose={() => setSessionsError('')} />
@@ -368,7 +382,11 @@ const EventDetailsPage = () => {
                 </div>
                 <div className="session-list">
                   {group.items.map((session) => (
-                    <SessionCard key={session.id} session={session} onRegisterClick={onOpenRegistration} />
+                    <SessionCard
+                      key={session.id}
+                      session={session}
+                      onRegisterClick={canRegisterSessions ? onOpenRegistration : null}
+                    />
                   ))}
                 </div>
               </div>

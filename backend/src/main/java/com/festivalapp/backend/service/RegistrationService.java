@@ -5,6 +5,7 @@ import com.festivalapp.backend.dto.RegistrationCreateRequest;
 import com.festivalapp.backend.dto.RegistrationResponse;
 import com.festivalapp.backend.entity.Registration;
 import com.festivalapp.backend.entity.RegistrationStatus;
+import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.Session;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.entity.Venue;
@@ -40,6 +41,9 @@ public class RegistrationService {
     @Transactional
     public RegistrationResponse create(RegistrationCreateRequest request, String actorIdentifier) {
         User user = loadActor(actorIdentifier);
+        if (hasRole(user, RoleName.ROLE_ADMIN)) {
+            throw new AccessDeniedException("Администратор не может регистрироваться на мероприятия");
+        }
 
         Session session = sessionRepository.findDetailedById(request.getSessionId())
             .orElseThrow(() -> new ResourceNotFoundException("Session not found: " + request.getSessionId()));
@@ -119,6 +123,11 @@ public class RegistrationService {
     private User loadActor(String actorIdentifier) {
         return userRepository.findByLoginOrEmailWithRoles(actorIdentifier)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    }
+
+    private boolean hasRole(User user, RoleName roleName) {
+        return user.getUserRoles().stream()
+            .anyMatch(userRole -> userRole.getRole().getName() == roleName);
     }
 
     private String generateUniqueQrToken() {

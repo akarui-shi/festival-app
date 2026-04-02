@@ -13,7 +13,7 @@ import { toUserErrorMessage } from '../utils/errorMessages';
 const PublicationsPage = () => {
   const location = useLocation();
   const { hasRole } = useAuth();
-  const canCreatePublication = hasRole([ROLE.ORGANIZER, ROLE.ADMIN]);
+  const canCreatePublication = hasRole([ROLE.ORGANIZER]) && !hasRole([ROLE.ADMIN]);
 
   const [publications, setPublications] = useState([]);
   const [titleFilter, setTitleFilter] = useState('');

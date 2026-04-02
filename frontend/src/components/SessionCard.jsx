@@ -3,6 +3,7 @@ import { formatTimeRange } from '../utils/formatters';
 const SessionCard = ({ session, onRegisterClick }) => {
   const hasAvailableSeats = (session.availableSeats ?? 0) > 0;
   const timeRange = formatTimeRange(session.startAt, session.endAt);
+  const isRegistrationEnabled = hasAvailableSeats && typeof onRegisterClick === 'function';
 
   return (
     <article className="session-card">
@@ -10,8 +11,8 @@ const SessionCard = ({ session, onRegisterClick }) => {
         <button
           className="session-card__time-chip"
           type="button"
-          onClick={() => onRegisterClick(session)}
-          disabled={!hasAvailableSeats}
+          onClick={() => onRegisterClick?.(session)}
+          disabled={!isRegistrationEnabled}
         >
           {timeRange}
         </button>

@@ -27,6 +27,7 @@ const PublicationCreatePage = () => {
 
   const isAdmin = hasRole([ROLE.ADMIN]);
   const isOrganizer = hasRole([ROLE.ORGANIZER]);
+  const canCreatePublication = isOrganizer && !isAdmin;
   const organizerMustChooseEvent = isOrganizer && !isAdmin;
 
   const [events, setEvents] = useState([]);
@@ -46,6 +47,11 @@ const PublicationCreatePage = () => {
   const [uploadMessage, setUploadMessage] = useState('');
 
   useEffect(() => {
+    if (!canCreatePublication) {
+      setIsLoading(false);
+      return;
+    }
+
     const loadEvents = async () => {
       try {
         setIsLoading(true);
@@ -62,7 +68,7 @@ const PublicationCreatePage = () => {
     };
 
     loadEvents();
-  }, []);
+  }, [canCreatePublication, notifyError]);
 
   const canSubmit = useMemo(() => {
     if (!formData.title.trim() || !formData.content.trim()) {
@@ -162,6 +168,14 @@ const PublicationCreatePage = () => {
     return (
       <section className="container page">
         <Loader text="Загружаем форму публикации..." />
+      </section>
+    );
+  }
+
+  if (!canCreatePublication) {
+    return (
+      <section className="container page">
+        <AlertMessage type="error" message="Администратор не может создавать публикации." />
       </section>
     );
   }

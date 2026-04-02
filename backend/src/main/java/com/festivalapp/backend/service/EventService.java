@@ -356,25 +356,21 @@ public class EventService {
     }
 
     private Organizer resolveOrganizerForCreate(User actor, Long organizerId) {
-        Organizer actorOrganizer = resolveActorOrganizer(actor);
-
         if (hasRole(actor, RoleName.ROLE_ADMIN)) {
-            if (organizerId != null) {
-                return organizerRepository.findById(organizerId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Organizer not found: " + organizerId));
-            }
-            if (actorOrganizer != null) {
-                return actorOrganizer;
-            }
-            throw new BadRequestException("Organizer ID is required for admin without organizer profile");
+            throw new AccessDeniedException("Администратор не может создавать мероприятия");
         }
 
         if (!hasRole(actor, RoleName.ROLE_ORGANIZER)) {
-            throw new AccessDeniedException("Only organizers or admins can create events");
+            throw new AccessDeniedException("Только организатор может создавать мероприятия");
         }
 
+        Organizer actorOrganizer = resolveActorOrganizer(actor);
         if (actorOrganizer == null) {
             throw new ResourceNotFoundException("Organizer profile not found for current user");
+        }
+
+        if (organizerId == null) {
+            return actorOrganizer;
         }
 
         if (organizerId != null && !organizerId.equals(actorOrganizer.getId())) {
@@ -385,9 +381,6 @@ public class EventService {
     }
 
     private EventStatus resolveStatusForCreate(User actor, EventStatus requestedStatus) {
-        if (hasRole(actor, RoleName.ROLE_ADMIN)) {
-            return requestedStatus == null ? EventStatus.PUBLISHED : requestedStatus;
-        }
         return EventStatus.PENDING_APPROVAL;
     }
 
