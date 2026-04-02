@@ -104,11 +104,22 @@ a {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   flex-shrink: 0;
   letter-spacing: 0.02em;
   color: var(--primary);
   /* Align logo start with page content while keeping city switch position unchanged */
   margin-left: max(0px, calc((min(1480px, 97vw) - min(1120px, 92vw)) / 2 - 120px));
+}
+
+.logo__icon {
+  width: 29px;
+  height: 29px;
+  border-radius: 8px;
+  display: block;
+  flex-shrink: 0;
 }
 
 .header-city-switch {

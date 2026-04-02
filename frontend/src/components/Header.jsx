@@ -6,6 +6,7 @@ import { ROLE } from '../utils/roles';
 import SearchableCitySelect from './SearchableCitySelect';
 import CitySelector from './CitySelector';
 import AppIcon from './AppIcon';
+import appIconUrl from '../assets/app-icon.svg';
 
 const Header = () => {
   const location = useLocation();
@@ -105,6 +106,7 @@ const Header = () => {
               onClick={() => openCityModal('search')}
             />
             <Link to="/" className="logo">
+              <img src={appIconUrl} alt="" className="logo__icon" />
               Фестиваль
             </Link>
           </div>
