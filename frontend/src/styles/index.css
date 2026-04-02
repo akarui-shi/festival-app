@@ -37,6 +37,7 @@
 body {
   margin: 0;
   font-family: var(--font-body);
+  font-size: 15px;
   color: var(--text);
   background: var(--bg);
   line-height: 1.6;
@@ -103,7 +104,7 @@ a {
 .logo {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 22px;
+  font-size: 21px;
   display: inline-flex;
   align-items: center;
   gap: 9px;
@@ -228,7 +229,7 @@ a {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
-  font-size: 14px;
+  font-size: 13px;
   background: var(--surface);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -262,7 +263,7 @@ a {
   padding: 8px 10px;
   border-radius: 6px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
   white-space: nowrap;
   letter-spacing: 0.02em;
   transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
@@ -294,7 +295,7 @@ a {
 
 .auth-user {
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
   max-width: 140px;
   white-space: nowrap;
   overflow: hidden;
@@ -345,7 +346,7 @@ a {
 }
 
 .header-user-trigger__label {
-  font-size: 14px;
+  font-size: 13px;
   max-width: 128px;
   white-space: nowrap;
   overflow: hidden;
@@ -378,7 +379,7 @@ a {
   color: var(--text);
   text-align: left;
   padding: 10px 12px;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -403,7 +404,7 @@ a {
   border-radius: 8px;
   padding: 10px 16px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -459,9 +460,23 @@ a {
   width: min(560px, 92%);
 }
 
+.page > h1,
+.page-header-row h1,
+.events-page__head h1,
+.profile-top h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(28px, 2.8vw, 34px);
+  line-height: 1.1;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
 .page-subtitle {
   color: var(--muted);
-  margin-top: -6px;
+  margin: 8px 0 0;
+  max-width: 72ch;
 }
 
 .page-note {
@@ -809,22 +824,10 @@ a {
   flex-wrap: wrap;
 }
 
-.profile-top h1 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(34px, 4vw, 44px);
-  line-height: 1.1;
-  font-weight: 500;
-}
-
-.profile-top .page-subtitle {
-  margin: 8px 0 0;
-}
-
 .profile-section-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 32px;
+  font-size: clamp(24px, 2vw, 28px);
   font-weight: 400;
   letter-spacing: -0.01em;
 }
@@ -1026,14 +1029,6 @@ a {
 
 .events-page {
   gap: 14px;
-}
-
-.events-page__head h1 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 38px;
-  font-weight: 400;
-  letter-spacing: -0.01em;
 }
 
 .events-discovery {
