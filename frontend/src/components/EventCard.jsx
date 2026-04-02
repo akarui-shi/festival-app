@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { formatDateTime } from '../utils/formatters';
+import AppIcon from './AppIcon';
 
 const EventCard = ({
   event,
@@ -40,18 +41,36 @@ const EventCard = ({
         <p className="event-card__description">{event.shortDescription || 'Описание пока не добавлено.'}</p>
 
         <div className={`event-card__meta ${isList ? 'event-card__meta--list' : ''}`.trim()}>
-          <span>Возрастное ограничение: {ageLabel}</span>
-          {createdAtLabel && <span className="event-card__date">Добавлено: {createdAtLabel}</span>}
-          {organizerName && <span>Организатор: {organizerName}</span>}
-          <span className="event-card__address">Адрес площадки: {venueAddress}</span>
+          <span className="event-card__meta-item">
+            <AppIcon name="spark" size={14} />
+            Возрастное ограничение: {ageLabel}
+          </span>
+          {createdAtLabel && (
+            <span className="event-card__meta-item event-card__date">
+              <AppIcon name="clock" size={14} />
+              Добавлено: {createdAtLabel}
+            </span>
+          )}
+          {organizerName && (
+            <span className="event-card__meta-item">
+              <AppIcon name="user" size={14} />
+              Организатор: {organizerName}
+            </span>
+          )}
+          <span className="event-card__meta-item event-card__address">
+            <AppIcon name="mapPin" size={14} />
+            Адрес площадки: {venueAddress}
+          </span>
         </div>
 
         <div className="event-card__actions">
           <Link to={`/events/${event.id}`} className="btn btn--primary">
+            <AppIcon name="calendar" size={15} />
             Подробнее
           </Link>
           {onFavoriteClick && (
             <button className="btn btn--ghost" type="button" onClick={() => onFavoriteClick(event)} disabled={isFavoriteButtonLoading}>
+              <AppIcon name="heart" size={15} />
               {isFavoriteButtonLoading ? 'Обработка...' : resolvedFavoriteText}
             </button>
           )}

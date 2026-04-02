@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { formatDateTime } from '../utils/formatters';
+import AppIcon from './AppIcon';
 
 const PublicationCard = ({ publication }) => {
   return (
@@ -17,12 +18,19 @@ const PublicationCard = ({ publication }) => {
       <p className="publication-card__preview">{publication.preview || 'Краткое описание отсутствует.'}</p>
 
       <div className="publication-card__meta">
-        <span>Автор: {publication.authorName || '-'}</span>
-        <span>Дата: {formatDateTime(publication.createdAt)}</span>
+        <span className="publication-card__meta-item">
+          <AppIcon name="user" size={14} />
+          Автор: {publication.authorName || '-'}
+        </span>
+        <span className="publication-card__meta-item">
+          <AppIcon name="clock" size={14} />
+          Дата: {formatDateTime(publication.createdAt)}
+        </span>
       </div>
 
       {publication.eventId && (
         <p className="publication-card__event-link">
+          <AppIcon name="calendar" size={14} />
           Мероприятие:{' '}
           <Link to={`/events/${publication.eventId}`}>{publication.eventTitle || `#${publication.eventId}`}</Link>
         </p>

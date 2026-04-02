@@ -5,6 +5,7 @@ import { useCity } from '../context/CityContext';
 import { ROLE } from '../utils/roles';
 import SearchableCitySelect from './SearchableCitySelect';
 import CitySelector from './CitySelector';
+import AppIcon from './AppIcon';
 
 const Header = () => {
   const location = useLocation();
@@ -40,9 +41,9 @@ const Header = () => {
 
   const navLinks = useMemo(
     () => [
-      { to: '/', label: 'Главная' },
-      { to: '/events', label: 'Мероприятия' },
-      { to: '/publications', label: 'Публикации' }
+      { to: '/', label: 'Главная', icon: 'home' },
+      { to: '/events', label: 'Мероприятия', icon: 'calendar' },
+      { to: '/publications', label: 'Публикации', icon: 'article' }
     ],
     []
   );
@@ -125,6 +126,7 @@ const Header = () => {
               <nav className="nav-links">
                 {navLinks.map((link) => (
                   <NavLink key={link.to} to={link.to}>
+                    <AppIcon name={link.icon} size={15} />
                     {link.label}
                   </NavLink>
                 ))}
@@ -141,6 +143,7 @@ const Header = () => {
                   aria-label="Поиск мероприятий"
                 />
                 <button className="btn btn--primary" type="submit">
+                  <AppIcon name="search" size={15} />
                   Найти
                 </button>
               </form>
@@ -163,28 +166,34 @@ const Header = () => {
                     {isUserMenuOpen && (
                       <div className="header-user-dropdown" role="menu">
                         <Link to="/profile" className="header-user-dropdown__item" role="menuitem">
+                          <AppIcon name="profile" size={15} />
                           Профиль
                         </Link>
                         <Link to="/favorites" className="header-user-dropdown__item" role="menuitem">
+                          <AppIcon name="heart" size={15} />
                           Избранные
                         </Link>
                         {showOrganizer && (
                           <Link to="/organizer" className="header-user-dropdown__item" role="menuitem">
+                            <AppIcon name="calendar" size={15} />
                             Мои мероприятия
                           </Link>
                         )}
                         {showResidentOnly && (
                           <Link to="/my-registrations" className="header-user-dropdown__item" role="menuitem">
+                            <AppIcon name="clock" size={15} />
                             Мои регистрации
                           </Link>
                         )}
                         {showOrganizer && (
                           <Link to="/publications" className="header-user-dropdown__item" role="menuitem">
+                            <AppIcon name="article" size={15} />
                             Мои публикации
                           </Link>
                         )}
                         {showAdmin && (
                           <Link to="/admin" className="header-user-dropdown__item" role="menuitem">
+                            <AppIcon name="admin" size={15} />
                             Админ-панель
                           </Link>
                         )}
@@ -198,6 +207,7 @@ const Header = () => {
                             logout();
                           }}
                         >
+                          <AppIcon name="logout" size={15} />
                           Выйти
                         </button>
                       </div>

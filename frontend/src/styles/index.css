@@ -19,6 +19,17 @@
   --font-body: 'Segoe UI', 'Helvetica Neue', -apple-system, sans-serif;
 }
 
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -37,6 +48,10 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+.app-icon {
+  flex-shrink: 0;
 }
 
 .container {
@@ -230,17 +245,21 @@ a {
 }
 
 .nav-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   padding: 8px 10px;
   border-radius: 6px;
   color: var(--muted);
   font-size: 14px;
   white-space: nowrap;
   letter-spacing: 0.02em;
-  transition: color 0.2s ease, background 0.2s ease;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
 }
 
 .nav-links a:hover {
   color: var(--text);
+  transform: translateY(-1px);
 }
 
 .nav-links a.active {
@@ -342,6 +361,9 @@ a {
   padding: 10px 12px;
   font-size: 14px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   transition: background 0.18s ease, color 0.18s ease;
 }
 
@@ -366,8 +388,9 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   letter-spacing: 0.02em;
-  transition: all 0.2s ease;
+  transition: all 0.2s ease, box-shadow 0.2s ease;
 }
 
 .btn:disabled {
@@ -383,6 +406,7 @@ a {
 .btn--primary:hover {
   background: var(--primary-hover);
   transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(139, 76, 63, 0.2);
 }
 
 .btn--ghost {
@@ -394,6 +418,7 @@ a {
 .btn--ghost:hover {
   border-color: var(--primary);
   color: var(--primary);
+  transform: translateY(-1px);
 }
 
 .btn--danger {
@@ -600,6 +625,7 @@ a {
   border-radius: 12px;
   padding: 20px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  animation: riseIn 0.35s ease both;
 }
 
 .home-stat-card:hover {
@@ -632,7 +658,10 @@ a {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 20px;
+  display: grid;
+  gap: 10px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  animation: riseIn 0.35s ease both;
 }
 
 .home-benefit-item:hover {
@@ -651,6 +680,17 @@ a {
 .home-benefit-item p {
   margin: 8px 0 0;
   color: var(--muted);
+}
+
+.home-benefit-item__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--accent-light);
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .home-subscribe {
@@ -1026,6 +1066,7 @@ a {
   overflow: hidden;
   display: grid;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  animation: riseIn 0.3s ease both;
 }
 
 .event-card:hover {
@@ -1042,6 +1083,11 @@ a {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.35s ease;
+}
+
+.event-card:hover .event-card__image {
+  transform: scale(1.04);
 }
 
 .event-card__placeholder {
@@ -1089,6 +1135,12 @@ a {
   font-size: 13px;
 }
 
+.event-card__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .event-card__address {
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -1134,6 +1186,7 @@ a {
   border-radius: 10px;
   padding: 16px;
   background: var(--surface);
+  animation: riseIn 0.3s ease both;
 }
 
 .review-item p {
@@ -1164,6 +1217,7 @@ a {
   display: grid;
   gap: 10px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  animation: riseIn 0.35s ease both;
 }
 
 .publication-card:hover {
@@ -1182,6 +1236,11 @@ a {
   height: 210px;
   object-fit: cover;
   display: block;
+  transition: transform 0.35s ease;
+}
+
+.publication-card:hover .publication-card__image {
+  transform: scale(1.03);
 }
 
 .publication-card h3 {
@@ -1203,9 +1262,18 @@ a {
   color: var(--muted);
 }
 
+.publication-card__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .publication-card__event-link {
   margin: 0;
   font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .publication-content p {
@@ -1740,6 +1808,7 @@ a {
   border-radius: 10px;
   background: var(--surface);
   transition: border-color 0.2s ease;
+  animation: riseIn 0.3s ease both;
 }
 
 .session-card:hover {
@@ -2026,6 +2095,9 @@ a {
   font-size: 16px;
   color: var(--text);
   font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .app-footer__text {
@@ -2062,6 +2134,24 @@ a {
   }
   to {
     transform: rotate(-360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-stat-card,
+  .home-benefit-item,
+  .event-card,
+  .publication-card,
+  .review-item,
+  .session-card {
+    animation: none;
+  }
+
+  .btn,
+  .nav-links a,
+  .event-card__image,
+  .publication-card__image {
+    transition: none;
   }
 }
 
