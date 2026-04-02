@@ -13,7 +13,7 @@ import { sessionService } from '../services/sessionService';
 import { registrationService } from '../services/registrationService';
 import { reviewService } from '../services/reviewService';
 import { useAuth } from '../context/AuthContext';
-import { formatDateTime } from '../utils/formatters';
+import { formatDateTime, formatRelativeSessionDate, formatSessionDayLabel } from '../utils/formatters';
 import { toUserErrorMessage } from '../utils/errorMessages';
 
 const EventDetailsPage = () => {
@@ -190,6 +190,37 @@ const EventDetailsPage = () => {
     return [];
   }, [event]);
 
+  const groupedSessions = useMemo(() => {
+    if (!Array.isArray(sessions) || sessions.length === 0) {
+      return [];
+    }
+
+    const sortedSessions = [...sessions].sort((left, right) => {
+      const leftTs = new Date(left.startAt).getTime();
+      const rightTs = new Date(right.startAt).getTime();
+      return leftTs - rightTs;
+    });
+
+    const groups = new Map();
+
+    sortedSessions.forEach((session) => {
+      const dateKey = session.startAt ? String(session.startAt).slice(0, 10) : `unknown-${session.id}`;
+
+      if (!groups.has(dateKey)) {
+        groups.set(dateKey, {
+          key: dateKey,
+          dayLabel: formatSessionDayLabel(session.startAt),
+          relativeLabel: formatRelativeSessionDate(session.startAt),
+          items: []
+        });
+      }
+
+      groups.get(dateKey).items.push(session);
+    });
+
+    return Array.from(groups.values());
+  }, [sessions]);
+
   useEffect(() => {
     setSelectedGalleryIndex(0);
   }, [id, galleryImages.length]);
@@ -328,9 +359,19 @@ const EventDetailsPage = () => {
         )}
 
         {!sessionsLoading && !sessionsError && sessions.length > 0 && (
-          <div className="session-list">
-            {sessions.map((session) => (
-              <SessionCard key={session.id} session={session} onRegisterClick={onOpenRegistration} />
+          <div className="session-timeline">
+            {groupedSessions.map((group) => (
+              <div className="session-day-group" key={group.key}>
+                <div className="session-day-group__header">
+                  <strong>{group.dayLabel}</strong>
+                  {group.relativeLabel && <span>{group.relativeLabel}</span>}
+                </div>
+                <div className="session-list">
+                  {group.items.map((session) => (
+                    <SessionCard key={session.id} session={session} onRegisterClick={onOpenRegistration} />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
@@ -429,6 +470,7 @@ const EventDetailsPage = () => {
       <RegistrationFormModal
         open={Boolean(registrationSession)}
         session={registrationSession}
+        event={event}
         error={registrationError}
         isSubmitting={isRegistrationSubmitting}
         onSubmit={onSubmitRegistration}

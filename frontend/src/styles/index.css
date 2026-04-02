@@ -1675,43 +1675,115 @@ a {
 
 .session-list {
   display: grid;
+  gap: 10px;
+}
+
+.session-timeline {
+  display: grid;
   gap: 12px;
+}
+
+.session-day-group {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.session-day-group:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.session-day-group__header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.session-day-group__header strong {
+  font-size: 18px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--text);
+}
+
+.session-day-group__header span {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.2;
 }
 
 .session-card {
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface);
+  transition: border-color 0.2s ease;
 }
 
-.session-card__body {
-  padding: 14px;
+.session-card:hover {
+  border-color: var(--warm-sand);
+}
+
+.session-card__time-row {
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.session-card__time-chip {
+  border: 1px solid var(--warm-sand);
+  border-radius: 8px;
+  background: var(--warm-cream);
+  color: var(--primary);
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: 0;
+  padding: 9px 12px;
+  min-width: 124px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, opacity 0.2s ease;
+}
+
+.session-card__time-chip:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: #f0e8dc;
+}
+
+.session-card__time-chip:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.session-card__details {
   display: grid;
-  gap: 10px;
+  gap: 4px;
+  min-width: 0;
 }
 
 .session-card__title {
   margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.session-card__availability {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
 }
 
 .session-card__description {
   margin: 0;
-  color: var(--muted);
-}
-
-.session-card__meta {
-  display: grid;
-  gap: 6px;
   font-size: 14px;
-}
-
-.session-card__meta p {
-  margin: 0;
-}
-
-.session-card__actions {
-  display: flex;
-  justify-content: flex-start;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .registrations-list {
@@ -1853,6 +1925,46 @@ a {
   display: flex;
   gap: 10px;
   justify-content: flex-end;
+}
+
+.session-confirm {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--warm-cream);
+  padding: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.session-confirm p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.session-form {
+  gap: 12px;
+}
+
+.session-form__title {
+  margin: 0;
+}
+
+.session-form__datetime-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(140px, 1fr) minmax(140px, 1fr);
+}
+
+.session-form__preview {
+  border: 1px dashed var(--warm-sand);
+  border-radius: 10px;
+  background: var(--warm-cream);
+  padding: 10px 12px;
+}
+
+.session-form__preview p {
+  margin: 0;
+  font-size: 14px;
 }
 
 .favorites-list {
@@ -2043,6 +2155,18 @@ a {
     position: static;
   }
 
+  .session-day-group__header strong {
+    font-size: 20px;
+  }
+
+  .session-day-group__header span {
+    font-size: 13px;
+  }
+
+  .session-form__datetime-grid {
+    grid-template-columns: 1fr;
+  }
+
   .notification-center {
     top: 74px;
     right: 12px;
@@ -2059,6 +2183,43 @@ a {
   .favorites-item {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .session-card__time-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .session-card__time-chip {
+    width: 100%;
+    min-width: 0;
+    font-size: 16px;
+  }
+
+  .session-day-group__header {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .session-day-group__header strong {
+    font-size: 18px;
+  }
+
+  .session-day-group__header span {
+    font-size: 13px;
+  }
+
+  .session-card__title {
+    font-size: 17px;
+  }
+
+  .session-card__availability {
+    font-size: 15px;
+  }
+
+  .session-card__description {
+    white-space: normal;
   }
 
   .registration-card__actions,
