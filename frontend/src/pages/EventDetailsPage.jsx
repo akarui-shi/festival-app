@@ -358,12 +358,6 @@ const EventDetailsPage = () => {
         {registrationResult?.qrToken && (
           <QRCodeDisplay token={registrationResult.qrToken} label="QR-код для посещения" />
         )}
-        {isAuthenticated && isAdmin && (
-          <AlertMessage
-            type="info"
-            message="Для аккаунта администратора регистрация на сеансы недоступна."
-          />
-        )}
         {sessionsLoading && <Loader text="Загружаем сеансы..." />}
         {!sessionsLoading && sessionsError && (
           <AlertMessage type="error" message={sessionsError} onClose={() => setSessionsError('')} />
