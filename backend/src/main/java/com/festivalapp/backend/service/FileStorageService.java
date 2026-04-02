@@ -1,22 +1,21 @@
 package com.festivalapp.backend.service;
 
+import com.festivalapp.backend.entity.StoredFile;
 import com.festivalapp.backend.exception.BadRequestException;
-import jakarta.annotation.PostConstruct;
-import lombok.Builder;
-import lombok.Getter;
+import com.festivalapp.backend.exception.ResourceNotFoundException;
+import com.festivalapp.backend.repository.StoredFileRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class FileStorageService {
 
     private static final Set<String> ALLOWED_IMAGE_CONTENT_TYPES = Set.of(
@@ -26,66 +25,50 @@ public class FileStorageService {
         "image/gif"
     );
 
-    @Value("${app.upload.dir:uploads}")
-    private String uploadDir;
-
     @Value("${app.upload.max-file-size-bytes:5242880}")
     private long maxFileSizeBytes;
 
-    @PostConstruct
-    public void init() {
-        try {
-            Files.createDirectories(resolveUploadRoot());
-            Files.createDirectories(resolveEventImagesDirectory());
-            Files.createDirectories(resolvePublicationImagesDirectory());
-        } catch (IOException ex) {
-            throw new IllegalStateException("Failed to initialize upload directories", ex);
-        }
-    }
+    private final StoredFileRepository storedFileRepository;
 
     public StoredFile storeEventCover(MultipartFile file) {
-        return storeImage(file, resolveEventImagesDirectory(), "/uploads/events/");
+        return storeImage(file, "EVENT_COVER");
     }
 
     public StoredFile storeEventImage(MultipartFile file) {
-        return storeImage(file, resolveEventImagesDirectory(), "/uploads/events/");
+        return storeImage(file, "EVENT_IMAGE");
     }
 
     public StoredFile storePublicationImage(MultipartFile file) {
-        return storeImage(file, resolvePublicationImagesDirectory(), "/uploads/publications/");
+        return storeImage(file, "PUBLICATION_IMAGE");
     }
 
-    private StoredFile storeImage(MultipartFile file, Path targetDirectory, String relativeDirectoryPath) {
+    public StoredFile loadById(Long id) {
+        return storedFileRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Файл не найден"));
+    }
+
+    private StoredFile storeImage(MultipartFile file, String purpose) {
         validateImage(file);
 
-        String extension = resolveExtension(file.getOriginalFilename(), file.getContentType());
-        String fileName = UUID.randomUUID() + extension;
+        String contentType = normalizeContentType(file.getContentType());
+        String extension = resolveExtension(file.getOriginalFilename(), contentType);
+        String storedFileName = UUID.randomUUID() + extension;
 
-        Path target = targetDirectory.resolve(fileName).normalize();
+        byte[] fileBytes;
         try {
-            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
+            fileBytes = file.getBytes();
         } catch (IOException ex) {
-            throw new IllegalStateException("Failed to store uploaded file", ex);
+            throw new IllegalStateException("Failed to read uploaded file", ex);
         }
 
-        return StoredFile.builder()
-            .fileName(fileName)
-            .relativePath(relativeDirectoryPath + fileName)
+        StoredFile storedFile = StoredFile.builder()
+            .fileName(storedFileName)
+            .contentType(contentType)
             .size(file.getSize())
-            .contentType(file.getContentType())
+            .purpose(purpose)
+            .fileData(fileBytes)
             .build();
-    }
-
-    public Path resolveUploadRoot() {
-        return Path.of(uploadDir).toAbsolutePath().normalize();
-    }
-
-    private Path resolveEventImagesDirectory() {
-        return resolveUploadRoot().resolve("events").normalize();
-    }
-
-    private Path resolvePublicationImagesDirectory() {
-        return resolveUploadRoot().resolve("publications").normalize();
+        return storedFileRepository.save(storedFile);
     }
 
     private void validateImage(MultipartFile file) {
@@ -101,6 +84,10 @@ public class FileStorageService {
         if (contentType == null || !ALLOWED_IMAGE_CONTENT_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
             throw new BadRequestException("Only image files are allowed");
         }
+    }
+
+    private String normalizeContentType(String contentType) {
+        return contentType == null ? "application/octet-stream" : contentType.toLowerCase(Locale.ROOT);
     }
 
     private String resolveExtension(String originalFileName, String contentType) {
@@ -126,14 +113,5 @@ public class FileStorageService {
             case "image/gif" -> ".gif";
             default -> ".img";
         };
-    }
-
-    @Getter
-    @Builder
-    public static class StoredFile {
-        private String fileName;
-        private String relativePath;
-        private long size;
-        private String contentType;
     }
 }
