@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/events")
@@ -37,10 +39,27 @@ public class EventController {
                                                            @RequestParam(required = false) Long categoryId,
                                                            @RequestParam(required = false) Long venueId,
                                                            @RequestParam(required = false) Long cityId,
+                                                           @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+                                                           LocalDate date,
+                                                           @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+                                                           LocalDate dateFrom,
+                                                           @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+                                                           LocalDate dateTo,
                                                            @RequestParam(required = false) String status,
                                                            @RequestParam(required = false) String sortBy,
                                                            @RequestParam(required = false) String sortDir) {
-        return ResponseEntity.ok(eventService.getAll(title, categoryId, venueId, cityId, status, sortBy, sortDir));
+        return ResponseEntity.ok(eventService.getAll(
+            title,
+            categoryId,
+            venueId,
+            cityId,
+            date,
+            dateFrom,
+            dateTo,
+            status,
+            sortBy,
+            sortDir
+        ));
     }
 
     @GetMapping("/{id}")

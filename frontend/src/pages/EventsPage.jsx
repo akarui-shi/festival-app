@@ -4,6 +4,7 @@ import EventCard from '../components/EventCard';
 import Loader from '../components/Loader';
 import AlertMessage from '../components/AlertMessage';
 import EmptyState from '../components/EmptyState';
+import DatePickerField from '../components/DatePickerField';
 import { eventService } from '../services/eventService';
 import { favoriteService } from '../services/favoriteService';
 import { categoryService } from '../services/categoryService';
@@ -11,16 +12,67 @@ import { useAuth } from '../context/AuthContext';
 import { useCity } from '../context/CityContext';
 import { toUserErrorMessage } from '../utils/errorMessages';
 
+const DEFAULT_SORT = {
+  sortBy: 'createdAt',
+  sortDir: 'desc'
+};
+
 const DEFAULT_FILTERS = {
   title: '',
-  categoryId: ''
+  categoryId: '',
+  date: '',
+  ...DEFAULT_SORT
 };
 
 const buildEventQueryParams = (filters, cityId) => ({
   title: filters.title.trim() || undefined,
   categoryId: filters.categoryId || undefined,
-  cityId: cityId || undefined
+  cityId: cityId || undefined,
+  date: filters.date || undefined,
+  sortBy: filters.sortBy || DEFAULT_SORT.sortBy,
+  sortDir: filters.sortDir || DEFAULT_SORT.sortDir
 });
+
+const normalizeSortBy = (value) => {
+  if (value === 'title' || value === 'createdAt') {
+    return value;
+  }
+  return DEFAULT_SORT.sortBy;
+};
+
+const normalizeSortDir = (value) => {
+  const lowered = String(value || '').toLowerCase();
+  if (lowered === 'asc' || lowered === 'desc') {
+    return lowered;
+  }
+  return DEFAULT_SORT.sortDir;
+};
+
+const toSortKey = (sortBy, sortDir) => `${normalizeSortBy(sortBy)}:${normalizeSortDir(sortDir)}`;
+
+const fromSortKey = (sortKey) => {
+  const [sortBy, sortDir] = String(sortKey || '').split(':');
+  return {
+    sortBy: normalizeSortBy(sortBy),
+    sortDir: normalizeSortDir(sortDir)
+  };
+};
+
+const sortLabel = (sortBy, sortDir) => {
+  const key = toSortKey(sortBy, sortDir);
+  if (key === 'createdAt:asc') return 'Сначала старые';
+  if (key === 'title:asc') return 'Название: А-Я';
+  if (key === 'title:desc') return 'Название: Я-А';
+  return 'Сначала новые';
+};
+
+const formatDateChip = (isoDate) => {
+  if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+    return '';
+  }
+  const [year, month, day] = isoDate.split('-');
+  return `${day}.${month}.${year}`;
+};
 
 const EventsPage = () => {
   const location = useLocation();
@@ -30,6 +82,11 @@ const EventsPage = () => {
   const navigate = useNavigate();
   const initialTitleFromQuery = (searchParams.get('title') || '').trim();
   const initialCategoryFromQuery = (searchParams.get('categoryId') || '').trim();
+  const initialDateFromQuery = (searchParams.get('dateFrom') || '').trim();
+  const initialDateToQuery = (searchParams.get('dateTo') || '').trim();
+  const initialDateQuery = (searchParams.get('date') || '').trim() || (initialDateFromQuery === initialDateToQuery ? initialDateFromQuery : '');
+  const initialSortByQuery = normalizeSortBy((searchParams.get('sortBy') || DEFAULT_SORT.sortBy).trim());
+  const initialSortDirQuery = normalizeSortDir((searchParams.get('sortDir') || DEFAULT_SORT.sortDir).trim());
 
   const [events, setEvents] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -41,18 +98,27 @@ const EventsPage = () => {
   const [message, setMessage] = useState('');
   const [filters, setFilters] = useState({
     title: initialTitleFromQuery,
-    categoryId: initialCategoryFromQuery
+    categoryId: initialCategoryFromQuery,
+    date: initialDateQuery,
+    sortBy: initialSortByQuery,
+    sortDir: initialSortDirQuery
   });
   const [appliedFilters, setAppliedFilters] = useState({
     title: initialTitleFromQuery,
-    categoryId: initialCategoryFromQuery
+    categoryId: initialCategoryFromQuery,
+    date: initialDateQuery,
+    sortBy: initialSortByQuery,
+    sortDir: initialSortDirQuery
   });
 
   const hasActiveFilters = useMemo(
     () =>
       Boolean(
         appliedFilters.title ||
-        appliedFilters.categoryId
+        appliedFilters.categoryId ||
+        appliedFilters.date ||
+        appliedFilters.sortBy !== DEFAULT_SORT.sortBy ||
+        appliedFilters.sortDir !== DEFAULT_SORT.sortDir
       ),
     [appliedFilters]
   );
@@ -103,16 +169,36 @@ const EventsPage = () => {
     const params = new URLSearchParams(location.search);
     const nextTitle = (params.get('title') || '').trim();
     const nextCategory = (params.get('categoryId') || '').trim();
+    const nextDateFrom = (params.get('dateFrom') || '').trim();
+    const nextDateTo = (params.get('dateTo') || '').trim();
+    const nextDate = (params.get('date') || '').trim() || (nextDateFrom === nextDateTo ? nextDateFrom : '');
+    const nextSortBy = normalizeSortBy((params.get('sortBy') || DEFAULT_SORT.sortBy).trim());
+    const nextSortDir = normalizeSortDir((params.get('sortDir') || DEFAULT_SORT.sortDir).trim());
+    const nextFilters = {
+      title: nextTitle,
+      categoryId: nextCategory,
+      date: nextDate,
+      sortBy: nextSortBy,
+      sortDir: nextSortDir
+    };
 
     setFilters((prev) =>
-      prev.title === nextTitle && prev.categoryId === nextCategory
+      prev.title === nextTitle &&
+      prev.categoryId === nextCategory &&
+      prev.date === nextDate &&
+      prev.sortBy === nextSortBy &&
+      prev.sortDir === nextSortDir
         ? prev
-        : { ...prev, title: nextTitle, categoryId: nextCategory }
+        : nextFilters
     );
     setAppliedFilters((prev) =>
-      prev.title === nextTitle && prev.categoryId === nextCategory
+      prev.title === nextTitle &&
+      prev.categoryId === nextCategory &&
+      prev.date === nextDate &&
+      prev.sortBy === nextSortBy &&
+      prev.sortDir === nextSortDir
         ? prev
-        : { ...prev, title: nextTitle, categoryId: nextCategory }
+        : nextFilters
     );
   }, [location.search]);
 
@@ -168,12 +254,23 @@ const EventsPage = () => {
 
   const handleFilterInput = (event) => {
     const { name, value } = event.target;
+    if (name === 'sortKey') {
+      const nextSort = fromSortKey(value);
+      setFilters((prev) => ({ ...prev, ...nextSort }));
+      return;
+    }
     setFilters((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleApplyFilters = (event) => {
     event.preventDefault();
-    const nextFilters = { ...filters, title: filters.title.trim() };
+    setError('');
+    const nextFilters = {
+      ...filters,
+      title: filters.title.trim(),
+      sortBy: normalizeSortBy(filters.sortBy),
+      sortDir: normalizeSortDir(filters.sortDir)
+    };
     setAppliedFilters(nextFilters);
 
     const nextParams = {};
@@ -182,6 +279,15 @@ const EventsPage = () => {
     }
     if (nextFilters.categoryId) {
       nextParams.categoryId = nextFilters.categoryId;
+    }
+    if (nextFilters.date) {
+      nextParams.date = nextFilters.date;
+    }
+    if (nextFilters.sortBy !== DEFAULT_SORT.sortBy) {
+      nextParams.sortBy = nextFilters.sortBy;
+    }
+    if (nextFilters.sortDir !== DEFAULT_SORT.sortDir) {
+      nextParams.sortDir = nextFilters.sortDir;
     }
     setSearchParams(nextParams, { replace: true });
   };
@@ -228,6 +334,25 @@ const EventsPage = () => {
                   ))}
                 </select>
               </label>
+
+              <label>
+                Дата мероприятия
+                <DatePickerField
+                  value={filters.date}
+                  onChange={(nextDate) => setFilters((prev) => ({ ...prev, date: nextDate }))}
+                  placeholder="Выбрать дату"
+                />
+              </label>
+
+              <label>
+                Сортировка
+                <select name="sortKey" value={toSortKey(filters.sortBy, filters.sortDir)} onChange={handleFilterInput}>
+                  <option value="createdAt:desc">Сначала новые</option>
+                  <option value="createdAt:asc">Сначала старые</option>
+                  <option value="title:asc">Название: А-Я</option>
+                  <option value="title:desc">Название: Я-А</option>
+                </select>
+              </label>
             </div>
 
             <div className="events-filters__actions">
@@ -254,6 +379,8 @@ const EventsPage = () => {
                   {categories.find((item) => String(item.id) === String(appliedFilters.categoryId))?.name || 'выбрана'}
                 </span>
               )}
+              {appliedFilters.date && <span className="chip">Дата: {formatDateChip(appliedFilters.date)}</span>}
+              <span className="chip">Сортировка: {sortLabel(appliedFilters.sortBy, appliedFilters.sortDir)}</span>
             </div>
           </div>
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import ErrorMessage from './ErrorMessage';
+import DatePickerField from './DatePickerField';
 import { formatDateTime, formatTimeRange } from '../utils/formatters';
 
 const DEFAULT_VALUES = {
@@ -110,17 +111,41 @@ const SessionForm = ({
       <div className="session-form__datetime-grid">
         <label>
           Дата
-          <input type="date" name="sessionDate" value={formData.sessionDate} onChange={handleChange} required />
+          <DatePickerField
+            value={formData.sessionDate}
+            onChange={(nextDate) => {
+              setFormData((prev) => ({ ...prev, sessionDate: nextDate }));
+              if (localError) {
+                setLocalError('');
+              }
+            }}
+            placeholder="Выбрать дату"
+            disabled={isSubmitting}
+          />
         </label>
 
         <label>
           Начало
-          <input type="time" name="startTime" value={formData.startTime} onChange={handleChange} required />
+          <input
+            type="time"
+            className="picker-input picker-input--time"
+            name="startTime"
+            value={formData.startTime}
+            onChange={handleChange}
+            required
+          />
         </label>
 
         <label>
           Окончание
-          <input type="time" name="endTime" value={formData.endTime} onChange={handleChange} required />
+          <input
+            type="time"
+            className="picker-input picker-input--time"
+            name="endTime"
+            value={formData.endTime}
+            onChange={handleChange}
+            required
+          />
         </label>
 
         <label>
