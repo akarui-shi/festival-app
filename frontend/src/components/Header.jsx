@@ -107,7 +107,7 @@ const Header = () => {
             />
             <Link to="/" className="logo">
               <img src={appIconUrl} alt="" className="logo__icon" />
-              Фестиваль
+              ЖивойГород
             </Link>
           </div>
 

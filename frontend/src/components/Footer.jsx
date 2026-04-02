@@ -8,7 +8,7 @@ const Footer = () => {
         <div>
           <p className="app-footer__title">
             <AppIcon name="spark" size={15} />
-            Фестиваль
+            ЖивойГород
           </p>
           <p className="app-footer__text">Платформа культурных мероприятий малого города.</p>
         </div>
@@ -33,7 +33,7 @@ const Footer = () => {
             Контакты
           </p>
           <p className="app-footer__text">
-            Email: <a href="mailto:info@festival.local">info@festival.local</a>
+            Email: <a href="mailto:info@zhivoygorod.local">info@zhivoygorod.local</a>
           </p>
           <p className="app-footer__text">
             Телефон: <a href="tel:+74951234567">+7 (495) 123-45-67</a>
