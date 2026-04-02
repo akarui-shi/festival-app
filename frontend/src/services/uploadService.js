@@ -17,5 +17,11 @@ export const uploadService = {
     const formData = new FormData();
     formData.append('file', file);
     return apiClient.postForm('/api/files/publication-image', formData);
+  },
+
+  uploadAvatar(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.postForm('/api/files/avatar', formData);
   }
 };

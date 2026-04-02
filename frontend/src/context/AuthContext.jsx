@@ -17,6 +17,14 @@ export const AuthProvider = ({ children }) => {
     authStorage.setUser(nextUser);
   }, []);
 
+  const applyAuthUpdate = useCallback((nextUser, nextToken) => {
+    const resolvedToken = nextToken || token || authStorage.getToken();
+    if (!resolvedToken) {
+      return;
+    }
+    persistAuth(resolvedToken, nextUser);
+  }, [persistAuth, token]);
+
   const clearAuth = useCallback(() => {
     setToken(null);
     setUser(null);
@@ -88,9 +96,10 @@ export const AuthProvider = ({ children }) => {
       register,
       logout,
       refreshCurrentUser,
+      applyAuthUpdate,
       hasRole: (roles) => hasAnyRole(user, roles)
     }),
-    [user, token, isLoading, login, register, logout, refreshCurrentUser]
+    [user, token, isLoading, login, register, logout, refreshCurrentUser, applyAuthUpdate]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

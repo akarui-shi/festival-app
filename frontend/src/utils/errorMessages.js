@@ -40,7 +40,8 @@ const FIELD_LABELS = {
   firstName: 'Имя',
   lastName: 'Фамилия',
   phone: 'Телефон',
-  loginOrEmail: 'Логин или электронная почта'
+  loginOrEmail: 'Логин или электронная почта',
+  avatarUrl: 'Аватар'
 };
 
 const formatValidationDetails = (error) => {

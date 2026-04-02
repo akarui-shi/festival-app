@@ -12,9 +12,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByLogin(String login);
 
+    boolean existsByLoginAndIdNot(String login, Long id);
+
     boolean existsByEmail(String email);
 
     boolean existsByPhone(String phone);
+
+    boolean existsByEmailAndIdNot(String email, Long id);
+
+    boolean existsByPhoneAndIdNot(String phone, Long id);
 
     Optional<User> findByLogin(String login);
 

@@ -7,6 +7,7 @@ import SearchableCitySelect from './SearchableCitySelect';
 import CitySelector from './CitySelector';
 import AppIcon from './AppIcon';
 import appIconUrl from '../assets/app-icon.svg';
+import { resolveMediaUrl } from '../utils/media';
 
 const Header = () => {
   const location = useLocation();
@@ -36,6 +37,7 @@ const Header = () => {
   const showAdmin = hasRole([ROLE.ADMIN]);
   const showResidentOnly = hasRole([ROLE.RESIDENT]) && !showOrganizer && !showAdmin;
   const userInitial = (displayName?.trim()?.[0] || 'U').toUpperCase();
+  const resolvedAvatarUrl = resolveMediaUrl(currentUser?.avatarUrl);
   const suggestedCityMeta = [suggestedCity?.region, suggestedCity?.country]
     .filter(Boolean)
     .join(', ');
@@ -160,7 +162,17 @@ const Header = () => {
                       aria-expanded={isUserMenuOpen}
                       onClick={() => setIsUserMenuOpen((prev) => !prev)}
                     >
-                      <span className="header-user-trigger__avatar">{userInitial}</span>
+                      <span className="header-user-trigger__avatar">
+                        {resolvedAvatarUrl ? (
+                          <img
+                            src={resolvedAvatarUrl}
+                            alt={displayName || 'Пользователь'}
+                            className="header-user-trigger__avatar-image"
+                          />
+                        ) : (
+                          userInitial
+                        )}
+                      </span>
                       <span className="header-user-trigger__label">{displayName}</span>
                       <span className="header-user-trigger__chevron">{isUserMenuOpen ? '▴' : '▾'}</span>
                     </button>

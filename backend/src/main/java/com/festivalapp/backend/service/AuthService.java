@@ -109,6 +109,7 @@ public class AuthService {
             .phone(user.getPhone())
             .firstName(user.getFirstName())
             .lastName(user.getLastName())
+            .avatarUrl(user.getAvatarUrl())
             .roles(roles)
             .build();
     }

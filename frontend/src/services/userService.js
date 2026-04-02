@@ -1,6 +1,15 @@
+import { apiClient } from './apiClient';
 import { adminService } from './adminService';
 
 export const userService = {
+  getCurrentUser() {
+    return apiClient.get('/api/users/me');
+  },
+
+  updateMyProfile(data) {
+    return apiClient.put('/api/users/me', data);
+  },
+
   getAdminUsers() {
     return adminService.getAdminUsers();
   },
@@ -13,4 +22,3 @@ export const userService = {
     return adminService.updateUserActive(userId, active);
   }
 };
-
