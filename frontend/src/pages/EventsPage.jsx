@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import EventCard from '../components/EventCard';
 import Loader from '../components/Loader';
 import AlertMessage from '../components/AlertMessage';
@@ -23,9 +23,13 @@ const buildEventQueryParams = (filters, cityId) => ({
 });
 
 const EventsPage = () => {
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isAuthenticated } = useAuth();
   const { selectedCity, selectedCityId, isLoading: isCityLoading } = useCity();
   const navigate = useNavigate();
+  const initialTitleFromQuery = (searchParams.get('title') || '').trim();
+  const initialCategoryFromQuery = (searchParams.get('categoryId') || '').trim();
 
   const [events, setEvents] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -35,8 +39,14 @@ const EventsPage = () => {
   const [favoriteIds, setFavoriteIds] = useState([]);
   const [favoriteActionEventId, setFavoriteActionEventId] = useState(null);
   const [message, setMessage] = useState('');
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
-  const [appliedFilters, setAppliedFilters] = useState(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState({
+    title: initialTitleFromQuery,
+    categoryId: initialCategoryFromQuery
+  });
+  const [appliedFilters, setAppliedFilters] = useState({
+    title: initialTitleFromQuery,
+    categoryId: initialCategoryFromQuery
+  });
 
   const hasActiveFilters = useMemo(
     () =>
@@ -88,6 +98,23 @@ const EventsPage = () => {
     }
     loadEvents(appliedFilters, selectedCityId);
   }, [appliedFilters, loadEvents, selectedCityId, isCityLoading]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const nextTitle = (params.get('title') || '').trim();
+    const nextCategory = (params.get('categoryId') || '').trim();
+
+    setFilters((prev) =>
+      prev.title === nextTitle && prev.categoryId === nextCategory
+        ? prev
+        : { ...prev, title: nextTitle, categoryId: nextCategory }
+    );
+    setAppliedFilters((prev) =>
+      prev.title === nextTitle && prev.categoryId === nextCategory
+        ? prev
+        : { ...prev, title: nextTitle, categoryId: nextCategory }
+    );
+  }, [location.search]);
 
   const loadFavorites = useCallback(async () => {
     if (!isAuthenticated) {
@@ -146,86 +173,124 @@ const EventsPage = () => {
 
   const handleApplyFilters = (event) => {
     event.preventDefault();
-    setAppliedFilters({ ...filters, title: filters.title.trim() });
+    const nextFilters = { ...filters, title: filters.title.trim() };
+    setAppliedFilters(nextFilters);
+
+    const nextParams = {};
+    if (nextFilters.title) {
+      nextParams.title = nextFilters.title;
+    }
+    if (nextFilters.categoryId) {
+      nextParams.categoryId = nextFilters.categoryId;
+    }
+    setSearchParams(nextParams, { replace: true });
   };
 
   const handleResetFilters = () => {
     setFilters(DEFAULT_FILTERS);
     setAppliedFilters(DEFAULT_FILTERS);
+    setSearchParams({}, { replace: true });
   };
 
   return (
-    <section className="container page">
-      <h1>Мероприятия</h1>
-      <p className="page-subtitle">
-        {selectedCity ? `Показываем события в городе ${selectedCity.name}.` : 'Выберите город в шапке приложения.'}
-      </p>
+    <section className="container page events-page">
+      <div className="events-page__head">
+        <h1>Афиша мероприятий</h1>
+        <p className="page-subtitle">
+          {selectedCity ? `Город: ${selectedCity.name}` : 'Выберите город в шапке приложения.'}
+        </p>
+      </div>
 
-      <form className="events-filters panel" onSubmit={handleApplyFilters}>
-        <div className="events-filters__grid">
-          <label>
-            Поиск по названию
-            <input
-              type="text"
-              name="title"
-              value={filters.title}
-              onChange={handleFilterInput}
-              placeholder="Например, джаз или фестиваль"
+      <div className="events-discovery">
+        <aside className="events-sidebar panel">
+          <h2 className="events-sidebar__title">Фильтры</h2>
+          <form className="events-filters" onSubmit={handleApplyFilters}>
+            <div className="events-filters__grid">
+              <label>
+                Поиск по названию
+                <input
+                  type="text"
+                  name="title"
+                  value={filters.title}
+                  onChange={handleFilterInput}
+                  placeholder="Например, концерт"
+                />
+              </label>
+
+              <label>
+                Категория
+                <select name="categoryId" value={filters.categoryId} onChange={handleFilterInput} disabled={isFiltersLoading}>
+                  <option value="">Все категории</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="events-filters__actions">
+              <button type="submit" className="btn btn--primary" disabled={isLoading}>
+                Показать
+              </button>
+              <button type="button" className="btn btn--ghost" onClick={handleResetFilters} disabled={!hasActiveFilters}>
+                Сбросить
+              </button>
+            </div>
+          </form>
+        </aside>
+
+        <div className="events-feed">
+          <div className="events-feed__header panel">
+            <p className="events-feed__summary">
+              {isLoading ? 'Загружаем подборку…' : `Найдено событий: ${events.length}`}
+            </p>
+            <div className="events-feed__chips">
+              {appliedFilters.title && <span className="chip">Поиск: {appliedFilters.title}</span>}
+              {appliedFilters.categoryId && (
+                <span className="chip">
+                  Категория:{' '}
+                  {categories.find((item) => String(item.id) === String(appliedFilters.categoryId))?.name || 'выбрана'}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {isCityLoading && <Loader text="Определяем выбранный город..." />}
+          {isLoading && <Loader text="Загружаем мероприятия..." />}
+          {error && <AlertMessage type="error" message={error} onClose={() => setError('')} />}
+          {message && (
+            <AlertMessage
+              type="success"
+              message={message}
+              autoHideMs={2600}
+              onClose={() => setMessage('')}
             />
-          </label>
+          )}
 
-          <label>
-            Категория
-            <select name="categoryId" value={filters.categoryId} onChange={handleFilterInput} disabled={isFiltersLoading}>
-              <option value="">Все категории</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
+          {!isCityLoading && !selectedCity && <EmptyState message="Выберите город в шапке, чтобы увидеть афишу." />}
+
+          {!isLoading && !isCityLoading && selectedCity && !error && events.length === 0 && (
+            <EmptyState message="Мероприятия не найдены." />
+          )}
+
+          {!isLoading && !isCityLoading && !error && events.length > 0 && (
+            <div className="event-list">
+              {events.map((event) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  layout="list"
+                  onFavoriteClick={onFavoriteClick}
+                  favoriteButtonText={favoriteIds.includes(event.id) ? 'В избранном' : 'В избранное'}
+                  isFavoriteButtonLoading={favoriteActionEventId === event.id}
+                />
               ))}
-            </select>
-          </label>
+            </div>
+          )}
         </div>
-
-        <div className="events-filters__actions">
-          <button type="submit" className="btn btn--primary" disabled={isLoading}>
-            Применить фильтры
-          </button>
-          <button type="button" className="btn btn--ghost" onClick={handleResetFilters} disabled={!hasActiveFilters}>
-            Сбросить фильтры
-          </button>
-        </div>
-      </form>
-
-      {isCityLoading && <Loader text="Определяем выбранный город..." />}
-      {isLoading && <Loader text="Загружаем мероприятия..." />}
-      {error && <AlertMessage type="error" message={error} onClose={() => setError('')} />}
-      {message && (
-        <AlertMessage
-          type="success"
-          message={message}
-          autoHideMs={2600}
-          onClose={() => setMessage('')}
-        />
-      )}
-
-      {!isCityLoading && !selectedCity && <EmptyState message="Выберите город в шапке, чтобы увидеть афишу." />}
-
-      {!isLoading && !isCityLoading && selectedCity && !error && events.length === 0 && <EmptyState message="Мероприятия не найдены." />}
-
-      {!isLoading && !isCityLoading && !error && events.length > 0 && (
-        <div className="event-grid">
-          {events.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              onFavoriteClick={onFavoriteClick}
-              favoriteButtonText={favoriteIds.includes(event.id) ? 'В избранном' : 'В избранное'}
-              isFavoriteButtonLoading={favoriteActionEventId === event.id}
-            />
-          ))}
-        </div>
-      )}
+      </div>
     </section>
   );
 };
