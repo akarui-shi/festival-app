@@ -43,6 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -78,9 +79,15 @@ public class EventService {
                                            Long categoryId,
                                            Long venueId,
                                            Long cityId,
+                                           LocalDate date,
+                                           LocalDate dateFrom,
+                                           LocalDate dateTo,
                                            String status,
                                            String sortBy,
                                            String sortDir) {
+        LocalDate effectiveDateFrom = date != null ? date : dateFrom;
+        LocalDate effectiveDateTo = date != null ? date : dateTo;
+        validateDateRange(effectiveDateFrom, effectiveDateTo);
         EventStatus requestedStatus = parseStatus(status);
         // Public feed must expose only published events regardless of caller.
         if (requestedStatus != null && requestedStatus != EventStatus.PUBLISHED) {
@@ -92,6 +99,8 @@ public class EventService {
             categoryId,
             venueId,
             cityId,
+            effectiveDateFrom,
+            effectiveDateTo,
             EventStatus.PUBLISHED
         );
         Sort sort = buildSort(sortBy, sortDir);
@@ -612,6 +621,8 @@ public class EventService {
                                                     Long categoryId,
                                                     Long venueId,
                                                     Long cityId,
+                                                    LocalDate dateFrom,
+                                                    LocalDate dateTo,
                                                     EventStatus status) {
         // Dynamic filtering for the public events feed.
         return (root, query, cb) -> {
@@ -638,9 +649,24 @@ public class EventService {
             if (cityId != null) {
                 predicates.add(cb.equal(root.join("venue", JoinType.LEFT).join("city", JoinType.LEFT).get("id"), cityId));
             }
+            if (dateFrom != null || dateTo != null) {
+                var sessionJoin = root.join("sessions", JoinType.INNER);
+                if (dateFrom != null) {
+                    predicates.add(cb.greaterThanOrEqualTo(sessionJoin.get("startTime"), dateFrom.atStartOfDay()));
+                }
+                if (dateTo != null) {
+                    predicates.add(cb.lessThan(sessionJoin.get("startTime"), dateTo.plusDays(1).atStartOfDay()));
+                }
+            }
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    private void validateDateRange(LocalDate dateFrom, LocalDate dateTo) {
+        if (dateFrom != null && dateTo != null && dateFrom.isAfter(dateTo)) {
+            throw new BadRequestException("Некорректный диапазон дат: дата начала больше даты окончания");
+        }
     }
 
     private Sort buildSort(String sortBy, String sortDir) {

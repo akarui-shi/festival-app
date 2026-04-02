@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Map, Placemark, YMaps, useYMaps } from '@pbe/react-yandex-maps';
 import AlertMessage from './AlertMessage';
+import DatePickerField from './DatePickerField';
 import { uploadService } from '../services/uploadService';
 import { cityService } from '../services/cityService';
 import { buildYandexMapsQuery, YANDEX_MAPS_API_KEY } from '../utils/config';
@@ -761,10 +762,10 @@ const EventFormContent = ({
               <div key={`session-draft-${index}`} className="event-sessions-draft-row">
                 <label>
                   Дата
-                  <input
-                    type="date"
+                  <DatePickerField
                     value={sessionDraft.sessionDate}
-                    onChange={(event) => updateSessionDraft(index, 'sessionDate', event.target.value)}
+                    onChange={(nextDate) => updateSessionDraft(index, 'sessionDate', nextDate)}
+                    placeholder="Выбрать дату"
                     disabled={isSubmitting}
                   />
                 </label>
@@ -772,6 +773,7 @@ const EventFormContent = ({
                   Начало
                   <input
                     type="time"
+                    className="picker-input picker-input--time"
                     value={sessionDraft.startTime}
                     onChange={(event) => updateSessionDraft(index, 'startTime', event.target.value)}
                     disabled={isSubmitting}
@@ -781,6 +783,7 @@ const EventFormContent = ({
                   Окончание
                   <input
                     type="time"
+                    className="picker-input picker-input--time"
                     value={sessionDraft.endTime}
                     onChange={(event) => updateSessionDraft(index, 'endTime', event.target.value)}
                     disabled={isSubmitting}
