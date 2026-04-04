@@ -3,9 +3,12 @@ import { formatDateTime, formatTimeRange } from '../utils/formatters';
 const OrganizerSessionCard = ({ session, isDeleting = false, onEdit, onDelete }) => {
   return (
     <article className="organizer-session-card">
-      <h3>{formatTimeRange(session.startAt, session.endAt)}</h3>
+      <div className="organizer-session-card__head">
+        <h3>Сеанс</h3>
+        <span className="organizer-session-card__time-range">{formatTimeRange(session.startAt, session.endAt)}</span>
+      </div>
 
-      <div className="organizer-session-card__meta">
+      <div className="organizer-session-card__meta organizer-session-card__meta-grid">
         <p>
           <strong>Дата начала:</strong> {formatDateTime(session.startAt)}
         </p>
@@ -16,7 +19,7 @@ const OrganizerSessionCard = ({ session, isDeleting = false, onEdit, onDelete })
           <strong>Площадка:</strong> {session.venueName || '-'}
         </p>
         <p>
-          <strong>Мест:</strong> {session.availableSeats ?? '-'} / {session.totalCapacity ?? '-'}
+          <strong>Места:</strong> {session.availableSeats ?? '-'} / {session.totalCapacity ?? '-'}
         </p>
       </div>
 
