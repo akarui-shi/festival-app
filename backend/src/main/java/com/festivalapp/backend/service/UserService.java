@@ -1,10 +1,13 @@
 package com.festivalapp.backend.service;
 
 import com.festivalapp.backend.dto.CurrentUserResponse;
+import com.festivalapp.backend.entity.Organization;
+import com.festivalapp.backend.entity.Organizer;
 import com.festivalapp.backend.dto.UpdateCurrentUserRequest;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
+import com.festivalapp.backend.repository.OrganizerRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,6 +22,7 @@ import java.util.stream.Collectors;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final OrganizerRepository organizerRepository;
 
     @Transactional(readOnly = true)
     public CurrentUserResponse getCurrentUser(String username) {
@@ -73,6 +77,33 @@ public class UserService {
             .lastName(user.getLastName())
             .avatarUrl(user.getAvatarUrl())
             .roles(roles)
+            .organization(toOrganizationInfo(resolveUserOrganization(user)))
+            .build();
+    }
+
+    private Organization resolveUserOrganization(User user) {
+        if (user == null) {
+            return null;
+        }
+        if (user.getOrganizer() != null && user.getOrganizer().getOrganization() != null) {
+            return user.getOrganizer().getOrganization();
+        }
+        Organizer organizer = organizerRepository.findByUserId(user.getId()).orElse(null);
+        if (organizer != null && organizer.getOrganization() != null) {
+            return organizer.getOrganization();
+        }
+        return null;
+    }
+
+    private CurrentUserResponse.OrganizationInfo toOrganizationInfo(Organization organization) {
+        if (organization == null) {
+            return null;
+        }
+        return CurrentUserResponse.OrganizationInfo.builder()
+            .id(organization.getId())
+            .name(organization.getName())
+            .description(organization.getDescription())
+            .contacts(organization.getContacts())
             .build();
     }
 

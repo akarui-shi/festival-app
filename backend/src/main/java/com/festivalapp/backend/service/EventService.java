@@ -13,6 +13,7 @@ import com.festivalapp.backend.entity.City;
 import com.festivalapp.backend.entity.Event;
 import com.festivalapp.backend.entity.EventImage;
 import com.festivalapp.backend.entity.EventStatus;
+import com.festivalapp.backend.entity.Organization;
 import com.festivalapp.backend.entity.Organizer;
 import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.User;
@@ -143,11 +144,11 @@ public class EventService {
                 throw new AccessDeniedException("Only organizers or admins can access organizer events");
             }
 
-            Organizer organizer = resolveActorOrganizer(actor);
-            if (organizer == null) {
-                throw new ResourceNotFoundException("Organizer profile not found for current user");
+            Organization organization = resolveActorOrganization(actor);
+            if (organization == null) {
+                throw new BadRequestException("Организатор не привязан к организации. Обратитесь к администратору.");
             }
-            events = eventRepository.findAllByOrganizerId(organizer.getId(), sort);
+            events = eventRepository.findAllByOrganizationId(organization.getId(), sort);
         }
 
         return events.stream()
@@ -158,7 +159,7 @@ public class EventService {
     @Transactional
     public EventShortResponse create(EventCreateRequest request, String actorIdentifier) {
         User actor = loadActor(actorIdentifier);
-        Organizer organizer = resolveOrganizerForCreate(actor);
+        Organization organization = resolveOrganizationForCreate(actor);
         Venue venue = resolveVenueForRequest(
             request.getVenueId(),
             request.getVenueAddress(),
@@ -182,7 +183,7 @@ public class EventService {
             .ageRating(request.getAgeRating())
             .createdAt(LocalDateTime.now())
             .status(EventStatus.PENDING_APPROVAL)
-            .organizer(organizer)
+            .organization(organization)
             .venue(venue)
             .categories(categories)
             .build();
@@ -242,7 +243,7 @@ public class EventService {
             contentUpdated = true;
         }
 
-        // Organizer edits are always re-submitted for moderation.
+        // Organization edits are always re-submitted for moderation.
         if (!isAdmin && contentUpdated && event.getStatus() != EventStatus.ARCHIVED) {
             event.setStatus(EventStatus.PENDING_APPROVAL);
         }
@@ -353,7 +354,7 @@ public class EventService {
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
-    private Organizer resolveOrganizerForCreate(User actor) {
+    private Organization resolveOrganizationForCreate(User actor) {
         if (hasRole(actor, RoleName.ROLE_ADMIN)) {
             throw new AccessDeniedException("Администратор не может создавать мероприятия");
         }
@@ -362,12 +363,12 @@ public class EventService {
             throw new AccessDeniedException("Только организатор может создавать мероприятия");
         }
 
-        Organizer actorOrganizer = resolveActorOrganizer(actor);
-        if (actorOrganizer == null) {
-            throw new ResourceNotFoundException("Organizer profile not found for current user");
+        Organization actorOrganization = resolveActorOrganization(actor);
+        if (actorOrganization == null) {
+            throw new BadRequestException("Организатор не привязан к организации. Обратитесь к администратору.");
         }
 
-        return actorOrganizer;
+        return actorOrganization;
     }
 
     private boolean hasVenueUpdate(EventUpdateRequest request) {
@@ -509,11 +510,16 @@ public class EventService {
         return trimmed.substring(0, 120);
     }
 
-    private Organizer resolveActorOrganizer(User actor) {
-        if (actor.getOrganizer() != null) {
-            return actor.getOrganizer();
+    private Organization resolveActorOrganization(User actor) {
+        Organizer organizer = actor.getOrganizer();
+        if (organizer != null && organizer.getOrganization() != null) {
+            return organizer.getOrganization();
         }
-        return organizerRepository.findByUserId(actor.getId()).orElse(null);
+        Organizer persistedOrganizer = organizerRepository.findByUserId(actor.getId()).orElse(null);
+        if (persistedOrganizer != null && persistedOrganizer.getOrganization() != null) {
+            return persistedOrganizer.getOrganization();
+        }
+        return null;
     }
 
     private void validateUpdateOrDeleteAccess(User actor, Event event) {
@@ -521,14 +527,15 @@ public class EventService {
             return;
         }
 
-        // Organizers can only manage events linked to their own organizer profile.
+        // Organizers can only manage events linked to their own organization.
         if (!hasRole(actor, RoleName.ROLE_ORGANIZER)) {
             throw new AccessDeniedException("Only organizers or admins can manage events");
         }
 
-        if (actor.getOrganizer() == null || event.getOrganizer() == null
-            || !actor.getOrganizer().getId().equals(event.getOrganizer().getId())) {
-            throw new AccessDeniedException("Organizer can manage only own events");
+        Organization actorOrganization = resolveActorOrganization(actor);
+        if (actorOrganization == null || event.getOrganization() == null
+            || !actorOrganization.getId().equals(event.getOrganization().getId())) {
+            throw new AccessDeniedException("Organization can manage only own events");
         }
     }
 
@@ -541,10 +548,10 @@ public class EventService {
             throw new AccessDeniedException("Only organizers or admins can access organizer events");
         }
 
-        Organizer actorOrganizer = resolveActorOrganizer(actor);
-        if (actorOrganizer == null || event.getOrganizer() == null
-            || !actorOrganizer.getId().equals(event.getOrganizer().getId())) {
-            throw new AccessDeniedException("Organizer can access only own events");
+        Organization actorOrganization = resolveActorOrganization(actor);
+        if (actorOrganization == null || event.getOrganization() == null
+            || !actorOrganization.getId().equals(event.getOrganization().getId())) {
+            throw new AccessDeniedException("Organization can access only own events");
         }
     }
 
@@ -677,7 +684,7 @@ public class EventService {
             .ageRating(event.getAgeRating())
             .createdAt(event.getCreatedAt())
             .status(event.getStatus())
-            .organizerName(event.getOrganizer() != null ? event.getOrganizer().getName() : null)
+            .organizationName(event.getOrganization() != null ? event.getOrganization().getName() : null)
             .venueId(venue != null ? venue.getId() : null)
             .venueName(venue != null ? venue.getName() : null)
             .venueAddress(venue != null ? venue.getAddress() : null)
@@ -698,22 +705,22 @@ public class EventService {
             .status(event.getStatus())
             .coverUrl(event.getCoverUrl())
             .eventImages(toEventImageResponses(event.getEventImages()))
-            .organizer(toOrganizerSummary(event.getOrganizer()))
+            .organization(toOrganizationSummary(event.getOrganization()))
             .venue(toVenueResponse(event.getVenue()))
             .categories(toCategoryResponses(event.getCategories()))
             .build();
     }
 
-    private EventDetailsResponse.OrganizerSummary toOrganizerSummary(Organizer organizer) {
-        if (organizer == null) {
+    private EventDetailsResponse.OrganizationSummary toOrganizationSummary(Organization organization) {
+        if (organization == null) {
             return null;
         }
 
-        return EventDetailsResponse.OrganizerSummary.builder()
-            .id(organizer.getId())
-            .name(organizer.getName())
-            .description(organizer.getDescription())
-            .contacts(organizer.getContacts())
+        return EventDetailsResponse.OrganizationSummary.builder()
+            .id(organization.getId())
+            .name(organization.getName())
+            .description(organization.getDescription())
+            .contacts(organization.getContacts())
             .build();
     }
 

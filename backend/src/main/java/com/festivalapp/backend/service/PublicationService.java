@@ -5,6 +5,7 @@ import com.festivalapp.backend.dto.PublicationDetailsResponse;
 import com.festivalapp.backend.dto.PublicationShortResponse;
 import com.festivalapp.backend.dto.PublicationUpdateRequest;
 import com.festivalapp.backend.entity.Event;
+import com.festivalapp.backend.entity.Organization;
 import com.festivalapp.backend.entity.Organizer;
 import com.festivalapp.backend.entity.Publication;
 import com.festivalapp.backend.entity.PublicationStatus;
@@ -56,7 +57,7 @@ public class PublicationService {
             .title(request.getTitle())
             .content(request.getContent())
             .imageUrl(normalizeOptional(request.getImageUrl()))
-            // Organizer publications are created via moderation flow.
+            // Organization publications are created via moderation flow.
             .status(PublicationStatus.PENDING)
             .createdAt(LocalDateTime.now())
             .author(actor)
@@ -267,13 +268,13 @@ public class PublicationService {
             throw new BadRequestException("Event ID is required for organizer publication");
         }
 
-        Organizer actorOrganizer = resolveActorOrganizer(actor);
-        if (actorOrganizer == null) {
-            throw new ResourceNotFoundException("Organizer profile not found for current user");
+        Organization actorOrganization = resolveActorOrganization(actor);
+        if (actorOrganization == null) {
+            throw new BadRequestException("Организатор не привязан к организации. Обратитесь к администратору.");
         }
 
-        if (event.getOrganizer() == null || !Objects.equals(event.getOrganizer().getId(), actorOrganizer.getId())) {
-            throw new AccessDeniedException("Organizer can create publications only for own events");
+        if (event.getOrganization() == null || !Objects.equals(event.getOrganization().getId(), actorOrganization.getId())) {
+            throw new AccessDeniedException("Organization can create publications only for own events");
         }
     }
 
@@ -282,11 +283,16 @@ public class PublicationService {
             .anyMatch(userRole -> userRole.getRole().getName() == roleName);
     }
 
-    private Organizer resolveActorOrganizer(User actor) {
-        if (actor.getOrganizer() != null) {
-            return actor.getOrganizer();
+    private Organization resolveActorOrganization(User actor) {
+        Organizer organizer = actor.getOrganizer();
+        if (organizer != null && organizer.getOrganization() != null) {
+            return organizer.getOrganization();
         }
-        return organizerRepository.findByUserId(actor.getId()).orElse(null);
+        Organizer persistedOrganizer = organizerRepository.findByUserId(actor.getId()).orElse(null);
+        if (persistedOrganizer != null && persistedOrganizer.getOrganization() != null) {
+            return persistedOrganizer.getOrganization();
+        }
+        return null;
     }
 
     private PublicationShortResponse toShortResponse(Publication publication) {

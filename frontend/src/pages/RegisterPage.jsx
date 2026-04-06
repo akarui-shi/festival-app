@@ -121,12 +121,12 @@ const RegisterPage = () => {
 
         {isOrganizerMode && (
           <label>
-            Компания
+            Организация
             <input
               name="companyName"
               value={formData.companyName}
               onChange={onChange}
-              placeholder="ООО Пример Ивент"
+              placeholder="МБУК Центр городских инициатив"
               required
             />
           </label>

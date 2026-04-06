@@ -17,4 +17,14 @@ public class CurrentUserResponse {
     private String phone;
     private String avatarUrl;
     private Set<String> roles;
+    private OrganizationInfo organization;
+
+    @Getter
+    @Builder
+    public static class OrganizationInfo {
+        private Long id;
+        private String name;
+        private String description;
+        private String contacts;
+    }
 }

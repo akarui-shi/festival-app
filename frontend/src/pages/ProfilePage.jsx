@@ -39,6 +39,8 @@ const ProfilePage = () => {
   );
   const avatarFallbackLetter = (displayName[0] || 'U').toUpperCase();
   const resolvedAvatarUrl = resolveMediaUrl(formData.avatarUrl);
+  const isOrganizer = Array.isArray(profile?.roles) && profile.roles.includes('ORGANIZER');
+  const organization = profile?.organization || null;
 
   const fillFormFromProfile = useCallback((userData) => {
     setFormData({
@@ -293,6 +295,15 @@ const ProfilePage = () => {
               />
             </label>
           </div>
+
+          {isOrganizer && (
+            <div className="profile-meta-block profile-organization-block">
+              <h3 className="profile-subtitle">Организация</h3>
+              <p><strong>Название:</strong> {organization?.name || 'Не указано'}</p>
+              <p><strong>Описание:</strong> {organization?.description || 'Не указано'}</p>
+              <p><strong>Контакты:</strong> {organization?.contacts || 'Не указаны'}</p>
+            </div>
+          )}
 
           <div className="profile-roles">
             {(profile?.roles || []).map((role) => (

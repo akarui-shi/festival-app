@@ -97,8 +97,8 @@ public class GlobalExceptionHandler {
         if (normalized.contains("foreign key") && normalized.contains("publications") && normalized.contains("author_id")) {
             return buildResponse(HttpStatus.BAD_REQUEST, "Нельзя сохранить публикацию: автор не найден");
         }
-        if (normalized.contains("events_organizer_id_fkey")) {
-            return buildResponse(HttpStatus.BAD_REQUEST, "Нельзя сохранить мероприятие: организатор не найден");
+        if (normalized.contains("events_organization_id_fkey")) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Нельзя сохранить мероприятие: организация не найдена");
         }
         if (normalized.contains("users_login_key")
             || normalized.contains("users.login")

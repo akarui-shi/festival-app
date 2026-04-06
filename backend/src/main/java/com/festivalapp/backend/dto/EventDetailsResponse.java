@@ -20,13 +20,13 @@ public class EventDetailsResponse {
     private EventStatus status;
     private String coverUrl;
     private List<EventImageResponse> eventImages;
-    private OrganizerSummary organizer;
+    private OrganizationSummary organization;
     private VenueResponse venue;
     private List<CategoryResponse> categories;
 
     @Getter
     @Builder
-    public static class OrganizerSummary {
+    public static class OrganizationSummary {
         private Long id;
         private String name;
         private String description;
