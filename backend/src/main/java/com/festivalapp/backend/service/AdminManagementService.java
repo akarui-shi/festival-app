@@ -9,6 +9,7 @@ import com.festivalapp.backend.dto.CityResponse;
 import com.festivalapp.backend.dto.VenueResponse;
 import com.festivalapp.backend.entity.Category;
 import com.festivalapp.backend.entity.City;
+import com.festivalapp.backend.entity.Organization;
 import com.festivalapp.backend.entity.Organizer;
 import com.festivalapp.backend.entity.Role;
 import com.festivalapp.backend.entity.RoleName;
@@ -21,6 +22,7 @@ import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
 import com.festivalapp.backend.repository.CategoryRepository;
 import com.festivalapp.backend.repository.CityRepository;
+import com.festivalapp.backend.repository.OrganizationRepository;
 import com.festivalapp.backend.repository.OrganizerRepository;
 import com.festivalapp.backend.repository.RoleRepository;
 import com.festivalapp.backend.repository.UserRepository;
@@ -43,6 +45,7 @@ public class AdminManagementService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final OrganizationRepository organizationRepository;
     private final OrganizerRepository organizerRepository;
     private final CategoryRepository categoryRepository;
     private final CityRepository cityRepository;
@@ -78,7 +81,7 @@ public class AdminManagementService {
                 .build());
         }
 
-        ensureOrganizerProfileIfNeeded(user, roleNames);
+        ensureOrganizationProfileIfNeeded(user, roleNames);
         User saved = userRepository.save(user);
         return toAdminUserResponse(saved);
     }
@@ -240,7 +243,7 @@ public class AdminManagementService {
             .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + roleName.name()));
     }
 
-    private void ensureOrganizerProfileIfNeeded(User user, Set<RoleName> roleNames) {
+    private void ensureOrganizationProfileIfNeeded(User user, Set<RoleName> roleNames) {
         if (!roleNames.contains(RoleName.ROLE_ORGANIZER)) {
             return;
         }
@@ -249,20 +252,24 @@ public class AdminManagementService {
             return;
         }
 
-        String organizerName = buildOrganizerName(user);
+        String organizationName = buildDefaultOrganizationName(user);
         String contacts = user.getPhone() != null
             ? user.getEmail() + ", " + user.getPhone()
             : user.getEmail();
 
+        Organization organization = organizationRepository.findByNameIgnoreCase(organizationName)
+            .orElseGet(() -> organizationRepository.save(Organization.builder()
+            .name(organizationName)
+            .description("Профиль организации")
+            .contacts(contacts)
+            .build()));
         organizerRepository.save(Organizer.builder()
             .user(user)
-            .name(organizerName)
-            .description("Профиль организатора")
-            .contacts(contacts)
+            .organization(organization)
             .build());
     }
 
-    private String buildOrganizerName(User user) {
+    private String buildDefaultOrganizationName(User user) {
         String fullName = ((user.getFirstName() == null ? "" : user.getFirstName()) + " "
             + (user.getLastName() == null ? "" : user.getLastName())).trim();
         return fullName.isEmpty() ? user.getLogin() : fullName;

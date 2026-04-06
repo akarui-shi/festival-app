@@ -4,6 +4,7 @@ import com.festivalapp.backend.dto.AuthResponse;
 import com.festivalapp.backend.dto.CurrentUserResponse;
 import com.festivalapp.backend.dto.LoginRequest;
 import com.festivalapp.backend.dto.RegisterRequest;
+import com.festivalapp.backend.entity.Organization;
 import com.festivalapp.backend.entity.Organizer;
 import com.festivalapp.backend.entity.Role;
 import com.festivalapp.backend.entity.RoleName;
@@ -13,6 +14,7 @@ import com.festivalapp.backend.entity.UserRoleId;
 import com.festivalapp.backend.entity.UserStatus;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.UnauthorizedException;
+import com.festivalapp.backend.repository.OrganizationRepository;
 import com.festivalapp.backend.repository.OrganizerRepository;
 import com.festivalapp.backend.repository.RoleRepository;
 import com.festivalapp.backend.repository.UserRepository;
@@ -35,6 +37,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final OrganizationRepository organizationRepository;
     private final OrganizerRepository organizerRepository;
     private final UserRoleRepository userRoleRepository;
     private final PasswordEncoder passwordEncoder;
@@ -86,7 +89,7 @@ public class AuthService {
                 normalizedCompanyName,
                 "Введите название компании для регистрации организатора"
             );
-            ensureOrganizerProfile(savedUser, organizerCompanyName);
+            ensureOrganizationProfile(savedUser, organizerCompanyName);
         }
 
         return AuthResponse.builder()
@@ -128,6 +131,33 @@ public class AuthService {
             .lastName(user.getLastName())
             .avatarUrl(user.getAvatarUrl())
             .roles(roles)
+            .organization(toOrganizationInfo(resolveUserOrganization(user)))
+            .build();
+    }
+
+    private Organization resolveUserOrganization(User user) {
+        if (user == null) {
+            return null;
+        }
+        if (user.getOrganizer() != null && user.getOrganizer().getOrganization() != null) {
+            return user.getOrganizer().getOrganization();
+        }
+        Organizer organizer = organizerRepository.findByUserId(user.getId()).orElse(null);
+        if (organizer != null && organizer.getOrganization() != null) {
+            return organizer.getOrganization();
+        }
+        return null;
+    }
+
+    private CurrentUserResponse.OrganizationInfo toOrganizationInfo(Organization organization) {
+        if (organization == null) {
+            return null;
+        }
+        return CurrentUserResponse.OrganizationInfo.builder()
+            .id(organization.getId())
+            .name(organization.getName())
+            .description(organization.getDescription())
+            .contacts(organization.getContacts())
             .build();
     }
 
@@ -161,7 +191,7 @@ public class AuthService {
         return parsedRole;
     }
 
-    private void ensureOrganizerProfile(User user, String companyName) {
+    private void ensureOrganizationProfile(User user, String companyName) {
         if (organizerRepository.findByUserId(user.getId()).isPresent()) {
             return;
         }
@@ -170,11 +200,15 @@ public class AuthService {
             ? user.getEmail() + ", " + user.getPhone()
             : user.getEmail();
 
+        Organization organization = organizationRepository.findByNameIgnoreCase(companyName)
+            .orElseGet(() -> organizationRepository.save(Organization.builder()
+            .name(companyName)
+            .description("Профиль организации")
+            .contacts(contacts)
+            .build()));
         organizerRepository.save(Organizer.builder()
             .user(user)
-            .name(companyName)
-            .description("Профиль организатора")
-            .contacts(contacts)
+            .organization(organization)
             .build());
     }
 

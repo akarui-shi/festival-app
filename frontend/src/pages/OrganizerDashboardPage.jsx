@@ -22,8 +22,9 @@ const EVENT_STATUS_OPTIONS = [
 const OrganizerDashboardPage = () => {
   const navigate = useNavigate();
   const { notifySuccess, notifyError, notifyInfo } = useNotification();
-  const { hasRole } = useAuth();
+  const { hasRole, currentUser } = useAuth();
   const canCreateEvent = hasRole([ROLE.ORGANIZER]) && !hasRole([ROLE.ADMIN]);
+  const organizationName = currentUser?.organization?.name?.trim() || '';
 
   const [events, setEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -134,6 +135,11 @@ const OrganizerDashboardPage = () => {
       <p className="page-subtitle">Управляйте мероприятиями, статусами и сеансами в одном месте.</p>
 
       <div className="panel organizer-summary">
+        <div className="organizer-summary__organization">
+          <p>
+            <strong>Организация:</strong> {organizationName || 'Не привязана'}
+          </p>
+        </div>
         <div className="organizer-summary__stats">
           <article className="organizer-stat-card">
             <p className="organizer-stat-card__label">Всего мероприятий</p>

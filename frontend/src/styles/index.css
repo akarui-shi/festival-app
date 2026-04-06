@@ -929,6 +929,21 @@ a {
   margin: 0;
 }
 
+.profile-subtitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.profile-organization-block {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--warm-cream);
+}
+
 .profile-roles {
   margin: 0;
   display: flex;
@@ -1839,6 +1854,18 @@ a {
 .organizer-summary {
   display: grid;
   gap: 10px;
+}
+
+.organizer-summary__organization {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--warm-cream);
+}
+
+.organizer-summary__organization p {
+  margin: 0;
 }
 
 .organizer-stat-card {

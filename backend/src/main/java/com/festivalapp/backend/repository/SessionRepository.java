@@ -16,10 +16,10 @@ import java.util.Optional;
 
 public interface SessionRepository extends JpaRepository<Session, Long>, JpaSpecificationExecutor<Session> {
 
-    @EntityGraph(attributePaths = {"event", "event.organizer", "event.venue", "event.venue.city"})
+    @EntityGraph(attributePaths = {"event", "event.organization", "event.venue", "event.venue.city"})
     List<Session> findAll(Specification<Session> specification, Sort sort);
 
-    @EntityGraph(attributePaths = {"event", "event.organizer", "event.venue", "event.venue.city"})
+    @EntityGraph(attributePaths = {"event", "event.organization", "event.venue", "event.venue.city"})
     @Query("select s from Session s where s.id = :id")
     Optional<Session> findDetailedById(@Param("id") Long id);
 

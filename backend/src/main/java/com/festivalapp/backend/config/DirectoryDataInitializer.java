@@ -17,8 +17,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -48,52 +48,25 @@ public class DirectoryDataInitializer implements CommandLineRunner {
     }
 
     private void seedCategories() {
-        if (categoryRepository.count() > 0) {
-            return;
-        }
+        ensureCategory("Музыка", "Музыкальные мероприятия");
+        ensureCategory("Театр", "Театральные постановки");
+        ensureCategory("Выставка", "Художественные и тематические выставки");
+        ensureCategory("Городской праздник", "Праздничные мероприятия для жителей города");
+    }
 
-        categoryRepository.saveAll(List.of(
-            Category.builder().name("Музыка").description("Музыкальные мероприятия").build(),
-            Category.builder().name("Театр").description("Театральные постановки").build(),
-            Category.builder().name("Выставка").description("Художественные и тематические выставки").build(),
-            Category.builder().name("Городской праздник").description("Праздничные мероприятия для жителей города").build()
-        ));
+    private Category ensureCategory(String name, String description) {
+        return categoryRepository.findByNameIgnoreCase(name)
+            .orElseGet(() -> categoryRepository.save(Category.builder()
+                .name(name)
+                .description(description)
+                .build()));
     }
 
     private void seedCitiesAndVenues() {
         importRussianCitiesFromResourceIfNeeded();
         City kolomna = ensureKolomnaCity();
 
-        if (venueRepository.count() > 0) {
-            return;
-        }
-
-        venueRepository.saveAll(List.of(
-            Venue.builder()
-                .name("Городской парк")
-                .address("ул. Левшина, 15")
-                .capacity(2500)
-                .latitude(new BigDecimal("55.103200"))
-                .longitude(new BigDecimal("38.754800"))
-                .city(kolomna)
-                .build(),
-            Venue.builder()
-                .name("Дом культуры")
-                .address("ул. Октябрьской Революции, 324")
-                .capacity(900)
-                .latitude(new BigDecimal("55.100700"))
-                .longitude(new BigDecimal("38.766300"))
-                .city(kolomna)
-                .build(),
-            Venue.builder()
-                .name("Центральная площадь")
-                .address("пл. Советская, 1")
-                .capacity(5000)
-                .latitude(new BigDecimal("55.099900"))
-                .longitude(new BigDecimal("38.769500"))
-                .city(kolomna)
-                .build()
-        ));
+        seedVenues(kolomna);
     }
 
     private void importRussianCitiesFromResourceIfNeeded() {
@@ -164,6 +137,52 @@ public class DirectoryDataInitializer implements CommandLineRunner {
                 .region(KOLOMNA_REGION)
                 .country(RUSSIA)
                 .build()));
+    }
+
+    private void seedVenues(City city) {
+        ensureVenue(
+            city,
+            "Городской парк",
+            "ул. Левшина, 15",
+            2500,
+            new BigDecimal("55.103200"),
+            new BigDecimal("38.754800")
+        );
+        ensureVenue(
+            city,
+            "Дом культуры",
+            "ул. Октябрьской Революции, 324",
+            900,
+            new BigDecimal("55.100700"),
+            new BigDecimal("38.766300")
+        );
+        ensureVenue(
+            city,
+            "Центральная площадь",
+            "пл. Советская, 1",
+            5000,
+            new BigDecimal("55.099900"),
+            new BigDecimal("38.769500")
+        );
+    }
+
+    private Venue ensureVenue(City city,
+                              String name,
+                              String address,
+                              Integer capacity,
+                              BigDecimal latitude,
+                              BigDecimal longitude) {
+        Venue venue = venueRepository.findFirstByAddressIgnoreCaseAndCityId(address, city.getId())
+            .orElseGet(() -> Venue.builder().city(city).build());
+
+        venue.setName(name);
+        venue.setAddress(address);
+        venue.setCapacity(capacity);
+        venue.setLatitude(latitude);
+        venue.setLongitude(longitude);
+        venue.setCity(city);
+
+        return venueRepository.save(venue);
     }
 
     private String buildCityKey(String name, String region, String country) {

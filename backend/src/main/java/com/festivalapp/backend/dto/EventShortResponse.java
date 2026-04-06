@@ -17,7 +17,7 @@ public class EventShortResponse {
     private Integer ageRating;
     private LocalDateTime createdAt;
     private EventStatus status;
-    private String organizerName;
+    private String organizationName;
     private Long venueId;
     private String venueName;
     private String venueAddress;

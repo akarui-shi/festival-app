@@ -19,7 +19,7 @@ const EventCard = ({
     : 'не указано';
   const venueAddress = event.venueAddress?.trim() || 'Адрес не указан';
   const createdAtLabel = event.createdAt ? formatDateTime(event.createdAt) : '';
-  const organizerName = event.organizerName?.trim() || '';
+  const organizationName = event.organizationName?.trim() || '';
   const isList = layout === 'list';
 
   return (
@@ -51,10 +51,10 @@ const EventCard = ({
               Добавлено: {createdAtLabel}
             </span>
           )}
-          {organizerName && (
+          {organizationName && (
             <span className="event-card__meta-item">
               <AppIcon name="user" size={14} />
-              Организатор: {organizerName}
+              Организация: {organizationName}
             </span>
           )}
           <span className="event-card__meta-item event-card__address">

@@ -7,6 +7,7 @@ import com.festivalapp.backend.dto.SessionShortResponse;
 import com.festivalapp.backend.dto.SessionUpdateRequest;
 import com.festivalapp.backend.entity.Event;
 import com.festivalapp.backend.entity.EventStatus;
+import com.festivalapp.backend.entity.Organization;
 import com.festivalapp.backend.entity.Organizer;
 import com.festivalapp.backend.entity.Registration;
 import com.festivalapp.backend.entity.RegistrationStatus;
@@ -19,6 +20,7 @@ import com.festivalapp.backend.exception.ResourceNotFoundException;
 import com.festivalapp.backend.repository.EventRepository;
 import com.festivalapp.backend.repository.RegistrationRepository;
 import com.festivalapp.backend.repository.SessionRepository;
+import com.festivalapp.backend.repository.OrganizerRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -52,6 +54,7 @@ public class SessionService {
     private final EventRepository eventRepository;
     private final RegistrationRepository registrationRepository;
     private final UserRepository userRepository;
+    private final OrganizerRepository organizerRepository;
 
     @Transactional(readOnly = true)
     public List<SessionShortResponse> getAll(Long eventId,
@@ -211,11 +214,11 @@ public class SessionService {
         if (!hasRole(viewer, RoleName.ROLE_ORGANIZER)) {
             return false;
         }
-        Organizer organizer = viewer.getOrganizer();
-        return organizer != null
+        Organization organization = resolveActorOrganization(viewer);
+        return organization != null
             && event != null
-            && event.getOrganizer() != null
-            && Objects.equals(organizer.getId(), event.getOrganizer().getId());
+            && event.getOrganization() != null
+            && Objects.equals(organization.getId(), event.getOrganization().getId());
     }
 
     private void validateOrganizerAccess(User actor, Event event) {
@@ -227,10 +230,10 @@ public class SessionService {
             throw new AccessDeniedException("Only organizers or admins can manage sessions");
         }
 
-        Organizer actorOrganizer = actor.getOrganizer();
-        if (actorOrganizer == null || event.getOrganizer() == null
-            || !Objects.equals(actorOrganizer.getId(), event.getOrganizer().getId())) {
-            throw new AccessDeniedException("Organizer can manage sessions only for own events");
+        Organization actorOrganizer = resolveActorOrganization(actor);
+        if (actorOrganizer == null || event.getOrganization() == null
+            || !Objects.equals(actorOrganizer.getId(), event.getOrganization().getId())) {
+            throw new AccessDeniedException("Organization can manage sessions only for own events");
         }
     }
 
@@ -301,11 +304,16 @@ public class SessionService {
                 predicates.add(cb.equal(eventJoin.get("status"), EventStatus.PUBLISHED));
             } else if (hasRole(viewer, RoleName.ROLE_ADMIN)) {
                 // Admin can list sessions for any event status.
-            } else if (hasRole(viewer, RoleName.ROLE_ORGANIZER) && viewer.getOrganizer() != null) {
+            } else if (hasRole(viewer, RoleName.ROLE_ORGANIZER)) {
+                Organization viewerOrganization = resolveActorOrganization(viewer);
+                if (viewerOrganization != null) {
                 predicates.add(cb.or(
                     cb.equal(eventJoin.get("status"), EventStatus.PUBLISHED),
-                    cb.equal(eventJoin.get("organizer").get("id"), viewer.getOrganizer().getId())
+                    cb.equal(eventJoin.get("organization").get("id"), viewerOrganization.getId())
                 ));
+                } else {
+                    predicates.add(cb.equal(eventJoin.get("status"), EventStatus.PUBLISHED));
+                }
             } else {
                 predicates.add(cb.equal(eventJoin.get("status"), EventStatus.PUBLISHED));
             }
@@ -386,8 +394,8 @@ public class SessionService {
         return SessionDetailsResponse.EventInfo.builder()
             .id(event.getId())
             .title(event.getTitle())
-            .organizerId(event.getOrganizer() != null ? event.getOrganizer().getId() : null)
-            .organizerName(event.getOrganizer() != null ? event.getOrganizer().getName() : null)
+            .organizationId(event.getOrganization() != null ? event.getOrganization().getId() : null)
+            .organizationName(event.getOrganization() != null ? event.getOrganization().getName() : null)
             .build();
     }
 
@@ -447,5 +455,20 @@ public class SessionService {
             return null;
         }
         return session.getEvent().getVenue();
+    }
+
+    private Organization resolveActorOrganization(User actor) {
+        if (actor == null) {
+            return null;
+        }
+        Organizer organizer = actor.getOrganizer();
+        if (organizer != null && organizer.getOrganization() != null) {
+            return organizer.getOrganization();
+        }
+        Organizer persistedOrganizer = organizerRepository.findByUserId(actor.getId()).orElse(null);
+        if (persistedOrganizer != null && persistedOrganizer.getOrganization() != null) {
+            return persistedOrganizer.getOrganization();
+        }
+        return null;
     }
 }

@@ -5,6 +5,7 @@ import com.festivalapp.backend.entity.City;
 import com.festivalapp.backend.entity.Event;
 import com.festivalapp.backend.entity.EventStatus;
 import com.festivalapp.backend.entity.Favorite;
+import com.festivalapp.backend.entity.Organization;
 import com.festivalapp.backend.entity.Organizer;
 import com.festivalapp.backend.entity.Publication;
 import com.festivalapp.backend.entity.PublicationStatus;
@@ -21,6 +22,7 @@ import com.festivalapp.backend.repository.CategoryRepository;
 import com.festivalapp.backend.repository.CityRepository;
 import com.festivalapp.backend.repository.EventRepository;
 import com.festivalapp.backend.repository.FavoriteRepository;
+import com.festivalapp.backend.repository.OrganizationRepository;
 import com.festivalapp.backend.repository.OrganizerRepository;
 import com.festivalapp.backend.repository.PublicationRepository;
 import com.festivalapp.backend.repository.ReviewRepository;
@@ -44,7 +46,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Set;
 
 @Component
 @Order(3)
@@ -52,33 +54,39 @@ import java.util.Objects;
 public class DemoDataInitializer implements CommandLineRunner {
 
     private static final String DEMO_PASSWORD = "Passw0rd123";
-    private static final String ORGANIZER_LOGIN = "organizer1";
-    private static final String ORGANIZER_EMAIL = "organizer1@mail.com";
+
     private static final String ADMIN_LOGIN = "admin1";
     private static final String ADMIN_EMAIL = "admin1@mail.com";
+
     private static final String RESIDENT1_LOGIN = "resident1";
     private static final String RESIDENT1_EMAIL = "resident1@mail.com";
     private static final String RESIDENT2_LOGIN = "resident2";
     private static final String RESIDENT2_EMAIL = "resident2@mail.com";
     private static final String RESIDENT3_LOGIN = "resident3";
     private static final String RESIDENT3_EMAIL = "resident3@mail.com";
-    private static final long MIN_PUBLISHED_PUBLICATIONS = 8L;
-    private static final long MIN_REVIEWS = 12L;
+    private static final String RESIDENT4_LOGIN = "resident4";
+    private static final String RESIDENT4_EMAIL = "resident4@mail.com";
 
     private static final String EVENT_JAZZ = "Летний джаз в Коломне";
     private static final String EVENT_THEATRE = "Коломенский театральный вечер";
-    private static final String EVENT_HISTORY = "Выставка \"История Коломны\"";
-    private static final String EVENT_STREET_ART = "Фестиваль уличного искусства Коломны";
+    private static final String EVENT_HISTORY = "Выставка История Коломны";
     private static final String EVENT_CITY_DAY = "День города Коломны";
-    private static final String EVENT_MUSEUM_NIGHT = "Ночь музеев в Коломне";
-    private static final String EVENT_PASTILA = "Гастрономический фестиваль \"Коломенская пастила\"";
-    private static final String EVENT_CRAFT = "Ремесленный двор Коломны";
-    private static final String EVENT_CINEMA = "Кинопоказ под открытым небом у Коломенского кремля";
-    private static final String EVENT_ECO = "Семейный эко-фестиваль \"Берег Оки\"";
+    private static final String EVENT_BOOK_FAIR = "Книжная ярмарка у кремля";
+    private static final String EVENT_SCIENCE_FEST = "Научный фестиваль для школьников";
+    private static final String EVENT_FAMILY_WEEKEND = "Семейные выходные в парке";
+    private static final String EVENT_FILM_NIGHT = "Ночь короткометражного кино";
+    private static final String EVENT_FOOD_MARKET = "Фестиваль локальной кухни";
+    private static final String EVENT_STREET_SPORT = "Уличный спортивный день";
+    private static final String EVENT_MUSEUM_FORUM = "Форум музейных практик";
+    private static final String EVENT_RIVER_LIGHTS = "Световой фестиваль на набережной";
+    private static final String EVENT_OPEN_AIR_OPERA = "Опера под открытым небом";
+    private static final String EVENT_CREATIVE_LABS = "Лаборатории креативных индустрий";
+    private static final String EVENT_LOCAL_GUIDES = "Форум городских экскурсоводов";
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
+    private final OrganizationRepository organizationRepository;
     private final OrganizerRepository organizerRepository;
     private final CategoryRepository categoryRepository;
     private final CityRepository cityRepository;
@@ -92,35 +100,66 @@ public class DemoDataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        Organizer organizer = ensureOrganizerUserAndProfile();
         ensureAdminUser();
+
+        List<Organizer> organizers = ensureOrganizerProfiles();
         List<User> residents = ensureResidentUsers();
 
         Category music = ensureCategory("Музыка", "Музыкальные мероприятия");
         Category theatre = ensureCategory("Театр", "Театральные постановки");
         Category exhibition = ensureCategory("Выставка", "Художественные и тематические выставки");
         Category cityHoliday = ensureCategory("Городской праздник", "Праздничные мероприятия для жителей города");
+        Category education = ensureCategory("Образование", "Лекции, мастер-классы и просветительские события");
+        Category children = ensureCategory("Детям", "Семейные и детские программы");
+        Category gastronomy = ensureCategory("Гастрономия", "Фестивали еды и фермерские маркеты");
+        Category cinema = ensureCategory("Кино", "Показы, кинодискуссии и фестивали кино");
+        Category sport = ensureCategory("Спорт", "Спортивные и активные городские события");
+        Category literature = ensureCategory("Литература", "Книжные ярмарки, встречи с авторами и чтения");
 
         City kolomna = ensureCity("Коломна", "Московская область", "Россия");
+        City moscow = ensureCity("Москва", "Москва", "Россия");
+        City ryazan = ensureCity("Рязань", "Рязанская область", "Россия");
+        City tula = ensureCity("Тула", "Тульская область", "Россия");
+
         Venue park = ensureVenue(kolomna, "Городской парк", "ул. Левшина, 15", 2500,
             new BigDecimal("55.103200"), new BigDecimal("38.754800"));
         Venue cultureHouse = ensureVenue(kolomna, "Дом культуры", "ул. Октябрьской Революции, 324", 900,
             new BigDecimal("55.100700"), new BigDecimal("38.766300"));
         Venue centralSquare = ensureVenue(kolomna, "Центральная площадь", "пл. Советская, 1", 5000,
             new BigDecimal("55.099900"), new BigDecimal("38.769500"));
+        Venue artCenter = ensureVenue(moscow, "Арт-кластер Восток", "ул. Электрозаводская, 21", 1400,
+            new BigDecimal("55.790550"), new BigDecimal("37.704620"));
+        Venue riverEmbankment = ensureVenue(ryazan, "Набережная Трубежа", "Набережная улица, 2", 3000,
+            new BigDecimal("54.625530"), new BigDecimal("39.742020"));
+        Venue museumHall = ensureVenue(tula, "Музейный квартал", "ул. Металлистов, 12", 1100,
+            new BigDecimal("54.196070"), new BigDecimal("37.615830"));
 
-        migrateEventVenuesFromSessions();
-        List<Event> demoEvents = seedEventsAndSessions(
-            organizer,
+        List<Event> events = seedEvents(
+            organizers,
+            park,
+            cultureHouse,
+            centralSquare,
+            artCenter,
+            riverEmbankment,
+            museumHall,
             music,
             theatre,
             exhibition,
             cityHoliday,
-            park,
-            cultureHouse,
-            centralSquare
+            education,
+            children,
+            gastronomy,
+            cinema,
+            sport,
+            literature
         );
-        seedSocialData(organizer.getUser(), residents, demoEvents);
+
+        Map<Long, User> publicationAuthorsByOrganization = buildPublicationAuthorsByOrganization(organizers);
+
+        seedSessions(events);
+        seedPublications(publicationAuthorsByOrganization, events);
+        seedReviews(residents, events);
+        seedFavorites(residents, events);
     }
 
     private void ensureAdminUser() {
@@ -136,64 +175,112 @@ public class DemoDataInitializer implements CommandLineRunner {
                 .createdAt(LocalDateTime.now())
                 .status(UserStatus.ACTIVE)
                 .build()));
+
         ensureRoleAssignment(adminUser, RoleName.ROLE_ADMIN);
     }
 
-    private Organizer ensureOrganizerUserAndProfile() {
-        User organizerUser = userRepository.findByLogin(ORGANIZER_LOGIN)
-            .or(() -> userRepository.findByEmail(ORGANIZER_EMAIL))
+    private List<Organizer> ensureOrganizerProfiles() {
+        List<Organizer> organizers = new ArrayList<>();
+
+        organizers.add(ensureOrganizerProfile(
+            "organizer1",
+            "organizer1@mail.com",
+            "Ivan",
+            "Organizer",
+            "+79990000011",
+            "МБУК Центр культурных инициатив Коломны",
+            "Официальный организатор городских культурных мероприятий Коломны"
+        ));
+        organizers.add(ensureOrganizerProfile(
+            "organizer2",
+            "organizer2@mail.com",
+            "Olga",
+            "Mirova",
+            "+79990000031",
+            "АНО Арт-Коломна",
+            "Некоммерческая организация, развивающая творческие проекты и локальные фестивали"
+        ));
+        organizers.add(ensureOrganizerProfile(
+            "organizer3",
+            "organizer3@mail.com",
+            "Sergey",
+            "Pankov",
+            "+79990000032",
+            "Фонд Городские маршруты",
+            "Фонд поддержки городских культурных, образовательных и туристических инициатив"
+        ));
+        organizers.add(ensureOrganizerProfile(
+            "organizer4",
+            "organizer4@mail.com",
+            "Marina",
+            "Egorova",
+            "+79990000033",
+            "Центр молодежных инициатив Подмосковья",
+            "Региональный центр молодежных программ, городских форумов и креативных лабораторий"
+        ));
+        organizers.add(ensureOrganizerProfile(
+            "organizer5",
+            "organizer5@mail.com",
+            "Dmitry",
+            "Tarasov",
+            "+79990000034",
+            "Ассоциация событийного туризма Центрального региона",
+            "Ассоциация, продвигающая событийный туризм и межрегиональные культурные проекты"
+        ));
+
+        return organizers;
+    }
+
+    private Organizer ensureOrganizerProfile(String login,
+                                            String email,
+                                            String firstName,
+                                            String lastName,
+                                            String phone,
+                                            String organizationName,
+                                            String organizationDescription) {
+        User organizerUser = userRepository.findByLogin(login)
+            .or(() -> userRepository.findByEmail(email))
             .orElseGet(() -> userRepository.save(User.builder()
-                .login(ORGANIZER_LOGIN)
-                .email(ORGANIZER_EMAIL)
+                .login(login)
+                .email(email)
                 .passwordHash(passwordEncoder.encode(DEMO_PASSWORD))
-                .firstName("Ivan")
-                .lastName("Organizer")
-                .phone("+79990000011")
+                .firstName(firstName)
+                .lastName(lastName)
+                .phone(phone)
                 .createdAt(LocalDateTime.now())
                 .status(UserStatus.ACTIVE)
                 .build()));
+
         ensureRoleAssignment(organizerUser, RoleName.ROLE_ORGANIZER);
 
-        return organizerRepository.findByUserId(organizerUser.getId())
-            .orElseGet(() -> organizerRepository.save(Organizer.builder()
-                .user(organizerUser)
-                .name("Ivan Organizer")
-                .description("Организатор культурных и городских мероприятий в Коломне")
-                .contacts("organizer1@mail.com, +79990000011")
+        String contacts = organizerUser.getPhone() == null
+            ? organizerUser.getEmail()
+            : organizerUser.getEmail() + ", " + organizerUser.getPhone();
+
+        Organization organization = organizationRepository.findByNameIgnoreCase(organizationName)
+            .orElseGet(() -> organizationRepository.save(Organization.builder()
+                .name(organizationName)
+                .description(organizationDescription)
+                .contacts(contacts)
                 .build()));
+
+        Organizer organizer = organizerRepository.findByUserId(organizerUser.getId())
+            .orElseGet(() -> Organizer.builder().user(organizerUser).build());
+        organizer.setOrganization(organization);
+        organizer.setUser(organizerUser);
+        return organizerRepository.save(organizer);
     }
 
     private List<User> ensureResidentUsers() {
         List<User> residents = new ArrayList<>();
-        residents.add(ensureResidentUser(
-            RESIDENT1_LOGIN,
-            RESIDENT1_EMAIL,
-            "Anna",
-            "Smirnova",
-            "+79990000021"
-        ));
-        residents.add(ensureResidentUser(
-            RESIDENT2_LOGIN,
-            RESIDENT2_EMAIL,
-            "Petr",
-            "Volkov",
-            "+79990000022"
-        ));
-        residents.add(ensureResidentUser(
-            RESIDENT3_LOGIN,
-            RESIDENT3_EMAIL,
-            "Maria",
-            "Sokolova",
-            "+79990000023"
-        ));
+        residents.add(ensureResidentUser(RESIDENT1_LOGIN, RESIDENT1_EMAIL, "Anna", "Smirnova", "+79990000021"));
+        residents.add(ensureResidentUser(RESIDENT2_LOGIN, RESIDENT2_EMAIL, "Petr", "Volkov", "+79990000022"));
+        residents.add(ensureResidentUser(RESIDENT3_LOGIN, RESIDENT3_EMAIL, "Maria", "Sokolova", "+79990000023"));
+        residents.add(ensureResidentUser(RESIDENT4_LOGIN, RESIDENT4_EMAIL, "Nikita", "Morozov", "+79990000024"));
         return residents;
     }
 
-    private User ensureResidentUser(String login,
-                                    String email,
-                                    String firstName,
-                                    String lastName,
-                                    String phone) {
+    private User ensureResidentUser(String login, String email, String firstName, String lastName, String phone) {
         User resident = userRepository.findByLogin(login)
             .or(() -> userRepository.findByEmail(email))
             .orElseGet(() -> userRepository.save(User.builder()
@@ -206,6 +293,7 @@ public class DemoDataInitializer implements CommandLineRunner {
                 .createdAt(LocalDateTime.now())
                 .status(UserStatus.ACTIVE)
                 .build()));
+
         ensureRoleAssignment(resident, RoleName.ROLE_RESIDENT);
         return resident;
     }
@@ -239,11 +327,7 @@ public class DemoDataInitializer implements CommandLineRunner {
     }
 
     private City ensureCity(String name, String region, String country) {
-        return cityRepository.findAllByOrderByNameAsc().stream()
-            .filter(city -> equalsIgnoreCase(city.getName(), name)
-                && equalsIgnoreCase(city.getRegion(), region)
-                && equalsIgnoreCase(city.getCountry(), country))
-            .findFirst()
+        return cityRepository.findFirstByNameIgnoreCaseAndRegionIgnoreCaseAndCountryIgnoreCase(name, region, country)
             .orElseGet(() -> cityRepository.save(City.builder()
                 .name(name)
                 .region(region)
@@ -257,300 +341,225 @@ public class DemoDataInitializer implements CommandLineRunner {
                               Integer capacity,
                               BigDecimal latitude,
                               BigDecimal longitude) {
-        return venueRepository.findAllByOrderByNameAsc().stream()
-            .filter(venue -> equalsIgnoreCase(venue.getName(), name)
-                && venue.getCity() != null
-                && venue.getCity().getId().equals(city.getId()))
-            .findFirst()
-            .orElseGet(() -> venueRepository.save(Venue.builder()
-                .name(name)
-                .address(address)
-                .capacity(capacity)
-                .latitude(latitude)
-                .longitude(longitude)
-                .city(city)
-                .build()));
+        Venue venue = venueRepository.findFirstByAddressIgnoreCaseAndCityId(address, city.getId())
+            .orElseGet(() -> Venue.builder().city(city).build());
+
+        venue.setName(name);
+        venue.setAddress(address);
+        venue.setCapacity(capacity);
+        venue.setLatitude(latitude);
+        venue.setLongitude(longitude);
+        venue.setCity(city);
+        return venueRepository.save(venue);
     }
 
-    private List<Event> seedEventsAndSessions(Organizer organizer,
-                                              Category music,
-                                              Category theatre,
-                                              Category exhibition,
-                                              Category cityHoliday,
-                                              Venue park,
-                                              Venue cultureHouse,
-                                              Venue centralSquare) {
+    private List<Event> seedEvents(List<Organizer> organizers,
+                                   Venue park,
+                                   Venue cultureHouse,
+                                   Venue centralSquare,
+                                   Venue artCenter,
+                                   Venue riverEmbankment,
+                                   Venue museumHall,
+                                   Category music,
+                                   Category theatre,
+                                   Category exhibition,
+                                   Category cityHoliday,
+                                   Category education,
+                                   Category children,
+                                   Category gastronomy,
+                                   Category cinema,
+                                   Category sport,
+                                   Category literature) {
         Map<String, Event> existingByTitle = new HashMap<>();
         for (Event event : eventRepository.findAll()) {
             existingByTitle.putIfAbsent(normalizeKey(event.getTitle()), event);
         }
 
-        LocalDateTime now = LocalDateTime.now();
-        List<Event> newEvents = new ArrayList<>();
-        List<Event> demoEvents = new ArrayList<>();
-
-        demoEvents.add(ensureDemoEvent(existingByTitle, newEvents, organizer, park,
-            new HashSet<>(List.of(music, cityHoliday)),
-            EVENT_JAZZ,
-            "Большой летний концерт на открытой сцене в Коломне.",
-            "Летний джаз в Коломне объединяет городские коллективы, приглашенных музыкантов из соседних регионов и молодых исполнителей музыкальных школ. "
-                + "В программе запланированы два полноформатных сета, открытая импровизационная сцена и короткие встречи с артистами после выступлений. "
-                + "Для жителей Коломны предусмотрены семейные зоны отдыха, навигация по площадке и отдельные пространства для спокойного просмотра концерта.",
-            12,
-            "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4",
-            now.minusDays(16)
-        ));
-
-        demoEvents.add(ensureDemoEvent(existingByTitle, newEvents, organizer, cultureHouse,
-            new HashSet<>(List.of(theatre)),
-            EVENT_THEATRE,
-            "Камерный спектакль и открытое обсуждение в Доме культуры Коломны.",
-            "Коломенский театральный вечер включает премьерный показ авторской постановки местной труппы, живую музыкальную партитуру и обсуждение с режиссером. "
-                + "Перед началом предусмотрена короткая вводная лекция о контексте пьесы, а после завершения зрители смогут задать вопросы актерам и творческой группе. "
-                + "Формат мероприятия рассчитан на внимательный диалог со зрителем и поддержку культурной повестки города Коломны.",
-            16,
-            "https://images.unsplash.com/photo-1460723237483-7a6dc9d0b212",
-            now.minusDays(14)
-        ));
-
-        demoEvents.add(ensureDemoEvent(existingByTitle, newEvents, organizer, cultureHouse,
-            new HashSet<>(List.of(exhibition)),
-            EVENT_HISTORY,
-            "Историческая экспозиция о ключевых этапах развития Коломны.",
-            "Выставка \"История Коломны\" собрана из архивных фотографий, предметов городского быта и редких документов из локальных коллекций. "
-                + "Каждый тематический блок сопровождается аудиокомментарием и маршрутной картой, чтобы посетители могли последовательно пройти путь от старой Коломны до современного города. "
-                + "Отдельное пространство посвящено семейным историям жителей и воспоминаниям о знаковых культурных событиях.",
-            6,
-            "https://images.unsplash.com/photo-1497366754035-f200968a6e72",
-            now.minusDays(12)
-        ));
-
-        demoEvents.add(ensureDemoEvent(existingByTitle, newEvents, organizer, centralSquare,
-            new HashSet<>(List.of(music, cityHoliday)),
-            EVENT_STREET_ART,
-            "Уличная сцена, перформансы и мастер-классы в центре Коломны.",
-            "Фестиваль уличного искусства Коломны собирает музыкантов, танцевальные команды, художников и интерактивные студии на единой городской площадке. "
-                + "Гости смогут посетить мастер-классы по графике и сценическому движению, а также увидеть вечернюю программу перформансов с динамической подсветкой. "
-                + "Организаторы готовят понятную карту зон, дополнительные места для семей с детьми и расширенную волонтерскую поддержку.",
-            0,
-            "https://images.unsplash.com/photo-1521334884684-d80222895322",
-            now.minusDays(10)
-        ));
-
-        demoEvents.add(ensureDemoEvent(existingByTitle, newEvents, organizer, centralSquare,
-            new HashSet<>(List.of(cityHoliday)),
-            EVENT_CITY_DAY,
-            "Главное городское событие сезона с концертной и семейной программой.",
-            "День города Коломны включает дневной семейный блок, вечерний концерт и праздничную программу с участием творческих коллективов Подмосковья. "
-                + "Для удобства жителей запланированы отдельные входные коридоры, медицинские посты и зоны спокойного отдыха рядом со сценой. "
-                + "Финальная часть мероприятия завершается световым шоу и обращением городских сообществ, участвующих в развитии культурной среды.",
-            0,
-            "https://images.unsplash.com/photo-1472653431158-6364773b2a56",
-            now.minusDays(8)
-        ));
-
-        demoEvents.add(ensureDemoEvent(existingByTitle, newEvents, organizer, cultureHouse,
-            new HashSet<>(List.of(exhibition, theatre)),
-            EVENT_MUSEUM_NIGHT,
-            "Вечерние экскурсии и театрализованные маршруты по культурным площадкам.",
-            "Ночь музеев в Коломне объединяет несколько тематических треков: исторический, семейный и театрализованный маршрут с живыми сценами. "
-                + "Участники получают единый билет и карту передвижения между площадками, а кураторы помогают выбрать оптимальный порядок посещения экспозиций. "
-                + "Программа ориентирована на вовлечение жителей Коломны в регулярное посещение музеев и локальных культурных инициатив.",
-            12,
-            "https://images.unsplash.com/photo-1518998053901-5348d3961a04",
-            now.minusDays(6)
-        ));
-
-        demoEvents.add(ensureDemoEvent(existingByTitle, newEvents, organizer, centralSquare,
-            new HashSet<>(List.of(cityHoliday, exhibition)),
-            EVENT_PASTILA,
-            "Гастрономическая программа с локальными производителями Коломны.",
-            "Фестиваль \"Коломенская пастила\" знакомит гостей с традиционными рецептами, ремесленной упаковкой и историей городских кондитерских промыслов. "
-                + "На площадке будут работать дегустационные столы, образовательные зоны о технологии производства и сцена для кулинарных демонстраций. "
-                + "Событие акцентировано на локальной идентичности Коломны и поддержке малых семейных мастерских.",
-            0,
-            "https://images.unsplash.com/photo-1504754524776-8f4f37790ca0",
-            now.minusDays(5)
-        ));
-
-        demoEvents.add(ensureDemoEvent(existingByTitle, newEvents, organizer, park,
-            new HashSet<>(List.of(cityHoliday, exhibition)),
-            EVENT_CRAFT,
-            "Ярмарка ремесел и демонстрация традиционных техник.",
-            "Ремесленный двор Коломны объединяет мастеров по керамике, дереву, текстилю и художественной росписи в едином интерактивном формате. "
-                + "Посетители смогут не только приобрести изделия, но и поучаствовать в коротких практических сессиях под руководством наставников. "
-                + "Организаторы делают акцент на передаче навыков и популяризации исторических ремесел, связанных с культурным наследием Коломны.",
-            0,
-            "https://images.unsplash.com/photo-1452860606245-08befc0ff44b",
-            now.minusDays(4)
-        ));
-
-        demoEvents.add(ensureDemoEvent(existingByTitle, newEvents, organizer, centralSquare,
-            new HashSet<>(List.of(music, cityHoliday)),
-            EVENT_CINEMA,
-            "Вечерний кинопоказ на большой уличной площадке у кремля.",
-            "Кинопоказ под открытым небом у Коломенского кремля включает показ семейного фильма, короткие лекции о кинолокациях Подмосковья и музыкальное сопровождение до начала сеанса. "
-                + "Зрителям доступна расширенная схема рассадки, пункты проката пледов и отдельная зона для посетителей с детьми младшего возраста. "
-                + "Проект направлен на формирование регулярного летнего киноформата в Коломне и развитие досуга на открытом воздухе.",
-            6,
-            "https://images.unsplash.com/photo-1478720568477-152d9b164e26",
-            now.minusDays(3)
-        ));
-
-        demoEvents.add(ensureDemoEvent(existingByTitle, newEvents, organizer, park,
-            new HashSet<>(List.of(cityHoliday, exhibition)),
-            EVENT_ECO,
-            "Семейный фестиваль экопросвещения на береговой зоне Оки.",
-            "Семейный эко-фестиваль \"Берег Оки\" в Коломне сочетает просветительские лекции, практические мастер-классы и игровые станции для детей. "
-                + "Программа включает блок о раздельном сборе отходов, экскурсии по природным маршрутам и презентации локальных экологических проектов. "
-                + "Цель события — сформировать у жителей устойчивые привычки бережного отношения к городской среде и водным территориям Коломны.",
-            0,
-            "https://images.unsplash.com/photo-1472396961693-142e6e269027",
-            now.minusDays(2)
-        ));
-
-        if (!newEvents.isEmpty()) {
-            eventRepository.saveAll(newEvents);
-        }
-
-        seedSessions(demoEvents, park, cultureHouse, centralSquare);
-        return demoEvents;
-    }
-
-    private Event ensureDemoEvent(Map<String, Event> existingByTitle,
-                                  List<Event> newEvents,
-                                  Organizer organizer,
-                                  Venue venue,
-                                  HashSet<Category> categories,
-                                  String title,
-                                  String shortDescription,
-                                  String fullDescription,
-                                  Integer ageRating,
-                                  String coverUrl,
-                                  LocalDateTime createdAt) {
-        Event existing = existingByTitle.get(normalizeKey(title));
-        if (existing != null) {
-            return existing;
-        }
-
-        Event event = Event.builder()
-            .title(title)
-            .shortDescription(shortDescription)
-            .fullDescription(fullDescription)
-            .ageRating(ageRating)
-            .coverUrl(coverUrl)
-            .createdAt(createdAt)
-            .status(EventStatus.PUBLISHED)
-            .organizer(organizer)
-            .venue(venue)
-            .categories(categories)
-            .build();
-
-        newEvents.add(event);
-        existingByTitle.put(normalizeKey(title), event);
-        return event;
-    }
-
-    private void migrateEventVenuesFromSessions() {
-        // No-op: venue is now defined only at event level.
-    }
-
-    private void seedSessions(List<Event> events, Venue park, Venue cultureHouse, Venue centralSquare) {
-        Map<String, Event> eventsByTitle = new HashMap<>();
-        for (Event event : events) {
-            eventsByTitle.put(normalizeKey(event.getTitle()), event);
-        }
-
-        HashSet<Long> eventIdsWithSessions = new HashSet<>();
-        for (Session session : sessionRepository.findAll()) {
-            if (session.getEvent() != null && session.getEvent().getId() != null) {
-                eventIdsWithSessions.add(session.getEvent().getId());
+        Map<String, Organizer> organizerByLogin = new HashMap<>();
+        for (Organizer organizer : organizers) {
+            if (organizer != null && organizer.getUser() != null) {
+                organizerByLogin.put(organizer.getUser().getLogin(), organizer);
             }
         }
 
-        LocalDateTime baseDate = LocalDateTime.now().plusDays(2).withHour(18).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime now = LocalDateTime.now();
+        List<Event> events = new ArrayList<>();
+
+        Organizer org1 = organizerByLogin.get("organizer1");
+        Organizer org2 = organizerByLogin.get("organizer2");
+        Organizer org3 = organizerByLogin.get("organizer3");
+        Organizer org4 = organizerByLogin.get("organizer4");
+        Organizer org5 = organizerByLogin.get("organizer5");
+
+        if (org1 != null) {
+            events.add(saveOrUpdateEvent(existingByTitle, org1.getOrganization(), park,
+                Set.of(music, cityHoliday), EVENT_JAZZ,
+                "Большой летний концерт на открытой сцене.",
+                "Летний джаз в Коломне объединяет местные и приглашенные коллективы на открытой сцене городского парка.",
+                12, "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4", EventStatus.PUBLISHED, now.minusDays(12)));
+            events.add(saveOrUpdateEvent(existingByTitle, org1.getOrganization(), cultureHouse,
+                Set.of(theatre, exhibition), EVENT_THEATRE,
+                "Камерный спектакль и встреча с режиссером.",
+                "Коломенский театральный вечер включает премьерный показ и открытое обсуждение после спектакля.",
+                16, "https://images.unsplash.com/photo-1460723237483-7a6dc9d0b212", EventStatus.PENDING_APPROVAL, now.minusDays(10)));
+            events.add(saveOrUpdateEvent(existingByTitle, org1.getOrganization(), cultureHouse,
+                Set.of(exhibition, education), EVENT_HISTORY,
+                "Историческая экспозиция о ключевых этапах развития города.",
+                "Выставка об истории Коломны собрана из архивных фотографий, документов и предметов городского быта.",
+                6, "https://images.unsplash.com/photo-1497366754035-f200968a6e72", EventStatus.PUBLISHED, now.minusDays(8)));
+            events.add(saveOrUpdateEvent(existingByTitle, org1.getOrganization(), centralSquare,
+                Set.of(cityHoliday, music), EVENT_CITY_DAY,
+                "Главное городское событие сезона с концертной программой.",
+                "День города Коломны включает семейный дневной блок, вечерний концерт и праздничную программу на центральной площади.",
+                0, "https://images.unsplash.com/photo-1472653431158-6364773b2a56", EventStatus.REJECTED, now.minusDays(7)));
+        }
+
+        if (org2 != null) {
+            events.add(saveOrUpdateEvent(existingByTitle, org2.getOrganization(), centralSquare,
+                Set.of(literature, cityHoliday), EVENT_BOOK_FAIR,
+                "Городская книжная программа с издательствами и авторами.",
+                "Книжная ярмарка у кремля объединяет издательства, независимые книжные проекты, публичные чтения и автограф-сессии.",
+                0, "https://images.unsplash.com/photo-1507842217343-583bb7270b66", EventStatus.PUBLISHED, now.minusDays(6)));
+            events.add(saveOrUpdateEvent(existingByTitle, org2.getOrganization(), artCenter,
+                Set.of(cinema, education), EVENT_FILM_NIGHT,
+                "Ночной фестиваль короткого метра и обсуждений.",
+                "Ночь короткометражного кино включает показы фестивальных работ, сессии вопросов и обсуждений.",
+                16, "https://images.unsplash.com/photo-1485846234645-a62644f84728", EventStatus.PUBLISHED, now.minusDays(5)));
+            events.add(saveOrUpdateEvent(existingByTitle, org2.getOrganization(), riverEmbankment,
+                Set.of(cityHoliday, exhibition), EVENT_RIVER_LIGHTS,
+                "Световые инсталляции и вечерняя музыкальная программа.",
+                "Световой фестиваль на набережной объединяет медиахудожников, инсталляции под открытым небом и музыкальные перформансы.",
+                0, "https://images.unsplash.com/photo-1514525253161-7a46d19cd819", EventStatus.PENDING_APPROVAL, now.minusDays(4)));
+        }
+
+        if (org3 != null) {
+            events.add(saveOrUpdateEvent(existingByTitle, org3.getOrganization(), park,
+                Set.of(education, children), EVENT_SCIENCE_FEST,
+                "Интерактивная наука для школьников и родителей.",
+                "Научный фестиваль для школьников включает лаборатории, инженерные шоу и открытые лекции популяризаторов науки.",
+                6, "https://images.unsplash.com/photo-1532094349884-543bc11b234d", EventStatus.PUBLISHED, now.minusDays(9)));
+            events.add(saveOrUpdateEvent(existingByTitle, org3.getOrganization(), park,
+                Set.of(children, cityHoliday), EVENT_FAMILY_WEEKEND,
+                "Большая семейная программа выходного дня.",
+                "Семейные выходные в парке включают игровые маршруты, мастер-классы для детей и родительские практикумы.",
+                0, "https://images.unsplash.com/photo-1511895426328-dc8714191300", EventStatus.PUBLISHED, now.minusDays(3)));
+            events.add(saveOrUpdateEvent(existingByTitle, org3.getOrganization(), riverEmbankment,
+                Set.of(gastronomy, cityHoliday), EVENT_FOOD_MARKET,
+                "Маркет локальных производителей и гастрономических проектов.",
+                "Фестиваль локальной кухни объединяет фермеров, гастро-стартапы и кулинарные мастер-классы под открытым небом.",
+                0, "https://images.unsplash.com/photo-1504754524776-8f4f37790ca0", EventStatus.PUBLISHED, now.minusDays(2)));
+        }
+
+        if (org4 != null) {
+            events.add(saveOrUpdateEvent(existingByTitle, org4.getOrganization(), centralSquare,
+                Set.of(sport, cityHoliday), EVENT_STREET_SPORT,
+                "Турниры и открытые тренировки в городском формате.",
+                "Уличный спортивный день объединяет любительские турниры, показательные выступления и бесплатные тренировки с тренерами.",
+                0, "https://images.unsplash.com/photo-1461896836934-ffe607ba8211", EventStatus.PUBLISHED, now.minusDays(5)));
+            events.add(saveOrUpdateEvent(existingByTitle, org4.getOrganization(), artCenter,
+                Set.of(education, exhibition), EVENT_CREATIVE_LABS,
+                "Практические лаборатории в сфере креативных индустрий.",
+                "Лаборатории креативных индустрий включают интенсивы по дизайну, фото, видео и городским медиа-проектам.",
+                12, "https://images.unsplash.com/photo-1498050108023-c5249f4df085", EventStatus.PENDING_APPROVAL, now.minusDays(1)));
+        }
+
+        if (org5 != null) {
+            events.add(saveOrUpdateEvent(existingByTitle, org5.getOrganization(), museumHall,
+                Set.of(exhibition, education), EVENT_MUSEUM_FORUM,
+                "Профессиональная встреча музейных команд региона.",
+                "Форум музейных практик посвящен цифровым форматам экспозиций, работе с аудиторией и межмузейным партнерствам.",
+                12, "https://images.unsplash.com/photo-1518998053901-5348d3961a04", EventStatus.PUBLISHED, now.minusDays(4)));
+            events.add(saveOrUpdateEvent(existingByTitle, org5.getOrganization(), centralSquare,
+                Set.of(music, theatre), EVENT_OPEN_AIR_OPERA,
+                "Музыкально-театральная постановка на открытой сцене.",
+                "Опера под открытым небом объединяет симфонический оркестр, солистов и визуальное сценическое оформление.",
+                12, "https://images.unsplash.com/photo-1501386761578-eac5c94b800a", EventStatus.PUBLISHED, now.minusDays(2)));
+            events.add(saveOrUpdateEvent(existingByTitle, org5.getOrganization(), museumHall,
+                Set.of(literature, education), EVENT_LOCAL_GUIDES,
+                "Профессиональный форум для экскурсоводов и краеведов.",
+                "Форум городских экскурсоводов включает секции по методике экскурсий, сторителлингу и туристическим маршрутам.",
+                0, "https://images.unsplash.com/photo-1469474968028-56623f02e42e", EventStatus.ARCHIVED, now.minusDays(20)));
+        }
+
+        events.removeIf(event -> event == null || event.getId() == null);
+        events.sort(Comparator.comparing(Event::getCreatedAt));
+        return events;
+    }
+
+    private Map<Long, User> buildPublicationAuthorsByOrganization(List<Organizer> organizers) {
+        Map<Long, User> authors = new HashMap<>();
+        for (Organizer organizer : organizers) {
+            if (organizer == null || organizer.getOrganization() == null || organizer.getUser() == null) {
+                continue;
+            }
+            authors.putIfAbsent(organizer.getOrganization().getId(), organizer.getUser());
+        }
+        return authors;
+    }
+
+    private Event saveOrUpdateEvent(Map<String, Event> existingByTitle,
+                                    Organization organization,
+                                    Venue venue,
+                                    Set<Category> categories,
+                                    String title,
+                                    String shortDescription,
+                                    String fullDescription,
+                                    Integer ageRating,
+                                    String coverUrl,
+                                    EventStatus status,
+                                    LocalDateTime createdAt) {
+        if (organization == null || venue == null) {
+            return null;
+        }
+
+        Event event = existingByTitle.get(normalizeKey(title));
+        if (event == null) {
+            event = Event.builder().createdAt(createdAt).build();
+        } else if (event.getCreatedAt() == null) {
+            event.setCreatedAt(createdAt);
+        }
+
+        event.setTitle(title);
+        event.setShortDescription(shortDescription);
+        event.setFullDescription(fullDescription);
+        event.setAgeRating(ageRating);
+        event.setCoverUrl(coverUrl);
+        event.setStatus(status);
+        event.setOrganization(organization);
+        event.setVenue(venue);
+        event.setCategories(new HashSet<>(categories));
+
+        Event saved = eventRepository.save(event);
+        existingByTitle.put(normalizeKey(title), saved);
+        return saved;
+    }
+
+    private void seedSessions(List<Event> events) {
+        Set<String> existingKeys = new HashSet<>();
+        for (Session session : sessionRepository.findAll()) {
+            if (session.getEvent() == null || session.getEvent().getId() == null || session.getStartTime() == null) {
+                continue;
+            }
+            existingKeys.add(session.getEvent().getId() + "|" + session.getStartTime());
+        }
+
+        LocalDateTime base = LocalDateTime.now().plusDays(3).withHour(17).withMinute(0).withSecond(0).withNano(0);
         List<Session> sessions = new ArrayList<>();
+        List<Event> sortedEvents = events.stream()
+            .filter(event -> event.getVenue() != null)
+            .sorted(Comparator.comparing(Event::getCreatedAt))
+            .toList();
 
-        Event jazz = eventsByTitle.get(normalizeKey(EVENT_JAZZ));
-        if (shouldSeedSessionsForEvent(jazz, eventIdsWithSessions)) {
-            addSession(sessions, jazz, park, "Открытие джазового вечера",
-                "Вступительный сет и приветствие организаторов фестиваля.",
-                baseDate.plusHours(1), 2, 1200);
-            addSession(sessions, jazz, park, "Ночной джем в Коломне",
-                "Импровизационная программа с участием приглашенных музыкантов.",
-                baseDate.plusDays(3).plusHours(2), 2, 1500);
-        }
+        for (int index = 0; index < sortedEvents.size(); index++) {
+            Event event = sortedEvents.get(index);
+            LocalDateTime start = base.plusDays(index).plusHours(index % 3);
+            int durationHours = index % 2 == 0 ? 2 : 3;
+            int capacity = calculateSessionCapacity(event.getVenue(), index);
 
-        Event theatre = eventsByTitle.get(normalizeKey(EVENT_THEATRE));
-        if (shouldSeedSessionsForEvent(theatre, eventIdsWithSessions)) {
-            addSession(sessions, theatre, cultureHouse, "Премьерный показ спектакля",
-                "Основной показ и встреча с творческой группой после финала.",
-                baseDate.plusDays(1), 2, 700);
-            addSession(sessions, theatre, cultureHouse, "Дополнительный вечерний показ",
-                "Повторный показ по просьбам жителей Коломны.",
-                baseDate.plusDays(4), 2, 650);
-        }
-
-        Event history = eventsByTitle.get(normalizeKey(EVENT_HISTORY));
-        if (shouldSeedSessionsForEvent(history, eventIdsWithSessions)) {
-            addSession(sessions, history, cultureHouse, "Экскурсия по экспозиции",
-                "Кураторский маршрут с подробным разбором исторических артефактов.",
-                baseDate.plusDays(2).minusHours(5), 3, 500);
-            addSession(sessions, history, cultureHouse, "Вечерняя лекция об истории города",
-                "Лекционный блок о культурной и архитектурной истории Коломны.",
-                baseDate.plusDays(6).minusHours(2), 2, 420);
-        }
-
-        Event streetArt = eventsByTitle.get(normalizeKey(EVENT_STREET_ART));
-        if (shouldSeedSessionsForEvent(streetArt, eventIdsWithSessions)) {
-            addSession(sessions, streetArt, centralSquare, "Дневная программа фестиваля",
-                "Мастер-классы, перформансы и интерактивные площадки на площади.",
-                baseDate.plusDays(5).minusHours(4), 4, 3200);
-            addSession(sessions, streetArt, centralSquare, "Вечерняя сцена и лайв-сеты",
-                "Музыкальные выступления и финальный коллективный перформанс.",
-                baseDate.plusDays(5).plusHours(1), 3, 2800);
-        }
-
-        Event cityDay = eventsByTitle.get(normalizeKey(EVENT_CITY_DAY));
-        if (shouldSeedSessionsForEvent(cityDay, eventIdsWithSessions)) {
-            addSession(sessions, cityDay, centralSquare, "Главный праздничный концерт",
-                "Ключевая сцена Дня города с участием городских коллективов.",
-                baseDate.plusDays(8).minusHours(2), 4, 4500);
-        }
-
-        Event museumNight = eventsByTitle.get(normalizeKey(EVENT_MUSEUM_NIGHT));
-        if (shouldSeedSessionsForEvent(museumNight, eventIdsWithSessions)) {
-            addSession(sessions, museumNight, cultureHouse, "Маршрут Ночи музеев",
-                "Единый старт программы с выдачей карты и сопровождением кураторов.",
-                baseDate.plusDays(7).plusHours(1), 3, 900);
-        }
-
-        Event pastila = eventsByTitle.get(normalizeKey(EVENT_PASTILA));
-        if (shouldSeedSessionsForEvent(pastila, eventIdsWithSessions)) {
-            addSession(sessions, pastila, centralSquare, "Дегустационная программа",
-                "Презентации производителей и тематические кулинарные зоны.",
-                baseDate.plusDays(9).minusHours(1), 4, 2600);
-        }
-
-        Event craft = eventsByTitle.get(normalizeKey(EVENT_CRAFT));
-        if (shouldSeedSessionsForEvent(craft, eventIdsWithSessions)) {
-            addSession(sessions, craft, park, "Ярмарка ремесленных мастерских",
-                "Открытая экспозиция изделий и практические мастер-классы.",
-                baseDate.plusDays(10).minusHours(3), 5, 1800);
-        }
-
-        Event cinema = eventsByTitle.get(normalizeKey(EVENT_CINEMA));
-        if (shouldSeedSessionsForEvent(cinema, eventIdsWithSessions)) {
-            addSession(sessions, cinema, centralSquare, "Вечерний кинопоказ",
-                "Показ фильма на открытом экране и обсуждение после сеанса.",
-                baseDate.plusDays(11).plusHours(2), 3, 2200);
-        }
-
-        Event eco = eventsByTitle.get(normalizeKey(EVENT_ECO));
-        if (shouldSeedSessionsForEvent(eco, eventIdsWithSessions)) {
-            addSession(sessions, eco, park, "Эко-маршрут и семейные активности",
-                "Просветительская программа о природе Оки и городской экологии.",
-                baseDate.plusDays(12).minusHours(2), 4, 1700);
+            addSessionIfMissing(sessions, existingKeys, event, start, durationHours, capacity);
+            if (index % 4 == 0) {
+                addSessionIfMissing(sessions, existingKeys, event, start.plusDays(2), 2, capacity);
+            }
         }
 
         if (!sessions.isEmpty()) {
@@ -558,159 +567,109 @@ public class DemoDataInitializer implements CommandLineRunner {
         }
     }
 
-    private boolean shouldSeedSessionsForEvent(Event event, HashSet<Long> eventIdsWithSessions) {
-        return event != null && event.getId() != null && !eventIdsWithSessions.contains(event.getId());
+    private int calculateSessionCapacity(Venue venue, int index) {
+        if (venue == null || venue.getCapacity() == null || venue.getCapacity() <= 0) {
+            return 200;
+        }
+        int venueCapacity = venue.getCapacity();
+        int divider = index % 3 == 0 ? 2 : 3;
+        int calculated = Math.max(80, venueCapacity / divider);
+        return Math.min(calculated, venueCapacity);
     }
 
-    private void addSession(List<Session> sessions,
-                            Event event,
-                            Venue venue,
-                            String title,
-                            String description,
-                            LocalDateTime start,
-                            int durationHours,
-                            int capacity) {
-        if (event == null || event.getVenue() == null) {
+    private void addSessionIfMissing(List<Session> sessions,
+                                     Set<String> existingKeys,
+                                     Event event,
+                                     LocalDateTime start,
+                                     int durationHours,
+                                     int capacity) {
+        if (event == null || event.getId() == null || event.getVenue() == null) {
             return;
         }
-        LocalDateTime end = start.plusHours(durationHours);
+
+        String key = event.getId() + "|" + start;
+        if (!existingKeys.add(key)) {
+            return;
+        }
 
         sessions.add(Session.builder()
             .event(event)
             .startTime(start)
-            .endTime(end)
+            .endTime(start.plusHours(durationHours))
             .capacity(capacity)
             .build());
     }
 
-    private void seedSocialData(User organizerUser, List<User> residents, List<Event> demoEvents) {
-        List<Event> events = new ArrayList<>(demoEvents);
-        events.removeIf(Objects::isNull);
-        if (events.isEmpty()) {
-            return;
-        }
-        events.sort(Comparator.comparing(Event::getId));
-
-        if (organizerUser != null && publicationRepository.countByStatus(PublicationStatus.PUBLISHED) < MIN_PUBLISHED_PUBLICATIONS) {
-            seedPublications(organizerUser, events);
-        }
-
-        if (!residents.isEmpty() && reviewRepository.count() < MIN_REVIEWS) {
-            seedReviews(residents, events);
-        }
-
-        if (!residents.isEmpty()) {
-            seedFavorites(residents, events);
-        }
-    }
-
-    private void seedPublications(User organizerUser, List<Event> events) {
-        Map<String, Event> eventsByTitle = new HashMap<>();
-        for (Event event : events) {
-            eventsByTitle.put(normalizeKey(event.getTitle()), event);
-        }
-
+    private void seedPublications(Map<Long, User> publicationAuthorsByOrganization, List<Event> events) {
         Map<String, Publication> existingByTitle = new HashMap<>();
         for (Publication publication : publicationRepository.findAll()) {
             existingByTitle.putIfAbsent(normalizeKey(publication.getTitle()), publication);
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        List<Event> sortedEvents = events.stream()
+            .sorted(Comparator.comparing(Event::getCreatedAt))
+            .toList();
+
         List<Publication> publications = new ArrayList<>();
 
-        addPublicationIfMissing(publications, existingByTitle, organizerUser, eventsByTitle.get(normalizeKey(EVENT_JAZZ)),
-            "Коломна открывает музыкальный сезон: расширенная программа джазового фестиваля",
-            "Оргкомитет утвердил детальную программу музыкального сезона в Коломне: помимо двух больших джазовых сетов, на площадке появятся образовательные мини-форматы и короткие встречи с артистами. "
-                + "Для удобства зрителей мы подготовили схему рассадки, точки навигации и карту доступности для семейных посетителей. "
-                + "Просим регистрироваться заранее, чтобы равномерно распределить поток гостей и обеспечить комфортный вход на территорию фестиваля.",
-            "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f",
-            PublicationStatus.PUBLISHED,
-            now.minusDays(7)
-        );
+        for (int index = 0; index < sortedEvents.size(); index++) {
+            Event event = sortedEvents.get(index);
+            if (event.getOrganization() == null || event.getOrganization().getId() == null) {
+                continue;
+            }
 
-        addPublicationIfMissing(publications, existingByTitle, organizerUser, eventsByTitle.get(normalizeKey(EVENT_THEATRE)),
-            "Театральная неделя в Коломне: состав труппы и формат обсуждений",
-            "Публикуем расширенный план театральной недели: после каждого показа зрителей ждет открытая дискуссия о художественных решениях постановки и работе с текстом. "
-                + "Команда Дома культуры подготовила специальный блок для молодежной аудитории с разбором сценической речи и пластики. "
-                + "В связи с высоким интересом добавили дополнительный вечерний показ и обновили правила входа в зал.",
-            "https://images.unsplash.com/photo-1503095396549-807759245b35",
-            PublicationStatus.PUBLISHED,
-            now.minusDays(6)
-        );
+            User author = publicationAuthorsByOrganization.get(event.getOrganization().getId());
+            if (author == null) {
+                continue;
+            }
 
-        addPublicationIfMissing(publications, existingByTitle, organizerUser, eventsByTitle.get(normalizeKey(EVENT_HISTORY)),
-            "Выставка об истории Коломны: опубликован подробный маршрут по залам",
-            "Чтобы посещение выставки было максимально удобным, мы подготовили пошаговый маршрут по тематическим блокам: от ранних городских архивов до современной культурной среды Коломны. "
-                + "В карточках экспонатов появились расширенные комментарии кураторов, а для семей доступны короткие сценарии экскурсии на 40 и 60 минут. "
-                + "Просим выбирать временные слоты заранее: это позволит сохранить спокойный темп осмотра и качество сопровождения.",
-            "https://images.unsplash.com/photo-1489515217757-5fd1be406fef",
-            PublicationStatus.PUBLISHED,
-            now.minusDays(5)
-        );
+            LocalDateTime createdAt = event.getCreatedAt() == null
+                ? LocalDateTime.now().minusHours(sortedEvents.size() - index)
+                : event.getCreatedAt().plusHours(2);
 
-        addPublicationIfMissing(publications, existingByTitle, organizerUser, eventsByTitle.get(normalizeKey(EVENT_STREET_ART)),
-            "Фестиваль уличного искусства Коломны: карта зон и тайминг выступлений",
-            "Подготовили полную карту фестиваля: на центральной площади будут работать музыкальная сцена, мастерские по визуальному искусству и семейная интерактивная зона. "
-                + "Мы отдельно продумали тихие пространства для отдыха, пункты воды и волонтерские стойки с консультациями по маршруту. "
-                + "Финальный лайнап опубликован в афише, рекомендуем приходить заранее к старту дневной программы.",
-            "https://images.unsplash.com/photo-1514525253161-7a46d19cd819",
-            PublicationStatus.PUBLISHED,
-            now.minusDays(4)
-        );
+            addPublicationIfMissing(
+                publications,
+                existingByTitle,
+                author,
+                event,
+                "Афиша: " + event.getTitle(),
+                "Опубликована обновленная информация по событию " + event.getTitle()
+                    + " от организации " + event.getOrganization().getName() + ".",
+                event.getCoverUrl(),
+                resolvePublicationStatus(event.getStatus()),
+                createdAt
+            );
 
-        addPublicationIfMissing(publications, existingByTitle, organizerUser, eventsByTitle.get(normalizeKey(EVENT_CITY_DAY)),
-            "День города Коломны: опубликованы входные схемы и семейный блок",
-            "В этом году праздничная программа построена так, чтобы жителям было удобно провести на площадке весь день: с утра работают детские активности, днем — локальные творческие коллективы, вечером — основной концерт. "
-                + "На схеме отмечены безопасные маршруты, медицинские посты и зоны для маломобильных гостей. "
-                + "Просим ознакомиться с регламентом входа заранее, чтобы избежать очередей в пиковые часы.",
-            "https://images.unsplash.com/photo-1472653431158-6364773b2a56",
-            PublicationStatus.PUBLISHED,
-            now.minusDays(3)
-        );
-
-        addPublicationIfMissing(publications, existingByTitle, organizerUser, eventsByTitle.get(normalizeKey(EVENT_PASTILA)),
-            "Фестиваль \"Коломенская пастила\": презентация локальных мастерских",
-            "Гастрономическая команда завершила отбор участников: в программе представлены семейные производства, исторические рецептуры и современные авторские интерпретации коломенской пастилы. "
-                + "Кроме дегустаций, мы запускаем образовательные сессии о происхождении продукта и его месте в культурной истории города. "
-                + "Для посетителей действует единый маршрут с рекомендациями по времени прохождения площадок.",
-            "https://images.unsplash.com/photo-1504754524776-8f4f37790ca0",
-            PublicationStatus.PUBLISHED,
-            now.minusDays(2)
-        );
-
-        addPublicationIfMissing(publications, existingByTitle, organizerUser, eventsByTitle.get(normalizeKey(EVENT_CRAFT)),
-            "Ремесленный двор Коломны: опубликован список мастер-классов",
-            "В программе ремесленного двора предусмотрены демонстрации техник по керамике, дереву, текстилю и художественной росписи с практическим участием гостей. "
-                + "Каждая мастерская проведет короткие вводные занятия, после которых можно перейти к самостоятельной работе под сопровождением наставника. "
-                + "Мы также добавили расширенный блок про сохранение локальных ремесленных традиций Коломны.",
-            "https://images.unsplash.com/photo-1452860606245-08befc0ff44b",
-            PublicationStatus.PUBLISHED,
-            now.minusDays(1)
-        );
-
-        addPublicationIfMissing(publications, existingByTitle, organizerUser, eventsByTitle.get(normalizeKey(EVENT_MUSEUM_NIGHT)),
-            "Ночь музеев в Коломне: идет финальная подготовка навигации по маршруту",
-            "Кураторская команда завершает согласование вечернего маршрута между площадками, чтобы гости могли пройти программу без длинных ожиданий и очередей. "
-                + "После публикации финальной схемы мы откроем предварительное бронирование по временным слотам. "
-                + "Сообщение находится на этапе согласования, поэтому статус публикации временно остается в модерации.",
-            "https://images.unsplash.com/photo-1518998053901-5348d3961a04",
-            PublicationStatus.PENDING,
-            now.minusHours(18)
-        );
-
-        addPublicationIfMissing(publications, existingByTitle, organizerUser, eventsByTitle.get(normalizeKey(EVENT_CINEMA)),
-            "Кинопоказ у кремля: черновая версия регламента удалена для доработки",
-            "В черновой версии регламента обнаружились несогласованные пункты по рассадке и времени прохода на вечерний сеанс. "
-                + "Мы сняли публикацию с выдачи до завершения проверки и повторно опубликуем обновленный документ после подтверждения всех служб. "
-                + "Это техническая мера, направленная на безопасность и удобство посетителей.",
-            "https://images.unsplash.com/photo-1478720568477-152d9b164e26",
-            PublicationStatus.REJECTED,
-            now.minusHours(10)
-        );
+            if (event.getStatus() == EventStatus.PUBLISHED && index % 3 == 0) {
+                addPublicationIfMissing(
+                    publications,
+                    existingByTitle,
+                    author,
+                    event,
+                    "Изменения в программе: " + event.getTitle(),
+                    "Обновили программу, тайминг и дополнительные активности по событию " + event.getTitle() + ".",
+                    event.getCoverUrl(),
+                    PublicationStatus.PUBLISHED,
+                    createdAt.plusHours(6)
+                );
+            }
+        }
 
         if (!publications.isEmpty()) {
             publicationRepository.saveAll(publications);
         }
+    }
+
+    private PublicationStatus resolvePublicationStatus(EventStatus eventStatus) {
+        if (eventStatus == null) {
+            return PublicationStatus.PENDING;
+        }
+        return switch (eventStatus) {
+            case PUBLISHED -> PublicationStatus.PUBLISHED;
+            case REJECTED -> PublicationStatus.REJECTED;
+            case PENDING_APPROVAL -> PublicationStatus.PENDING;
+            case ARCHIVED -> PublicationStatus.PENDING;
+        };
     }
 
     private void addPublicationIfMissing(List<Publication> publications,
@@ -725,10 +684,12 @@ public class DemoDataInitializer implements CommandLineRunner {
         if (organizerUser == null || event == null) {
             return;
         }
+
         String key = normalizeKey(title);
         if (existingByTitle.containsKey(key)) {
             return;
         }
+
         Publication publication = Publication.builder()
             .title(title)
             .content(content)
@@ -738,57 +699,50 @@ public class DemoDataInitializer implements CommandLineRunner {
             .author(organizerUser)
             .event(event)
             .build();
+
         publications.add(publication);
         existingByTitle.put(key, publication);
     }
 
     private void seedReviews(List<User> residents, List<Event> events) {
+        if (residents.isEmpty() || events.isEmpty()) {
+            return;
+        }
+
+        List<Event> publishedEvents = events.stream()
+            .filter(event -> event.getStatus() == EventStatus.PUBLISHED)
+            .toList();
+        List<Event> targetEvents = publishedEvents.isEmpty() ? events : publishedEvents;
+
+        List<String> texts = List.of(
+            "Понравилась организация входа и удобная навигация на площадке.",
+            "Хорошая программа и комфортная атмосфера, придем еще.",
+            "Отдельно отмечу работу волонтеров и качество звука.",
+            "Событие оставило положительное впечатление, все прошло четко.",
+            "Удобные зоны отдыха и хорошая программа для всей семьи.",
+            "Насыщенная культурная программа, рекомендую к посещению.",
+            "Отличный уровень организации, понятная навигация и расписание.",
+            "Понравилось, что площадка адаптирована для разной аудитории."
+        );
+        int[] ratings = {5, 5, 4, 5, 5, 4, 5, 5};
+
         LocalDateTime now = LocalDateTime.now();
         List<Review> reviews = new ArrayList<>();
-        List<String> texts = List.of(
-            "Очень понравилось, как в Коломне организовали вход и навигацию: мы быстро нашли нужную площадку и спокойно разместились. Программа была насыщенной, но без хаоса, звук на сцене ровный, а волонтеры действительно помогали ориентироваться. Хочется, чтобы такой уровень организации сохранился и для следующих мероприятий.",
-            "Театральный вечер оставил сильное впечатление: постановка получилась цельной, актеры работали точно, а обсуждение после показа помогло лучше понять замысел режиссера. Для Коломны это отличный формат культурного диалога со зрителем, который точно стоит развивать на регулярной основе.",
-            "Выставка про историю Коломны сделана очень вдумчиво: материалы подобраны аккуратно, подписи понятные, а маршрут не перегружен. Особенно ценно, что есть блоки с локальными историями жителей, благодаря которым экспозиция ощущается живой, а не формальной.",
-            "Фестиваль уличного искусства получился ярким и динамичным: много активностей для детей, интересные выступления и удобные зоны отдыха. Вечером стало чуть плотнее по потоку людей, но в целом организация справилась, и впечатление осталось положительное.",
-            "На Дне города понравилось, что программа была рассчитана на разную аудиторию: утром можно было прийти с семьей, а вечером — остаться на концерт. По ощущениям, мероприятие собрало разные городские сообщества и создало действительно праздничную атмосферу.",
-            "Ночь музеев в Коломне приятно удивила темпом: можно было пройти несколько площадок без спешки и везде получить содержательные комментарии. Видно, что маршрут собирали с вниманием к деталям, а кураторы хорошо держали логику всей программы.",
-            "Фестиваль \"Коломенская пастила\" оказался не только вкусным, но и познавательным: много интересных историй о местных производителях и технологиях. Отличный пример того, как гастрономическая тема может работать как часть культурного бренда Коломны.",
-            "На ремесленном дворе понравилась практическая часть: не просто стенды, а возможность попробовать техники под руководством мастеров. Такой формат помогает лучше понять ценность ручной работы и показывает, что локальные ремесла в Коломне действительно живут.",
-            "Кинопоказ у кремля получился атмосферным: хорошая картинка, удобная рассадка и спокойная организация потока на входе. Было бы здорово добавить еще один дополнительный сеанс в выходной, потому что интерес к формату явно высокий.",
-            "Эко-фестиваль на берегу Оки оказался очень полезным для семейного посещения: дети были вовлечены в игровые зоны, а взрослые получили практические советы по экологичным привычкам. Важно, что тема подана спокойно и без назидания.",
-            "Отдельно хочется отметить коммуникацию организаторов: публикации в афише подробные, понятные и выходят заранее. Для жителей Коломны это помогает планировать участие и делает городские мероприятия более доступными.",
-            "В целом у фестивального сезона в Коломне заметен единый стандарт качества: хорошие описания событий, внятные маршруты и уважение к посетителю. Если сохранить этот подход, город получит сильную и узнаваемую культурную программу."
-        );
-        int[] ratings = {5, 5, 5, 4, 5, 5, 5, 5, 4, 5, 5, 5};
-        HashSet<String> uniquePairs = new HashSet<>();
 
         for (int i = 0; i < texts.size(); i++) {
             User resident = residents.get(i % residents.size());
-            Event selectedEvent = null;
-            for (int shift = 0; shift < events.size(); shift++) {
-                Event candidate = events.get((i + shift) % events.size());
-                String pairKey = resident.getId() + ":" + candidate.getId();
-                if (uniquePairs.contains(pairKey)) {
-                    continue;
-                }
-                if (reviewRepository.existsByUserIdAndEventId(resident.getId(), candidate.getId())) {
-                    continue;
-                }
-                selectedEvent = candidate;
-                uniquePairs.add(pairKey);
-                break;
-            }
+            Event event = targetEvents.get(i % targetEvents.size());
 
-            if (selectedEvent == null) {
+            if (reviewRepository.existsByUserIdAndEventId(resident.getId(), event.getId())) {
                 continue;
             }
 
             reviews.add(Review.builder()
                 .user(resident)
-                .event(selectedEvent)
+                .event(event)
                 .rating(ratings[i])
                 .text(texts.get(i))
-                .createdAt(now.minusHours(120L - i * 6L))
+                .createdAt(now.minusHours(72L - (long) i * 5L))
                 .build());
         }
 
@@ -798,13 +752,21 @@ public class DemoDataInitializer implements CommandLineRunner {
     }
 
     private void seedFavorites(List<User> residents, List<Event> events) {
-        List<Favorite> favorites = new ArrayList<>();
-        int eventsPerResident = Math.min(events.size(), 5);
+        if (residents.isEmpty() || events.isEmpty()) {
+            return;
+        }
 
+        List<Event> publishedEvents = events.stream()
+            .filter(event -> event.getStatus() == EventStatus.PUBLISHED)
+            .toList();
+        List<Event> targetEvents = publishedEvents.isEmpty() ? events : publishedEvents;
+        int eventsPerResident = Math.min(targetEvents.size(), 4);
+
+        List<Favorite> favorites = new ArrayList<>();
         for (int residentIndex = 0; residentIndex < residents.size(); residentIndex++) {
             User resident = residents.get(residentIndex);
             for (int offset = 0; offset < eventsPerResident; offset++) {
-                Event event = events.get((residentIndex + offset) % events.size());
+                Event event = targetEvents.get((residentIndex + offset) % targetEvents.size());
                 addFavoriteIfMissing(favorites, resident, event);
             }
         }
@@ -832,15 +794,5 @@ public class DemoDataInitializer implements CommandLineRunner {
             return "";
         }
         return value.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private boolean equalsIgnoreCase(String left, String right) {
-        if (left == null && right == null) {
-            return true;
-        }
-        if (left == null || right == null) {
-            return false;
-        }
-        return left.trim().equalsIgnoreCase(right.trim());
     }
 }

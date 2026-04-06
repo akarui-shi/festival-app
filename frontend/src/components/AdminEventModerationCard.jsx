@@ -34,7 +34,7 @@ const AdminEventModerationCard = ({ event, processingAction = '', onUpdateStatus
           <strong>Название:</strong> {event.title}
         </p>
         <p>
-          <strong>Организатор:</strong> {event.organizerName || '-'}
+          <strong>Организация:</strong> {event.organizationName || '-'}
         </p>
         <p>
           <strong>Категории:</strong> {(event.categories || []).map((category) => category.name).join(', ') || '-'}

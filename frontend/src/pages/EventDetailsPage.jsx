@@ -253,7 +253,7 @@ const EventDetailsPage = () => {
       <div className="panel details-grid">
         <p><strong>Возрастное ограничение:</strong> {ageLabel}</p>
         <p><strong>Создано:</strong> {formatDateTime(event.createdAt)}</p>
-        <p><strong>Организатор:</strong> {event.organizer?.name || '-'}</p>
+        <p><strong>Организация:</strong> {event.organization?.name || '-'}</p>
         <p><strong>Площадка:</strong> {venue?.name || 'Не указана'}</p>
         <p><strong>Адрес:</strong> {venue?.address || 'Не указан'}</p>
       </div>

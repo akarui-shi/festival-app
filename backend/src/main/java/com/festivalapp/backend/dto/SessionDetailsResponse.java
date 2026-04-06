@@ -23,8 +23,8 @@ public class SessionDetailsResponse {
     public static class EventInfo {
         private Long id;
         private String title;
-        private Long organizerId;
-        private String organizerName;
+        private Long organizationId;
+        private String organizationName;
     }
 
     @Getter

@@ -14,8 +14,9 @@ import { ROLE } from '../utils/roles';
 const OrganizerEventCreatePage = () => {
   const navigate = useNavigate();
   const { notifySuccess, notifyError, notifyWarning } = useNotification();
-  const { hasRole } = useAuth();
+  const { hasRole, currentUser } = useAuth();
   const isAdmin = hasRole([ROLE.ADMIN]);
+  const organizationName = currentUser?.organization?.name?.trim() || '';
 
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -112,6 +113,7 @@ const OrganizerEventCreatePage = () => {
     <section className="container page">
       <h1>Создание мероприятия</h1>
       <p className="page-subtitle">Укажите адрес проведения, выберите точку на карте и заполните описание мероприятия.</p>
+      <p className="muted">Организация: {organizationName || 'Не привязана'}</p>
 
       {error && <AlertMessage type="error" message={error} onClose={() => setError('')} />}
 
