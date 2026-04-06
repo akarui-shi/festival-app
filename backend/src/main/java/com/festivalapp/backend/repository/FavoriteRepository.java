@@ -17,6 +17,15 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
     @EntityGraph(attributePaths = {"event"})
     List<Favorite> findByUserIdOrderByIdDesc(Long userId);
 
+    @Query("""
+        select distinct f from Favorite f
+        join fetch f.event e
+        left join fetch e.categories c
+        where f.user.id = :userId
+        order by f.id desc
+        """)
+    List<Favorite> findByUserIdWithEventCategoriesOrderByIdDesc(@Param("userId") Long userId);
+
     Optional<Favorite> findByUserIdAndEventId(Long userId, Long eventId);
 
     @Modifying

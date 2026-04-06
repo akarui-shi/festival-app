@@ -14,8 +14,11 @@ import com.festivalapp.backend.entity.City;
 import com.festivalapp.backend.entity.Event;
 import com.festivalapp.backend.entity.EventImage;
 import com.festivalapp.backend.entity.EventStatus;
+import com.festivalapp.backend.entity.Favorite;
 import com.festivalapp.backend.entity.Organization;
 import com.festivalapp.backend.entity.Organizer;
+import com.festivalapp.backend.entity.Registration;
+import com.festivalapp.backend.entity.RegistrationStatus;
 import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.Session;
 import com.festivalapp.backend.entity.User;
@@ -52,7 +55,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -63,6 +68,10 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class EventService {
+
+    private static final int DEFAULT_RECOMMENDATIONS_LIMIT = 6;
+    private static final int MAX_RECOMMENDATIONS_LIMIT = 24;
+    private static final Set<RegistrationStatus> ACTIVE_REGISTRATION_STATUSES = EnumSet.of(RegistrationStatus.CREATED);
 
     private final EventRepository eventRepository;
     private final EventCategoryRepository eventCategoryRepository;
@@ -113,6 +122,81 @@ public class EventService {
         Sort sort = buildSort(sortBy, sortDir);
 
         return eventRepository.findAll(specification, sort).stream()
+            .map(this::toShortResponse)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<EventShortResponse> getRecommendations(String actorIdentifier, Long cityId, Integer limit) {
+        int resolvedLimit = resolveRecommendationsLimit(limit);
+        List<Event> publishedEvents = loadPublishedEvents(cityId);
+        if (publishedEvents.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, Long> popularityByEventId = resolvePopularityByEventId(publishedEvents);
+        if (!StringUtils.hasText(actorIdentifier)) {
+            return takePopularEvents(publishedEvents, popularityByEventId, Set.of(), resolvedLimit).stream()
+                .map(this::toShortResponse)
+                .toList();
+        }
+
+        User actor = userRepository.findByLoginOrEmailWithRoles(actorIdentifier).orElse(null);
+        if (actor == null) {
+            return takePopularEvents(publishedEvents, popularityByEventId, Set.of(), resolvedLimit).stream()
+                .map(this::toShortResponse)
+                .toList();
+        }
+
+        List<Favorite> favorites = favoriteRepository.findByUserIdWithEventCategoriesOrderByIdDesc(actor.getId());
+        List<Registration> registrations = registrationRepository.findAllByUserIdWithEventCategories(actor.getId());
+
+        Set<Long> consumedEventIds = new HashSet<>();
+        Set<Long> favoriteCategoryIds = extractFavoriteCategoryIds(favorites, consumedEventIds);
+        Set<Long> registrationCategoryIds = extractRegistrationCategoryIds(registrations, consumedEventIds);
+        boolean hasPersonalSignals = !favoriteCategoryIds.isEmpty() || !registrationCategoryIds.isEmpty();
+
+        if (!hasPersonalSignals) {
+            return takePopularEvents(publishedEvents, popularityByEventId, consumedEventIds, resolvedLimit).stream()
+                .map(this::toShortResponse)
+                .toList();
+        }
+
+        List<RecommendationScore> rankedEvents = publishedEvents.stream()
+            .filter(event -> event.getId() != null && !consumedEventIds.contains(event.getId()))
+            .map(event -> scoreEvent(event, cityId, favoriteCategoryIds, registrationCategoryIds, popularityByEventId))
+            .filter(score -> score.score() > 0)
+            .sorted(Comparator
+                .comparingInt(RecommendationScore::score).reversed()
+                .thenComparing(RecommendationScore::popularity, Comparator.reverseOrder())
+                .thenComparing(score -> {
+                    LocalDateTime date = score.event().getCreatedAt();
+                    return date != null ? date : LocalDateTime.MIN;
+                }, Comparator.reverseOrder()))
+            .toList();
+
+        LinkedHashSet<Event> collected = new LinkedHashSet<>();
+        for (RecommendationScore score : rankedEvents) {
+            if (collected.size() >= resolvedLimit) {
+                break;
+            }
+            collected.add(score.event());
+        }
+
+        if (collected.size() < resolvedLimit) {
+            Set<Long> excludeIds = new HashSet<>(consumedEventIds);
+            excludeIds.addAll(collected.stream().map(Event::getId).filter(Objects::nonNull).toList());
+            List<Event> popularFallback = takePopularEvents(
+                publishedEvents,
+                popularityByEventId,
+                excludeIds,
+                resolvedLimit - collected.size()
+            );
+            collected.addAll(popularFallback);
+        }
+
+        return collected.stream()
+            .limit(resolvedLimit)
             .map(this::toShortResponse)
             .toList();
     }
@@ -713,6 +797,150 @@ public class EventService {
         }
     }
 
+    private int resolveRecommendationsLimit(Integer limit) {
+        if (limit == null) {
+            return DEFAULT_RECOMMENDATIONS_LIMIT;
+        }
+        if (limit <= 0) {
+            throw new BadRequestException("Параметр limit должен быть больше 0");
+        }
+        return Math.min(limit, MAX_RECOMMENDATIONS_LIMIT);
+    }
+
+    private List<Event> loadPublishedEvents(Long cityId) {
+        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
+        if (cityId != null) {
+            return eventRepository.findAllByStatusAndVenueCityId(EventStatus.PUBLISHED, cityId, sort);
+        }
+        return eventRepository.findAllByStatus(EventStatus.PUBLISHED, sort);
+    }
+
+    private Map<Long, Long> resolvePopularityByEventId(List<Event> events) {
+        if (events == null || events.isEmpty()) {
+            return Map.of();
+        }
+
+        Set<Long> eventIds = events.stream()
+            .map(Event::getId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+        if (eventIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, Long> popularityByEventId = new HashMap<>();
+        List<Object[]> rows = registrationRepository.sumParticipantsByEventIdsAndStatuses(eventIds, ACTIVE_REGISTRATION_STATUSES);
+        for (Object[] row : rows) {
+            if (row == null || row.length < 2 || row[0] == null || row[1] == null) {
+                continue;
+            }
+
+            Number eventIdValue = (Number) row[0];
+            Number registrationsValue = (Number) row[1];
+            popularityByEventId.put(eventIdValue.longValue(), registrationsValue.longValue());
+        }
+
+        return popularityByEventId;
+    }
+
+    private List<Event> takePopularEvents(List<Event> events,
+                                          Map<Long, Long> popularityByEventId,
+                                          Set<Long> excludedEventIds,
+                                          int limit) {
+        if (limit <= 0 || events == null || events.isEmpty()) {
+            return List.of();
+        }
+
+        return events.stream()
+            .filter(event -> event.getId() != null)
+            .filter(event -> excludedEventIds == null || !excludedEventIds.contains(event.getId()))
+            .sorted(Comparator
+                .comparing((Event event) -> popularityByEventId.getOrDefault(event.getId(), 0L), Comparator.reverseOrder())
+                .thenComparing(event -> event.getCreatedAt() != null ? event.getCreatedAt() : LocalDateTime.MIN, Comparator.reverseOrder()))
+            .limit(limit)
+            .toList();
+    }
+
+    private Set<Long> extractFavoriteCategoryIds(List<Favorite> favorites, Set<Long> consumedEventIds) {
+        if (favorites == null || favorites.isEmpty()) {
+            return Set.of();
+        }
+
+        Set<Long> categoryIds = new HashSet<>();
+        for (Favorite favorite : favorites) {
+            if (favorite == null || favorite.getEvent() == null) {
+                continue;
+            }
+            Event event = favorite.getEvent();
+            if (event.getId() != null) {
+                consumedEventIds.add(event.getId());
+            }
+            categoryIds.addAll(extractCategoryIds(event));
+        }
+        return categoryIds;
+    }
+
+    private Set<Long> extractRegistrationCategoryIds(List<Registration> registrations, Set<Long> consumedEventIds) {
+        if (registrations == null || registrations.isEmpty()) {
+            return Set.of();
+        }
+
+        Set<Long> categoryIds = new HashSet<>();
+        for (Registration registration : registrations) {
+            if (registration == null || registration.getSession() == null || registration.getSession().getEvent() == null) {
+                continue;
+            }
+            Event event = registration.getSession().getEvent();
+            if (event.getId() != null) {
+                consumedEventIds.add(event.getId());
+            }
+            categoryIds.addAll(extractCategoryIds(event));
+        }
+        return categoryIds;
+    }
+
+    private Set<Long> extractCategoryIds(Event event) {
+        if (event == null || event.getCategories() == null || event.getCategories().isEmpty()) {
+            return Set.of();
+        }
+
+        return event.getCategories().stream()
+            .map(Category::getId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    }
+
+    private RecommendationScore scoreEvent(Event event,
+                                           Long cityId,
+                                           Set<Long> favoriteCategoryIds,
+                                           Set<Long> registrationCategoryIds,
+                                           Map<Long, Long> popularityByEventId) {
+        Set<Long> eventCategoryIds = extractCategoryIds(event);
+        int favoriteOverlap = (int) eventCategoryIds.stream().filter(favoriteCategoryIds::contains).count();
+        int registrationOverlap = (int) eventCategoryIds.stream().filter(registrationCategoryIds::contains).count();
+
+        int score = 0;
+        if (cityId != null && Objects.equals(resolveEventCityId(event), cityId)) {
+            score += 30;
+        }
+        score += Math.min(favoriteOverlap * 24, 72);
+        score += Math.min(registrationOverlap * 16, 48);
+        if (favoriteOverlap > 0 && registrationOverlap > 0) {
+            score += 8;
+        }
+
+        long popularity = popularityByEventId.getOrDefault(event.getId(), 0L);
+        score += Math.min((int) popularity, 25);
+        return new RecommendationScore(event, score, popularity);
+    }
+
+    private Long resolveEventCityId(Event event) {
+        if (event == null || event.getVenue() == null || event.getVenue().getCity() == null) {
+            return null;
+        }
+        return event.getVenue().getCity().getId();
+    }
+
     private EventShortResponse toShortResponse(Event event) {
         Venue venue = event.getVenue();
         List<LocalDateTime> sortedSessionDates = extractSortedSessionDates(event);
@@ -758,6 +986,9 @@ public class EventService {
             .filter(date -> !date.isBefore(now))
             .findFirst()
             .orElse(sortedSessionDates.get(0));
+    }
+
+    private record RecommendationScore(Event event, int score, Long popularity) {
     }
 
     private EventDetailsResponse toDetailsResponse(Event event) {

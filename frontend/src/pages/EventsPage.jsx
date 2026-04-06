@@ -5,6 +5,7 @@ import Loader from '../components/Loader';
 import AlertMessage from '../components/AlertMessage';
 import EmptyState from '../components/EmptyState';
 import DatePickerField from '../components/DatePickerField';
+import RecommendedEventsSection from '../components/RecommendedEventsSection';
 import { eventService } from '../services/eventService';
 import { favoriteService } from '../services/favoriteService';
 import { categoryService } from '../services/categoryService';
@@ -89,10 +90,13 @@ const EventsPage = () => {
   const initialSortDirQuery = normalizeSortDir((searchParams.get('sortDir') || DEFAULT_SORT.sortDir).trim());
 
   const [events, setEvents] = useState([]);
+  const [recommendedEvents, setRecommendedEvents] = useState([]);
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRecommendationsLoading, setIsRecommendationsLoading] = useState(true);
   const [isFiltersLoading, setIsFiltersLoading] = useState(true);
   const [error, setError] = useState('');
+  const [recommendationsError, setRecommendationsError] = useState('');
   const [favoriteIds, setFavoriteIds] = useState([]);
   const [favoriteActionEventId, setFavoriteActionEventId] = useState(null);
   const [message, setMessage] = useState('');
@@ -143,6 +147,26 @@ const EventsPage = () => {
     }
   }, []);
 
+  const loadRecommendations = useCallback(async (cityId) => {
+    if (!cityId) {
+      setRecommendedEvents([]);
+      setRecommendationsError('');
+      setIsRecommendationsLoading(false);
+      return;
+    }
+
+    try {
+      setIsRecommendationsLoading(true);
+      setRecommendationsError('');
+      const data = await eventService.getRecommendations({ cityId, limit: 4 });
+      setRecommendedEvents(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setRecommendationsError(toUserErrorMessage(err, 'Не удалось загрузить рекомендации.'));
+    } finally {
+      setIsRecommendationsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const loadDictionaries = async () => {
       try {
@@ -164,6 +188,13 @@ const EventsPage = () => {
     }
     loadEvents(appliedFilters, selectedCityId);
   }, [appliedFilters, loadEvents, selectedCityId, isCityLoading]);
+
+  useEffect(() => {
+    if (isCityLoading) {
+      return;
+    }
+    loadRecommendations(selectedCityId);
+  }, [loadRecommendations, selectedCityId, isCityLoading, isAuthenticated]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -249,6 +280,7 @@ const EventsPage = () => {
       setError(toUserErrorMessage(err, 'Не удалось обновить избранное.'));
     } finally {
       setFavoriteActionEventId(null);
+      loadRecommendations(selectedCityId);
     }
   };
 
@@ -367,6 +399,18 @@ const EventsPage = () => {
         </aside>
 
         <div className="events-feed">
+          <RecommendedEventsSection
+            title="Рекомендуем вам"
+            events={recommendedEvents}
+            isLoading={isRecommendationsLoading || isCityLoading}
+            error={recommendationsError}
+            onCloseError={() => setRecommendationsError('')}
+            emptyMessage={selectedCity ? 'Пока нет рекомендаций для выбранного города.' : 'Выберите город, чтобы увидеть рекомендации.'}
+            onFavoriteClick={onFavoriteClick}
+            favoriteIds={favoriteIds}
+            favoriteActionEventId={favoriteActionEventId}
+          />
+
           <div className="events-feed__header panel">
             <p className="events-feed__summary">
               {isLoading ? 'Загружаем подборку…' : `Найдено событий: ${events.length}`}

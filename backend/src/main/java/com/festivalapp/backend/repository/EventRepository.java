@@ -27,4 +27,10 @@ public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecific
 
     @EntityGraph(attributePaths = {"organization", "categories", "venue", "venue.city", "sessions"})
     List<Event> findAllByOrganizationIdAndStatus(Long organizationId, EventStatus status, Sort sort);
+
+    @EntityGraph(attributePaths = {"organization", "categories", "venue", "venue.city", "sessions"})
+    List<Event> findAllByStatus(EventStatus status, Sort sort);
+
+    @EntityGraph(attributePaths = {"organization", "categories", "venue", "venue.city", "sessions"})
+    List<Event> findAllByStatusAndVenueCityId(EventStatus status, Long cityId, Sort sort);
 }

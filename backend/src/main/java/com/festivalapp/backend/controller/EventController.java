@@ -65,6 +65,14 @@ public class EventController {
         ));
     }
 
+    @GetMapping("/recommendations")
+    public ResponseEntity<List<EventShortResponse>> getRecommendations(@RequestParam(required = false) Long cityId,
+                                                                       @RequestParam(required = false) Integer limit,
+                                                                       @AuthenticationPrincipal UserDetails principal) {
+        String actorIdentifier = principal != null ? principal.getUsername() : null;
+        return ResponseEntity.ok(eventService.getRecommendations(actorIdentifier, cityId, limit));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<EventDetailsResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(eventService.getById(id));

@@ -45,6 +45,15 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
     List<Registration> findAllByUserIdWithDetails(@Param("userId") Long userId);
 
     @Query("""
+        select distinct r from Registration r
+        join fetch r.session s
+        join fetch s.event e
+        left join fetch e.categories c
+        where r.user.id = :userId
+        """)
+    List<Registration> findAllByUserIdWithEventCategories(@Param("userId") Long userId);
+
+    @Query("""
         select r from Registration r
         join fetch r.user u
         join fetch r.session s
@@ -53,6 +62,16 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
         order by r.createdAt desc
         """)
     List<Registration> findAllBySessionIdWithUser(@Param("sessionId") Long sessionId);
+
+    @Query("""
+        select s.event.id, coalesce(sum(r.quantity), 0) from Registration r
+        join r.session s
+        where s.event.id in :eventIds
+          and r.status in :statuses
+        group by s.event.id
+        """)
+    List<Object[]> sumParticipantsByEventIdsAndStatuses(@Param("eventIds") Collection<Long> eventIds,
+                                                         @Param("statuses") Collection<RegistrationStatus> statuses);
 
     long countBySessionIdAndStatusIn(Long sessionId, Collection<RegistrationStatus> statuses);
 
