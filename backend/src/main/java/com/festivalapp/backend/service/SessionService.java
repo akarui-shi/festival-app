@@ -6,6 +6,7 @@ import com.festivalapp.backend.dto.SessionRegistrationResponse;
 import com.festivalapp.backend.dto.SessionShortResponse;
 import com.festivalapp.backend.dto.SessionUpdateRequest;
 import com.festivalapp.backend.entity.Event;
+import com.festivalapp.backend.entity.EventStatus;
 import com.festivalapp.backend.entity.Organizer;
 import com.festivalapp.backend.entity.Registration;
 import com.festivalapp.backend.entity.RegistrationStatus;
@@ -19,20 +20,19 @@ import com.festivalapp.backend.repository.EventRepository;
 import com.festivalapp.backend.repository.RegistrationRepository;
 import com.festivalapp.backend.repository.SessionRepository;
 import com.festivalapp.backend.repository.UserRepository;
-import com.festivalapp.backend.repository.VenueRepository;
-import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -46,12 +46,10 @@ import java.util.Set;
 public class SessionService {
 
     private static final Set<RegistrationStatus> ACTIVE_REGISTRATION_STATUSES =
-        Set.of(RegistrationStatus.CREATED, RegistrationStatus.CONFIRMED);
-    private static final DateTimeFormatter SESSION_TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+        Set.of(RegistrationStatus.CREATED);
 
     private final SessionRepository sessionRepository;
     private final EventRepository eventRepository;
-    private final VenueRepository venueRepository;
     private final RegistrationRepository registrationRepository;
     private final UserRepository userRepository;
 
@@ -60,10 +58,12 @@ public class SessionService {
                                              Long venueId,
                                              Long cityId,
                                              LocalDate dateFrom,
-                                             LocalDate dateTo) {
+                                             LocalDate dateTo,
+                                             String actorIdentifier) {
         validateDateFilterRange(dateFrom, dateTo);
+        User viewer = resolveViewer(actorIdentifier);
 
-        Specification<Session> specification = buildSpecification(eventId, venueId, cityId, dateFrom, dateTo);
+        Specification<Session> specification = buildSpecification(eventId, venueId, cityId, dateFrom, dateTo, viewer);
         List<Session> sessions = sessionRepository.findAll(specification, Sort.by(Sort.Direction.ASC, "startTime"));
 
         Map<Long, Integer> reservedSeatsBySessionId = getReservedSeatsBySessionIds(
@@ -76,9 +76,15 @@ public class SessionService {
     }
 
     @Transactional(readOnly = true)
-    public SessionDetailsResponse getById(Long id) {
+    public SessionDetailsResponse getById(Long id, String actorIdentifier) {
+        User viewer = resolveViewer(actorIdentifier);
         Session session = sessionRepository.findDetailedById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Session not found: " + id));
+
+        if (!canViewSession(viewer, session.getEvent())) {
+            throw new ResourceNotFoundException("Session not found: " + id);
+        }
+
         int reservedSeats = getReservedSeats(session.getId());
         return toDetailsResponse(session, reservedSeats);
     }
@@ -89,7 +95,7 @@ public class SessionService {
 
         Event event = eventRepository.findDetailedById(request.getEventId())
             .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + request.getEventId()));
-        Venue venue = resolveVenueForEvent(event, request.getVenueId());
+        Venue venue = resolveVenueForEvent(event);
 
         validateOrganizerAccess(actor, event);
         validateSessionTimeRange(request.getStartAt(), request.getEndAt());
@@ -98,9 +104,6 @@ public class SessionService {
 
         Session session = Session.builder()
             .event(event)
-            .venue(venue)
-            .title(buildSessionTitle(request.getStartAt(), request.getEndAt()))
-            .description(null)
             .startTime(request.getStartAt())
             .endTime(request.getEndAt())
             .capacity(request.getCapacity())
@@ -120,11 +123,7 @@ public class SessionService {
             ? session.getEvent()
             : eventRepository.findDetailedById(request.getEventId())
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + request.getEventId()));
-        Long legacyVenueId = request.getVenueId();
-        if (legacyVenueId == null && targetEvent.getVenue() == null && session.getVenue() != null) {
-            legacyVenueId = session.getVenue().getId();
-        }
-        Venue targetVenue = resolveVenueForEvent(targetEvent, legacyVenueId);
+        Venue targetVenue = resolveVenueForEvent(targetEvent);
 
         LocalDateTime targetStart = request.getStartAt() == null ? session.getStartTime() : request.getStartAt();
         LocalDateTime targetEnd = request.getEndAt() == null ? session.getEndTime() : request.getEndAt();
@@ -136,13 +135,9 @@ public class SessionService {
         validateVenueTimeIntersection(targetVenue.getId(), targetStart, targetEnd, session.getId());
 
         session.setEvent(targetEvent);
-        session.setVenue(targetVenue);
         session.setStartTime(targetStart);
         session.setEndTime(targetEnd);
         session.setCapacity(targetCapacity);
-        // Session naming/description are not managed manually anymore.
-        session.setTitle(buildSessionTitle(targetStart, targetEnd));
-        session.setDescription(null);
 
         Session updated = sessionRepository.save(session);
         int reservedSeats = getReservedSeats(updated.getId());
@@ -191,9 +186,36 @@ public class SessionService {
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
+    private User resolveViewer(String actorIdentifier) {
+        if (!StringUtils.hasText(actorIdentifier)) {
+            return null;
+        }
+        return userRepository.findByLoginOrEmailWithRoles(actorIdentifier).orElse(null);
+    }
+
     private boolean hasRole(User user, RoleName roleName) {
-        return user.getUserRoles().stream()
+        return user != null && user.getUserRoles().stream()
             .anyMatch(userRole -> userRole.getRole().getName() == roleName);
+    }
+
+    private boolean canViewSession(User viewer, Event event) {
+        if (event != null && event.getStatus() == EventStatus.PUBLISHED) {
+            return true;
+        }
+        if (viewer == null) {
+            return false;
+        }
+        if (hasRole(viewer, RoleName.ROLE_ADMIN)) {
+            return true;
+        }
+        if (!hasRole(viewer, RoleName.ROLE_ORGANIZER)) {
+            return false;
+        }
+        Organizer organizer = viewer.getOrganizer();
+        return organizer != null
+            && event != null
+            && event.getOrganizer() != null
+            && Objects.equals(organizer.getId(), event.getOrganizer().getId());
     }
 
     private void validateOrganizerAccess(User actor, Event event) {
@@ -243,43 +265,49 @@ public class SessionService {
         }
     }
 
-    // Dynamic filtering for public sessions feed.
     private Specification<Session> buildSpecification(Long eventId,
                                                       Long venueId,
                                                       Long cityId,
                                                       LocalDate dateFrom,
-                                                      LocalDate dateTo) {
+                                                      LocalDate dateTo,
+                                                      User viewer) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (query != null) {
                 query.distinct(true);
             }
+
             Join<Session, Event> eventJoin = root.join("event", JoinType.LEFT);
             Join<Event, Venue> eventVenueJoin = eventJoin.join("venue", JoinType.LEFT);
-            Join<Session, Venue> sessionVenueJoin = root.join("venue", JoinType.LEFT);
             Join<Venue, ?> eventCityJoin = eventVenueJoin.join("city", JoinType.LEFT);
-            Join<Venue, ?> sessionCityJoin = sessionVenueJoin.join("city", JoinType.LEFT);
 
             if (eventId != null) {
                 predicates.add(cb.equal(eventJoin.get("id"), eventId));
             }
             if (venueId != null) {
-                predicates.add(cb.or(
-                    cb.equal(eventVenueJoin.get("id"), venueId),
-                    cb.and(cb.isNull(eventVenueJoin.get("id")), cb.equal(sessionVenueJoin.get("id"), venueId))
-                ));
+                predicates.add(cb.equal(eventVenueJoin.get("id"), venueId));
             }
             if (cityId != null) {
-                predicates.add(cb.or(
-                    cb.equal(eventCityJoin.get("id"), cityId),
-                    cb.and(cb.isNull(eventCityJoin.get("id")), cb.equal(sessionCityJoin.get("id"), cityId))
-                ));
+                predicates.add(cb.equal(eventCityJoin.get("id"), cityId));
             }
             if (dateFrom != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("startTime"), dateFrom.atStartOfDay()));
             }
             if (dateTo != null) {
                 predicates.add(cb.lessThan(root.get("startTime"), dateTo.plusDays(1).atStartOfDay()));
+            }
+
+            if (viewer == null) {
+                predicates.add(cb.equal(eventJoin.get("status"), EventStatus.PUBLISHED));
+            } else if (hasRole(viewer, RoleName.ROLE_ADMIN)) {
+                // Admin can list sessions for any event status.
+            } else if (hasRole(viewer, RoleName.ROLE_ORGANIZER) && viewer.getOrganizer() != null) {
+                predicates.add(cb.or(
+                    cb.equal(eventJoin.get("status"), EventStatus.PUBLISHED),
+                    cb.equal(eventJoin.get("organizer").get("id"), viewer.getOrganizer().getId())
+                ));
+            } else {
+                predicates.add(cb.equal(eventJoin.get("status"), EventStatus.PUBLISHED));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -314,8 +342,8 @@ public class SessionService {
     }
 
     private SessionShortResponse toShortResponse(Session session, int reservedSeats) {
-        Venue effectiveVenue = resolveSessionVenue(session);
-        int totalCapacity = safeCapacity(session, effectiveVenue);
+        Venue venue = resolveVenue(session);
+        int totalCapacity = safeCapacity(session, venue);
         int availableSeats = Math.max(totalCapacity - reservedSeats, 0);
 
         return SessionShortResponse.builder()
@@ -324,22 +352,20 @@ public class SessionService {
             .endAt(session.getEndTime())
             .eventId(session.getEvent() != null ? session.getEvent().getId() : null)
             .eventTitle(session.getEvent() != null ? session.getEvent().getTitle() : null)
-            .venueId(effectiveVenue != null ? effectiveVenue.getId() : null)
-            .venueName(effectiveVenue != null ? effectiveVenue.getName() : null)
-            .venueAddress(effectiveVenue != null ? effectiveVenue.getAddress() : null)
-            .cityName(effectiveVenue != null && effectiveVenue.getCity() != null
-                ? effectiveVenue.getCity().getName()
-                : null)
-            .latitude(effectiveVenue != null ? effectiveVenue.getLatitude() : null)
-            .longitude(effectiveVenue != null ? effectiveVenue.getLongitude() : null)
+            .venueId(venue != null ? venue.getId() : null)
+            .venueName(venue != null ? venue.getName() : null)
+            .venueAddress(venue != null ? venue.getAddress() : null)
+            .cityName(venue != null && venue.getCity() != null ? venue.getCity().getName() : null)
+            .latitude(venue != null ? venue.getLatitude() : null)
+            .longitude(venue != null ? venue.getLongitude() : null)
             .availableSeats(availableSeats)
             .totalCapacity(totalCapacity)
             .build();
     }
 
     private SessionDetailsResponse toDetailsResponse(Session session, int reservedSeats) {
-        Venue effectiveVenue = resolveSessionVenue(session);
-        int totalCapacity = safeCapacity(session, effectiveVenue);
+        Venue venue = resolveVenue(session);
+        int totalCapacity = safeCapacity(session, venue);
         int availableSeats = Math.max(totalCapacity - reservedSeats, 0);
 
         return SessionDetailsResponse.builder()
@@ -349,7 +375,7 @@ public class SessionService {
             .availableSeats(availableSeats)
             .totalCapacity(totalCapacity)
             .event(toEventInfo(session.getEvent()))
-            .venue(toVenueInfo(effectiveVenue))
+            .venue(toVenueInfo(venue))
             .build();
     }
 
@@ -403,45 +429,23 @@ public class SessionService {
         if (session != null && session.getCapacity() != null && session.getCapacity() > 0) {
             return session.getCapacity();
         }
-        if (venue == null) {
+        if (venue == null || venue.getCapacity() == null) {
             return 0;
         }
-        return venue.getCapacity() == null ? 0 : venue.getCapacity();
+        return venue.getCapacity();
     }
 
-    private Venue resolveVenueForEvent(Event event, Long backwardCompatibleVenueId) {
-        if (event.getVenue() != null) {
-            if (backwardCompatibleVenueId != null
-                && !Objects.equals(event.getVenue().getId(), backwardCompatibleVenueId)) {
-                throw new BadRequestException("Venue is defined at event level and must match event venue");
-            }
-            return event.getVenue();
-        }
-
-        if (backwardCompatibleVenueId == null) {
+    private Venue resolveVenueForEvent(Event event) {
+        if (event.getVenue() == null) {
             throw new BadRequestException("Event venue is not set. Update event venue before creating sessions.");
         }
-
-        Venue fallbackVenue = venueRepository.findById(backwardCompatibleVenueId)
-            .orElseThrow(() -> new ResourceNotFoundException("Venue not found: " + backwardCompatibleVenueId));
-        // Backward-compatibility migration: attach legacy session venue to event.
-        event.setVenue(fallbackVenue);
-        return fallbackVenue;
+        return event.getVenue();
     }
 
-    private Venue resolveSessionVenue(Session session) {
-        if (session == null) {
+    private Venue resolveVenue(Session session) {
+        if (session == null || session.getEvent() == null) {
             return null;
         }
-        if (session.getEvent() != null && session.getEvent().getVenue() != null) {
-            return session.getEvent().getVenue();
-        }
-        return session.getVenue();
-    }
-
-    private String buildSessionTitle(LocalDateTime startAt, LocalDateTime endAt) {
-        String start = startAt != null ? startAt.format(SESSION_TIME_FORMATTER) : "--:--";
-        String end = endAt != null ? endAt.format(SESSION_TIME_FORMATTER) : "--:--";
-        return "Сеанс " + start + "-" + end;
+        return session.getEvent().getVenue();
     }
 }

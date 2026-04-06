@@ -3,6 +3,7 @@ package com.festivalapp.backend.service;
 import com.festivalapp.backend.dto.FavoriteCreateRequest;
 import com.festivalapp.backend.dto.FavoriteResponse;
 import com.festivalapp.backend.entity.Event;
+import com.festivalapp.backend.entity.EventStatus;
 import com.festivalapp.backend.entity.Favorite;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.exception.BadRequestException;
@@ -31,6 +32,9 @@ public class FavoriteService {
 
         Event event = eventRepository.findById(request.getEventId())
             .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + request.getEventId()));
+        if (event.getStatus() != EventStatus.PUBLISHED) {
+            throw new ResourceNotFoundException("Event not found: " + request.getEventId());
+        }
 
         if (favoriteRepository.existsByUserIdAndEventId(user.getId(), event.getId())) {
             throw new BadRequestException("Duplicate favorite: event already in favorites");

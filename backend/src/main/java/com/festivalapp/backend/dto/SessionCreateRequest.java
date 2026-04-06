@@ -14,9 +14,6 @@ public class SessionCreateRequest {
     @NotNull(message = "Event ID is required")
     private Long eventId;
 
-    // Deprecated: venue is defined on event level. Kept for backward compatibility.
-    private Long venueId;
-
     @NotNull(message = "Start time is required")
     private LocalDateTime startAt;
 

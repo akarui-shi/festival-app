@@ -3,6 +3,7 @@ package com.festivalapp.backend.service;
 import com.festivalapp.backend.dto.MyRegistrationResponse;
 import com.festivalapp.backend.dto.RegistrationCreateRequest;
 import com.festivalapp.backend.dto.RegistrationResponse;
+import com.festivalapp.backend.entity.EventStatus;
 import com.festivalapp.backend.entity.Registration;
 import com.festivalapp.backend.entity.RegistrationStatus;
 import com.festivalapp.backend.entity.RoleName;
@@ -31,7 +32,7 @@ import java.util.UUID;
 public class RegistrationService {
 
     private static final Set<RegistrationStatus> ACTIVE_REGISTRATION_STATUSES =
-        Set.of(RegistrationStatus.CREATED, RegistrationStatus.CONFIRMED);
+        Set.of(RegistrationStatus.CREATED);
     private static final DateTimeFormatter SESSION_TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     private final RegistrationRepository registrationRepository;
@@ -47,6 +48,9 @@ public class RegistrationService {
 
         Session session = sessionRepository.findDetailedById(request.getSessionId())
             .orElseThrow(() -> new ResourceNotFoundException("Session not found: " + request.getSessionId()));
+        if (session.getEvent() == null || session.getEvent().getStatus() != EventStatus.PUBLISHED) {
+            throw new ResourceNotFoundException("Session not found: " + request.getSessionId());
+        }
 
         boolean alreadyRegistered = registrationRepository.existsByUserIdAndSessionIdAndStatusIn(
             user.getId(),
@@ -198,10 +202,7 @@ public class RegistrationService {
         if (session == null) {
             return null;
         }
-        if (session.getEvent() != null && session.getEvent().getVenue() != null) {
-            return session.getEvent().getVenue();
-        }
-        return session.getVenue();
+        return session.getEvent() != null ? session.getEvent().getVenue() : null;
     }
 
     private String buildSessionLabel(Session session) {

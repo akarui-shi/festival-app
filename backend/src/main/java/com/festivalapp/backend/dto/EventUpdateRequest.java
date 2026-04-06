@@ -1,6 +1,5 @@
 package com.festivalapp.backend.dto;
 
-import com.festivalapp.backend.entity.EventStatus;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
@@ -30,10 +29,6 @@ public class EventUpdateRequest {
     private Integer ageRating;
 
     private String coverUrl;
-
-    private EventStatus status;
-
-    private Long organizerId;
 
     private Long venueId;
 

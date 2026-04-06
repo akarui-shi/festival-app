@@ -2,8 +2,6 @@ package com.festivalapp.backend.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -45,10 +43,6 @@ public class Review {
 
     @Column(columnDefinition = "TEXT")
     private String text;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private ReviewStatus status;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

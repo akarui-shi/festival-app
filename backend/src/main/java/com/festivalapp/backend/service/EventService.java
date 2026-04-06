@@ -158,7 +158,7 @@ public class EventService {
     @Transactional
     public EventShortResponse create(EventCreateRequest request, String actorIdentifier) {
         User actor = loadActor(actorIdentifier);
-        Organizer organizer = resolveOrganizerForCreate(actor, request.getOrganizerId());
+        Organizer organizer = resolveOrganizerForCreate(actor);
         Venue venue = resolveVenueForRequest(
             request.getVenueId(),
             request.getVenueAddress(),
@@ -174,7 +174,6 @@ public class EventService {
         );
 
         Set<Category> categories = resolveCategories(request.getCategoryIds());
-        EventStatus targetStatus = resolveStatusForCreate(actor, request.getStatus());
 
         Event event = Event.builder()
             .title(request.getTitle())
@@ -182,7 +181,7 @@ public class EventService {
             .fullDescription(request.getFullDescription())
             .ageRating(request.getAgeRating())
             .createdAt(LocalDateTime.now())
-            .status(targetStatus)
+            .status(EventStatus.PENDING_APPROVAL)
             .organizer(organizer)
             .venue(venue)
             .categories(categories)
@@ -201,9 +200,6 @@ public class EventService {
         boolean isAdmin = hasRole(actor, RoleName.ROLE_ADMIN);
         boolean contentUpdated = false;
 
-        if (request.getOrganizerId() != null) {
-            updateOrganizerIfNeeded(actor, event, request.getOrganizerId());
-        }
         if (hasVenueUpdate(request)) {
             event.setVenue(resolveVenueForRequest(
                 request.getVenueId(),
@@ -240,12 +236,6 @@ public class EventService {
         if (request.getEventImages() != null || request.getCoverUrl() != null) {
             syncEventImages(event, request.getEventImages(), request.getCoverUrl());
             contentUpdated = true;
-        }
-        if (request.getStatus() != null) {
-            if (!isAdmin) {
-                throw new BadRequestException("Organizer cannot change event status manually");
-            }
-            event.setStatus(request.getStatus());
         }
         if (request.getCategoryIds() != null) {
             event.setCategories(resolveCategories(request.getCategoryIds()));
@@ -327,7 +317,6 @@ public class EventService {
 
     private Set<EventStatus> getAllowedAdminTransitions(EventStatus currentStatus) {
         return switch (currentStatus) {
-            case DRAFT -> EnumSet.of(EventStatus.PENDING_APPROVAL, EventStatus.ARCHIVED);
             case PENDING_APPROVAL -> EnumSet.of(EventStatus.PUBLISHED, EventStatus.REJECTED, EventStatus.ARCHIVED);
             case PUBLISHED -> EnumSet.of(EventStatus.REJECTED, EventStatus.ARCHIVED);
             case REJECTED -> EnumSet.of(EventStatus.PUBLISHED, EventStatus.ARCHIVED);
@@ -364,7 +353,7 @@ public class EventService {
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
-    private Organizer resolveOrganizerForCreate(User actor, Long organizerId) {
+    private Organizer resolveOrganizerForCreate(User actor) {
         if (hasRole(actor, RoleName.ROLE_ADMIN)) {
             throw new AccessDeniedException("Администратор не может создавать мероприятия");
         }
@@ -378,19 +367,7 @@ public class EventService {
             throw new ResourceNotFoundException("Organizer profile not found for current user");
         }
 
-        if (organizerId == null) {
-            return actorOrganizer;
-        }
-
-        if (organizerId != null && !organizerId.equals(actorOrganizer.getId())) {
-            throw new AccessDeniedException("Organizer can create events only for own organizer profile");
-        }
-
         return actorOrganizer;
-    }
-
-    private EventStatus resolveStatusForCreate(User actor, EventStatus requestedStatus) {
-        return EventStatus.PENDING_APPROVAL;
     }
 
     private boolean hasVenueUpdate(EventUpdateRequest request) {
@@ -569,20 +546,6 @@ public class EventService {
             || !actorOrganizer.getId().equals(event.getOrganizer().getId())) {
             throw new AccessDeniedException("Organizer can access only own events");
         }
-    }
-
-    private void updateOrganizerIfNeeded(User actor, Event event, Long organizerId) {
-        if (!hasRole(actor, RoleName.ROLE_ADMIN) && !organizerId.equals(event.getOrganizer().getId())) {
-            throw new AccessDeniedException("Organizer cannot reassign event to another organizer");
-        }
-
-        if (organizerId.equals(event.getOrganizer().getId())) {
-            return;
-        }
-
-        Organizer organizer = organizerRepository.findById(organizerId)
-            .orElseThrow(() -> new ResourceNotFoundException("Organizer not found: " + organizerId));
-        event.setOrganizer(organizer);
     }
 
     private boolean hasRole(User user, RoleName roleName) {

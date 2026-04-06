@@ -1,7 +1,6 @@
 import { formatDateTime, formatStatus } from '../utils/formatters';
 
 const EVENT_STATUS_ACTIONS = {
-  DRAFT: ['ARCHIVED'],
   PENDING_APPROVAL: ['PUBLISHED', 'REJECTED', 'ARCHIVED'],
   PUBLISHED: ['REJECTED', 'ARCHIVED'],
   REJECTED: ['PUBLISHED', 'ARCHIVED'],

@@ -1,6 +1,7 @@
 package com.festivalapp.backend.security;
 
 import com.festivalapp.backend.entity.User;
+import com.festivalapp.backend.entity.UserStatus;
 import com.festivalapp.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
@@ -25,6 +26,9 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = userRepository.findByLoginOrEmailWithRoles(username)
             .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new UsernameNotFoundException("User is blocked: " + username);
+        }
 
         Set<GrantedAuthority> authorities = user.getUserRoles().stream()
             .map(userRole -> new SimpleGrantedAuthority(userRole.getRole().getName().name()))

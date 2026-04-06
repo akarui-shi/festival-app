@@ -23,10 +23,6 @@ export const sessionService = {
     return this.getSessions({ eventId });
   },
 
-  getSessionById(id) {
-    return apiClient.get(`/api/sessions/${id}`, { auth: false });
-  },
-
   createSession(data) {
     return apiClient.post('/api/sessions', data);
   },

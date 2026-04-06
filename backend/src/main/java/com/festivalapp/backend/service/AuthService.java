@@ -100,6 +100,10 @@ public class AuthService {
         User user = userRepository.findByLoginOrEmailWithRoles(request.getLoginOrEmail())
             .orElseThrow(() -> new UnauthorizedException("Неверный логин/email или пароль"));
 
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new UnauthorizedException("Учетная запись заблокирована");
+        }
+
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new UnauthorizedException("Неверный логин/email или пароль");
         }

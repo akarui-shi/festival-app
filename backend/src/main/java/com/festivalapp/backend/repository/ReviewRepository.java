@@ -1,7 +1,6 @@
 package com.festivalapp.backend.repository;
 
 import com.festivalapp.backend.entity.Review;
-import com.festivalapp.backend.entity.ReviewStatus;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -13,12 +12,10 @@ import java.util.Optional;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
-    long countByStatus(ReviewStatus status);
-
     @EntityGraph(attributePaths = {"user", "event"})
-    List<Review> findByEventIdAndStatusOrderByCreatedAtDesc(Long eventId, ReviewStatus status);
+    List<Review> findByEventIdOrderByCreatedAtDesc(Long eventId);
 
-    boolean existsByUserIdAndEventIdAndStatusNot(Long userId, Long eventId, ReviewStatus status);
+    boolean existsByUserIdAndEventId(Long userId, Long eventId);
 
     @EntityGraph(attributePaths = {"user", "event"})
     Optional<Review> findWithUserAndEventById(Long id);
