@@ -72,14 +72,12 @@ const ROLE_LABELS = {
 
 const STATUS_LABELS = {
   PENDING_APPROVAL: 'На согласовании',
-  DRAFT: 'Черновик',
   PENDING: 'На модерации',
   APPROVED: 'Одобрено',
   REJECTED: 'Отклонено',
   DELETED: 'Удалено',
   PUBLISHED: 'Опубликовано',
   CREATED: 'Создано',
-  CONFIRMED: 'Подтверждено',
   CANCELLED: 'Отменено',
   ACTIVE: 'Активно',
   INACTIVE: 'Неактивно',

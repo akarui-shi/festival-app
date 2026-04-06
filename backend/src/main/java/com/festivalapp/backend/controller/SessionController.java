@@ -44,13 +44,22 @@ public class SessionController {
                                                              LocalDate dateFrom,
                                                              @RequestParam(required = false)
                                                              @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-                                                             LocalDate dateTo) {
-        return ResponseEntity.ok(sessionService.getAll(eventId, venueId, cityId, dateFrom, dateTo));
+                                                             LocalDate dateTo,
+                                                             @AuthenticationPrincipal UserDetails principal) {
+        return ResponseEntity.ok(sessionService.getAll(
+            eventId,
+            venueId,
+            cityId,
+            dateFrom,
+            dateTo,
+            extractOptionalUsername(principal)
+        ));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<SessionDetailsResponse> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(sessionService.getById(id));
+    public ResponseEntity<SessionDetailsResponse> getById(@PathVariable Long id,
+                                                          @AuthenticationPrincipal UserDetails principal) {
+        return ResponseEntity.ok(sessionService.getById(id, extractOptionalUsername(principal)));
     }
 
     @PostMapping
@@ -84,5 +93,9 @@ public class SessionController {
             throw new UnauthorizedException("Unauthorized user");
         }
         return principal.getUsername();
+    }
+
+    private String extractOptionalUsername(UserDetails principal) {
+        return principal == null ? null : principal.getUsername();
     }
 }

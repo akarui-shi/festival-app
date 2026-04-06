@@ -9,7 +9,6 @@ import com.festivalapp.backend.entity.Organizer;
 import com.festivalapp.backend.entity.Publication;
 import com.festivalapp.backend.entity.PublicationStatus;
 import com.festivalapp.backend.entity.Review;
-import com.festivalapp.backend.entity.ReviewStatus;
 import com.festivalapp.backend.entity.Role;
 import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.Session;
@@ -64,7 +63,7 @@ public class DemoDataInitializer implements CommandLineRunner {
     private static final String RESIDENT3_LOGIN = "resident3";
     private static final String RESIDENT3_EMAIL = "resident3@mail.com";
     private static final long MIN_PUBLISHED_PUBLICATIONS = 8L;
-    private static final long MIN_APPROVED_REVIEWS = 12L;
+    private static final long MIN_REVIEWS = 12L;
 
     private static final String EVENT_JAZZ = "Летний джаз в Коломне";
     private static final String EVENT_THEATRE = "Коломенский театральный вечер";
@@ -453,24 +452,7 @@ public class DemoDataInitializer implements CommandLineRunner {
     }
 
     private void migrateEventVenuesFromSessions() {
-        List<Event> events = eventRepository.findAll();
-        for (Event event : events) {
-            if (event.getVenue() != null) {
-                continue;
-            }
-
-            Event detailed = eventRepository.findDetailedById(event.getId()).orElse(event);
-            Venue fallbackVenue = detailed.getSessions().stream()
-                .map(Session::getVenue)
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(null);
-
-            if (fallbackVenue != null) {
-                event.setVenue(fallbackVenue);
-                eventRepository.save(event);
-            }
-        }
+        // No-op: venue is now defined only at event level.
     }
 
     private void seedSessions(List<Event> events, Venue park, Venue cultureHouse, Venue centralSquare) {
@@ -588,17 +570,13 @@ public class DemoDataInitializer implements CommandLineRunner {
                             LocalDateTime start,
                             int durationHours,
                             int capacity) {
-        Venue resolvedVenue = event != null && event.getVenue() != null ? event.getVenue() : venue;
-        if (event == null || resolvedVenue == null) {
+        if (event == null || event.getVenue() == null) {
             return;
         }
         LocalDateTime end = start.plusHours(durationHours);
 
         sessions.add(Session.builder()
             .event(event)
-            .venue(resolvedVenue)
-            .title(title)
-            .description(description)
             .startTime(start)
             .endTime(end)
             .capacity(capacity)
@@ -617,7 +595,7 @@ public class DemoDataInitializer implements CommandLineRunner {
             seedPublications(organizerUser, events);
         }
 
-        if (!residents.isEmpty() && reviewRepository.countByStatus(ReviewStatus.APPROVED) < MIN_APPROVED_REVIEWS) {
+        if (!residents.isEmpty() && reviewRepository.count() < MIN_REVIEWS) {
             seedReviews(residents, events);
         }
 
@@ -793,11 +771,7 @@ public class DemoDataInitializer implements CommandLineRunner {
                 if (uniquePairs.contains(pairKey)) {
                     continue;
                 }
-                if (reviewRepository.existsByUserIdAndEventIdAndStatusNot(
-                    resident.getId(),
-                    candidate.getId(),
-                    ReviewStatus.DELETED
-                )) {
+                if (reviewRepository.existsByUserIdAndEventId(resident.getId(), candidate.getId())) {
                     continue;
                 }
                 selectedEvent = candidate;
@@ -814,7 +788,6 @@ public class DemoDataInitializer implements CommandLineRunner {
                 .event(selectedEvent)
                 .rating(ratings[i])
                 .text(texts.get(i))
-                .status(ReviewStatus.APPROVED)
                 .createdAt(now.minusHours(120L - i * 6L))
                 .build());
         }

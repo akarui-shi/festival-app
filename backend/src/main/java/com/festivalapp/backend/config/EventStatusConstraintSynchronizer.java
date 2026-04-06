@@ -27,6 +27,7 @@ public class EventStatusConstraintSynchronizer implements ApplicationRunner {
                 return;
             }
 
+            normalizeLegacyStatuses();
             dropLegacyStatusCheckConstraints();
             createCurrentStatusConstraint();
         } catch (Exception ex) {
@@ -62,6 +63,16 @@ public class EventStatusConstraintSynchronizer implements ApplicationRunner {
             jdbcTemplate.execute("alter table events drop constraint if exists " + escaped);
             log.info("Dropped legacy events status constraint: {}", constraint);
         }
+    }
+
+    private void normalizeLegacyStatuses() {
+        jdbcTemplate.update("""
+            update events
+            set status = 'PENDING_APPROVAL'
+            where status is null
+               or upper(status) = 'DRAFT'
+               or upper(status) not in ('PENDING_APPROVAL', 'REJECTED', 'PUBLISHED', 'ARCHIVED')
+            """);
     }
 
     private void createCurrentStatusConstraint() {

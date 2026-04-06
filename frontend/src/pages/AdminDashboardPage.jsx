@@ -211,7 +211,7 @@ const AdminDashboardPage = () => {
     <section className="container page">
       <h1>Админ-панель</h1>
       <p className="page-subtitle">Раздел: {currentTabLabel}</p>
-      <p className="muted">Управление городами и площадками перенесено в кабинет организатора.</p>
+      <p className="muted">Модерация контента, пользователи и справочники в едином интерфейсе.</p>
 
       <AdminTabs
         tabs={TABS}

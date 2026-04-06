@@ -12,9 +12,6 @@ public class SessionUpdateRequest {
 
     private Long eventId;
 
-    // Deprecated: venue is defined on event level. Kept for backward compatibility.
-    private Long venueId;
-
     private LocalDateTime startAt;
 
     private LocalDateTime endAt;

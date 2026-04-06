@@ -25,7 +25,7 @@ public class RegistrationSchemaInitializer implements CommandLineRunner {
         jdbcTemplate.update("""
             update registrations
             set status = 'CREATED'
-            where status is null or status not in ('CREATED', 'CONFIRMED', 'CANCELLED')
+            where status is null or status not in ('CREATED', 'CANCELLED')
             """);
 
         List<String> statusConstraints = jdbcTemplate.queryForList("""
@@ -44,7 +44,7 @@ public class RegistrationSchemaInitializer implements CommandLineRunner {
         jdbcTemplate.execute("""
             alter table registrations
             add constraint registrations_status_check
-            check (status in ('CREATED', 'CONFIRMED', 'CANCELLED'))
+            check (status in ('CREATED', 'CANCELLED'))
             """);
     }
 
@@ -64,4 +64,3 @@ public class RegistrationSchemaInitializer implements CommandLineRunner {
         return "\"" + identifier.replace("\"", "\"\"") + "\"";
     }
 }
-

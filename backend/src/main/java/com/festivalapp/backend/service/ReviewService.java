@@ -2,9 +2,9 @@ package com.festivalapp.backend.service;
 
 import com.festivalapp.backend.dto.ReviewCreateRequest;
 import com.festivalapp.backend.dto.ReviewResponse;
+import com.festivalapp.backend.entity.EventStatus;
 import com.festivalapp.backend.entity.Event;
 import com.festivalapp.backend.entity.Review;
-import com.festivalapp.backend.entity.ReviewStatus;
 import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.exception.BadRequestException;
@@ -36,14 +36,10 @@ public class ReviewService {
 
         Event event = eventRepository.findById(request.getEventId())
             .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + request.getEventId()));
+        ensureEventIsPublished(event);
 
-        boolean duplicateActiveReview = reviewRepository.existsByUserIdAndEventIdAndStatusNot(
-            user.getId(),
-            event.getId(),
-            ReviewStatus.DELETED
-        );
-        if (duplicateActiveReview) {
-            throw new BadRequestException("Duplicate review: user already has active review for this event");
+        if (reviewRepository.existsByUserIdAndEventId(user.getId(), event.getId())) {
+            throw new BadRequestException("Duplicate review: user already has review for this event");
         }
 
         Review review = Review.builder()
@@ -51,8 +47,6 @@ public class ReviewService {
             .event(event)
             .rating(request.getRating())
             .text(request.getText())
-            // Reviews are public right after creation.
-            .status(ReviewStatus.APPROVED)
             .createdAt(LocalDateTime.now())
             .build();
 
@@ -62,11 +56,11 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public List<ReviewResponse> getByEvent(Long eventId) {
-        if (!eventRepository.existsById(eventId)) {
-            throw new ResourceNotFoundException("Event not found: " + eventId);
-        }
+        Event event = eventRepository.findById(eventId)
+            .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + eventId));
+        ensureEventIsPublished(event);
 
-        return reviewRepository.findByEventIdAndStatusOrderByCreatedAtDesc(eventId, ReviewStatus.APPROVED)
+        return reviewRepository.findByEventIdOrderByCreatedAtDesc(eventId)
             .stream()
             .map(this::toResponse)
             .toList();
@@ -79,10 +73,6 @@ public class ReviewService {
             .orElseThrow(() -> new ResourceNotFoundException("Review not found: " + reviewId));
 
         validateAuthorOrAdmin(actor, review.getUser().getId());
-
-        if (review.getStatus() == ReviewStatus.DELETED) {
-            throw new BadRequestException("Cannot edit deleted review");
-        }
 
         if (rating != null) {
             review.setRating(rating);
@@ -102,14 +92,18 @@ public class ReviewService {
             .orElseThrow(() -> new ResourceNotFoundException("Review not found: " + reviewId));
 
         validateAuthorOrAdmin(actor, review.getUser().getId());
-
-        review.setStatus(ReviewStatus.DELETED);
-        reviewRepository.save(review);
+        reviewRepository.delete(review);
 
         return Map.of(
             "message", "Review deleted successfully",
             "reviewId", reviewId
         );
+    }
+
+    private void ensureEventIsPublished(Event event) {
+        if (event == null || event.getStatus() != EventStatus.PUBLISHED) {
+            throw new ResourceNotFoundException("Event not found");
+        }
     }
 
     private User loadActor(String actorIdentifier) {
