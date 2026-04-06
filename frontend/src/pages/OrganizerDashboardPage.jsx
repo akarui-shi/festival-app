@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import EmptyState from '../components/EmptyState';
 import AlertMessage from '../components/AlertMessage';
@@ -33,6 +33,55 @@ const OrganizerDashboardPage = () => {
   const [archivingId, setArchivingId] = useState(null);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [eventStatsById, setEventStatsById] = useState({});
+  const [statsLoadingByEventId, setStatsLoadingByEventId] = useState({});
+  const [statsError, setStatsError] = useState('');
+  const statsRequestRef = useRef(0);
+
+  const loadEventStats = useCallback(async (eventsList) => {
+    if (!Array.isArray(eventsList) || eventsList.length === 0) {
+      setEventStatsById({});
+      setStatsLoadingByEventId({});
+      setStatsError('');
+      return;
+    }
+
+    const requestId = statsRequestRef.current + 1;
+    statsRequestRef.current = requestId;
+
+    const loadingState = Object.fromEntries(eventsList.map((event) => [event.id, true]));
+    setStatsLoadingByEventId(loadingState);
+    setStatsError('');
+
+    const results = await Promise.allSettled(eventsList.map((event) => organizerService.getEventStats(event.id)));
+    if (statsRequestRef.current !== requestId) {
+      return;
+    }
+
+    const nextStatsByEventId = {};
+    const nextLoadingByEventId = {};
+    let failedCount = 0;
+
+    results.forEach((result, index) => {
+      const eventId = eventsList[index]?.id;
+      if (!eventId) {
+        return;
+      }
+      nextLoadingByEventId[eventId] = false;
+      if (result.status === 'fulfilled') {
+        nextStatsByEventId[eventId] = result.value || null;
+      } else {
+        nextStatsByEventId[eventId] = null;
+        failedCount += 1;
+      }
+    });
+
+    setEventStatsById(nextStatsByEventId);
+    setStatsLoadingByEventId(nextLoadingByEventId);
+    if (failedCount > 0) {
+      setStatsError('Часть статистики не удалось загрузить. Попробуйте обновить страницу.');
+    }
+  }, []);
 
   const loadEvents = async ({ withLoader = true } = {}) => {
     try {
@@ -41,7 +90,9 @@ const OrganizerDashboardPage = () => {
       }
       setError('');
       const data = await organizerService.getMyEvents();
-      setEvents(Array.isArray(data) ? data : []);
+      const loadedEvents = Array.isArray(data) ? data : [];
+      setEvents(loadedEvents);
+      void loadEventStats(loadedEvents);
     } catch (err) {
       const message = toUserErrorMessage(err, 'Не удалось загрузить мероприятия организатора.');
       setError(message);
@@ -54,8 +105,31 @@ const OrganizerDashboardPage = () => {
   };
 
   useEffect(() => {
-    loadEvents();
+    void loadEvents();
   }, []);
+
+  const popularEventIds = useMemo(() => {
+    const ranked = events
+      .map((event) => ({
+        eventId: event.id,
+        occupiedSeats: Number(eventStatsById[event.id]?.occupiedSeats || 0)
+      }))
+      .filter((item) => item.occupiedSeats > 0);
+
+    if (ranked.length === 0) {
+      return new Set();
+    }
+
+    const sorted = [...ranked].sort((left, right) => right.occupiedSeats - left.occupiedSeats);
+    const topSegmentSize = Math.max(1, Math.ceil(sorted.length * 0.2));
+    const threshold = sorted[Math.min(topSegmentSize - 1, sorted.length - 1)]?.occupiedSeats || 0;
+
+    return new Set(
+      sorted
+        .filter((item) => item.occupiedSeats >= threshold)
+        .map((item) => item.eventId)
+    );
+  }, [events, eventStatsById]);
 
   const stats = useMemo(() => {
     const pending = events.filter((item) => item.status === 'PENDING_APPROVAL').length;
@@ -186,6 +260,7 @@ const OrganizerDashboardPage = () => {
 
       {isLoading && <Loader text="Загружаем ваши мероприятия..." />}
       {error && <AlertMessage type="error" message={error} onClose={() => setError('')} />}
+      {statsError && <AlertMessage type="warning" message={statsError} onClose={() => setStatsError('')} />}
 
       {!isLoading && !error && events.length === 0 && <EmptyState message="У вас пока нет мероприятий." />}
 
@@ -199,6 +274,9 @@ const OrganizerDashboardPage = () => {
             <OrganizerEventCard
               key={event.id}
               event={event}
+              stats={eventStatsById[event.id] || null}
+              isStatsLoading={Boolean(statsLoadingByEventId[event.id])}
+              isPopular={popularEventIds.has(event.id)}
               isDeleting={deletingId === event.id}
               isArchiving={archivingId === event.id}
               onEdit={(id) => navigate(`/organizer/events/${id}/edit`)}

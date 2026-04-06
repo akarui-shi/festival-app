@@ -1,6 +1,7 @@
 package com.festivalapp.backend.controller;
 
 import com.festivalapp.backend.dto.EventDetailsResponse;
+import com.festivalapp.backend.dto.OrganizerEventStatsResponse;
 import com.festivalapp.backend.dto.EventShortResponse;
 import com.festivalapp.backend.exception.UnauthorizedException;
 import com.festivalapp.backend.service.EventService;
@@ -37,6 +38,15 @@ public class OrganizerController {
             throw new UnauthorizedException("Unauthorized user");
         }
         return ResponseEntity.ok(eventService.getOrganizerEventById(id, principal.getUsername()));
+    }
+
+    @GetMapping("/events/{id}/stats")
+    public ResponseEntity<OrganizerEventStatsResponse> getOrganizerEventStats(@PathVariable Long id,
+                                                                               @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) {
+            throw new UnauthorizedException("Unauthorized user");
+        }
+        return ResponseEntity.ok(eventService.getOrganizerEventStats(id, principal.getUsername()));
     }
 
 }
