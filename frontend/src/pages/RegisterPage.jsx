@@ -3,15 +3,24 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AlertMessage from '../components/AlertMessage';
 import { toUserErrorMessage } from '../utils/errorMessages';
+import { ROLE } from '../utils/roles';
+
+const REGISTRATION_MODE = {
+  RESIDENT: 'resident',
+  ORGANIZER: 'organizer'
+};
 
 const RegisterPage = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const [mode, setMode] = useState(REGISTRATION_MODE.RESIDENT);
+  const isOrganizerMode = mode === REGISTRATION_MODE.ORGANIZER;
 
   const [formData, setFormData] = useState({
     login: '',
     email: '',
     password: '',
+    companyName: '',
     firstName: '',
     lastName: '',
     phone: ''
@@ -31,7 +40,17 @@ const RegisterPage = () => {
     setIsSubmitting(true);
 
     try {
-      await register(formData);
+      const payload = {
+        login: formData.login,
+        email: formData.email,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phone,
+        role: isOrganizerMode ? ROLE.ORGANIZER : ROLE.RESIDENT,
+        ...(isOrganizerMode ? { companyName: formData.companyName } : {})
+      };
+      await register(payload);
       navigate('/profile', { replace: true });
     } catch (err) {
       setFormNotice({
@@ -45,8 +64,32 @@ const RegisterPage = () => {
 
   return (
     <section className="container page page--narrow">
-      <h1>Регистрация</h1>
+      <h1>{isOrganizerMode ? 'Регистрация организатора' : 'Регистрация'}</h1>
       <form className="panel form" onSubmit={onSubmit}>
+        {isOrganizerMode ? (
+          <div className="register-mode-switch">
+            <p className="register-mode-switch__text">Форма для организатора мероприятий</p>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => setMode(REGISTRATION_MODE.RESIDENT)}
+            >
+              Обычная регистрация
+            </button>
+          </div>
+        ) : (
+          <div className="register-mode-switch">
+            <p className="register-mode-switch__text">Проводите события или конференции?</p>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => setMode(REGISTRATION_MODE.ORGANIZER)}
+            >
+              Зайти как организатор
+            </button>
+          </div>
+        )}
+
         <label>
           Логин
           <input name="login" value={formData.login} onChange={onChange} placeholder="Придумайте логин" required />
@@ -76,6 +119,19 @@ const RegisterPage = () => {
           />
         </label>
 
+        {isOrganizerMode && (
+          <label>
+            Компания
+            <input
+              name="companyName"
+              value={formData.companyName}
+              onChange={onChange}
+              placeholder="ООО Пример Ивент"
+              required
+            />
+          </label>
+        )}
+
         <label>
           Имя
           <input name="firstName" value={formData.firstName} onChange={onChange} placeholder="Иван" />
@@ -100,7 +156,11 @@ const RegisterPage = () => {
         )}
 
         <button className="btn btn--primary" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Создаём аккаунт...' : 'Зарегистрироваться'}
+          {isSubmitting
+            ? 'Создаём аккаунт...'
+            : isOrganizerMode
+              ? 'Зарегистрироваться как организатор'
+              : 'Зарегистрироваться'}
         </button>
 
         <p>

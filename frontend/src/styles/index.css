@@ -812,6 +812,24 @@ a {
   box-shadow: 0 0 0 3px rgba(139, 76, 63, 0.1);
 }
 
+.register-mode-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: var(--warm-cream);
+  flex-wrap: wrap;
+}
+
+.register-mode-switch__text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 .profile-layout {
   display: grid;
   gap: 16px;
