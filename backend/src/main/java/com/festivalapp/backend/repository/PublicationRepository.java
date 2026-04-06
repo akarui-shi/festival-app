@@ -16,6 +16,8 @@ import java.util.Optional;
 
 public interface PublicationRepository extends JpaRepository<Publication, Long>, JpaSpecificationExecutor<Publication> {
 
+    long countByStatus(PublicationStatus status);
+
     @EntityGraph(attributePaths = {"author", "event"})
     List<Publication> findByStatusOrderByCreatedAtDesc(PublicationStatus status);
 
