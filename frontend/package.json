@@ -15,7 +15,8 @@
     "react-day-picker": "^9.14.0",
     "react-dom": "^18.3.1",
     "react-qr-code": "^2.0.18",
-    "react-router-dom": "^6.28.0"
+    "react-router-dom": "^6.28.0",
+    "recharts": "^3.8.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.2",

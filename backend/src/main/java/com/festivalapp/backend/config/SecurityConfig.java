@@ -57,6 +57,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/sessions", "/api/sessions/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/sessions/*/registrations").hasAnyRole("ORGANIZER", "ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/organizer/analytics/**").hasRole("ORGANIZER")
                 .requestMatchers(HttpMethod.GET, "/api/organizer/events/**").hasRole("ORGANIZER")
                 .requestMatchers(HttpMethod.GET, "/api/reviews/event/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/reviews").authenticated()

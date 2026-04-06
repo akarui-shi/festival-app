@@ -17,6 +17,7 @@ import OrganizerDashboardPage from '../pages/OrganizerDashboardPage';
 import OrganizerEventCreatePage from '../pages/OrganizerEventCreatePage';
 import OrganizerEventEditPage from '../pages/OrganizerEventEditPage';
 import OrganizerEventSessionsPage from '../pages/OrganizerEventSessionsPage';
+import OrganizerEventAnalyticsPage from '../pages/OrganizerEventAnalyticsPage';
 import AdminDashboardPage from '../pages/AdminDashboardPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import { ROLE } from '../utils/roles';
@@ -95,6 +96,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={[ROLE.ORGANIZER]}>
             <OrganizerEventSessionsPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'organizer/events/:id/analytics',
+        element: (
+          <ProtectedRoute allowedRoles={[ROLE.ORGANIZER]}>
+            <OrganizerEventAnalyticsPage />
           </ProtectedRoute>
         )
       },

@@ -131,9 +131,14 @@ const OrganizerEventSessionsPage = () => {
     <section className="container page">
       <div className="page-header-row">
         <h1>Сеансы мероприятия: {event?.title}</h1>
-        <button type="button" className="btn btn--ghost" onClick={() => navigate('/organizer')}>
-          Назад в кабинет
-        </button>
+        <div className="inline-actions">
+          <button type="button" className="btn btn--ghost" onClick={() => navigate(`/organizer/events/${id}/analytics`)}>
+            Аналитика
+          </button>
+          <button type="button" className="btn btn--ghost" onClick={() => navigate('/organizer')}>
+            Назад в кабинет
+          </button>
+        </div>
       </div>
 
       {error && <AlertMessage type="error" message={error} onClose={() => setError('')} />}

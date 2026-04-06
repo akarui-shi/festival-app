@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -72,6 +73,34 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
         """)
     List<Object[]> sumParticipantsByEventIdsAndStatuses(@Param("eventIds") Collection<Long> eventIds,
                                                          @Param("statuses") Collection<RegistrationStatus> statuses);
+
+    @Query("""
+        select r from Registration r
+        join r.session s
+        where s.event.id = :eventId
+          and r.status in :statuses
+          and r.createdAt >= :from
+          and r.createdAt < :toExclusive
+        """)
+    List<Registration> findAllByEventIdAndStatusesAndCreatedAtBetween(@Param("eventId") Long eventId,
+                                                                       @Param("statuses") Collection<RegistrationStatus> statuses,
+                                                                       @Param("from") LocalDateTime from,
+                                                                       @Param("toExclusive") LocalDateTime toExclusive);
+
+    @Query("""
+        select r from Registration r
+        join r.session s
+        where s.event.id in :eventIds
+          and r.status in :statuses
+          and r.createdAt >= :from
+          and r.createdAt < :toExclusive
+        """)
+    List<Registration> findAllByEventIdsAndStatusesAndCreatedAtBetween(@Param("eventIds") Collection<Long> eventIds,
+                                                                        @Param("statuses") Collection<RegistrationStatus> statuses,
+                                                                        @Param("from") LocalDateTime from,
+                                                                        @Param("toExclusive") LocalDateTime toExclusive);
+
+    long countBySessionEventIdInAndStatus(Collection<Long> eventIds, RegistrationStatus status);
 
     long countBySessionEventIdAndStatus(Long eventId, RegistrationStatus status);
 
