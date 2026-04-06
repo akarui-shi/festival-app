@@ -1573,6 +1573,11 @@ a {
   gap: 6px;
 }
 
+.event-card__sessions {
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .event-card__address {
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -1760,12 +1765,57 @@ a {
   gap: 8px;
 }
 
+.event-details-page {
+  gap: 14px;
+}
+
+.event-details-hero {
+  display: grid;
+  gap: 12px;
+  background:
+    radial-gradient(1200px 300px at 10% 0%, rgba(63, 167, 214, 0.12), transparent 60%),
+    radial-gradient(900px 260px at 100% 100%, rgba(31, 59, 115, 0.1), transparent 65%),
+    var(--surface);
+}
+
+.event-details-hero__eyebrow {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.event-details-hero h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1.15;
+}
+
+.event-details-hero__subtitle {
+  margin: 0;
+  max-width: 75ch;
+}
+
+.event-details-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.event-details-hero__organization-link {
+  justify-self: start;
+}
+
 .details-cover {
   width: 100%;
   max-height: 420px;
   object-fit: cover;
   border-radius: var(--radius);
   border: 1px solid var(--border);
+  box-shadow: 0 12px 28px rgba(45, 42, 38, 0.12);
 }
 
 .chips {
@@ -1786,6 +1836,49 @@ a {
 .details-list {
   margin: 0;
   padding-left: 18px;
+}
+
+.organization-page {
+  gap: 14px;
+}
+
+.organization-page__hero {
+  display: grid;
+  gap: 10px;
+  background:
+    radial-gradient(900px 320px at 100% 0%, rgba(63, 167, 214, 0.14), transparent 58%),
+    radial-gradient(780px 280px at 0% 100%, rgba(139, 76, 63, 0.1), transparent 62%),
+    var(--surface);
+}
+
+.organization-page__eyebrow {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.organization-page__hero h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1.12;
+  font-weight: 500;
+}
+
+.organization-page__description {
+  margin: 0;
+  max-width: 76ch;
+  color: var(--text);
+}
+
+.organization-page__contacts {
+  margin: 0;
+}
+
+.organization-page__actions {
+  margin-top: 4px;
 }
 
 .map-session-select {

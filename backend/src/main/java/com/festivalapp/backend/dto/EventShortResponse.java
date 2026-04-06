@@ -23,5 +23,7 @@ public class EventShortResponse {
     private String venueAddress;
     private String cityName;
     private List<CategoryResponse> categories;
+    private LocalDateTime nextSessionAt;
+    private List<LocalDateTime> sessionDates;
     private String coverUrl;
 }

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { formatDateTime } from '../utils/formatters';
+import { formatSessionDayLabel, formatTime } from '../utils/formatters';
 import AppIcon from './AppIcon';
 
 const EventCard = ({
@@ -9,27 +9,40 @@ const EventCard = ({
   isFavoriteButtonLoading = false,
   layout = 'grid'
 }) => {
+  const fallbackCoverUrl = '/event-placeholder.svg';
   const resolvedFavoriteText = favoriteButtonText || 'В избранное';
   const resolvedCoverUrl = event.coverUrl
     || (Array.isArray(event.eventImages)
       ? event.eventImages.find((image) => image?.isCover)?.imageUrl || event.eventImages[0]?.imageUrl
       : '');
+  const safeCoverUrl = resolvedCoverUrl || fallbackCoverUrl;
   const ageLabel = Number.isFinite(Number(event.ageRating))
     ? `${Number(event.ageRating)}+`
     : 'не указано';
   const venueAddress = event.venueAddress?.trim() || 'Адрес не указан';
-  const createdAtLabel = event.createdAt ? formatDateTime(event.createdAt) : '';
   const organizationName = event.organizationName?.trim() || '';
+  const sessionDates = Array.isArray(event.sessionDates) ? event.sessionDates.filter(Boolean) : [];
+  const renderedSessionDates = sessionDates
+    .slice(0, 2)
+    .map((sessionDate) => `${formatSessionDayLabel(sessionDate)} ${formatTime(sessionDate)}`);
+  const moreSessionsCount = Math.max(sessionDates.length - renderedSessionDates.length, 0);
+  const sessionSummary = renderedSessionDates.length > 0
+    ? `${renderedSessionDates.join(' • ')}${moreSessionsCount > 0 ? ` • еще ${moreSessionsCount}` : ''}`
+    : '';
   const isList = layout === 'list';
 
   return (
     <article className={`event-card ${isList ? 'event-card--list' : ''}`.trim()}>
       <div className="event-card__image-wrap">
-        {resolvedCoverUrl ? (
-          <img src={resolvedCoverUrl} alt={event.title} className="event-card__image" />
-        ) : (
-          <div className="event-card__placeholder">Нет изображения</div>
-        )}
+        <img
+          src={safeCoverUrl}
+          alt={event.title}
+          className="event-card__image"
+          onError={(eventTarget) => {
+            eventTarget.currentTarget.onerror = null;
+            eventTarget.currentTarget.src = fallbackCoverUrl;
+          }}
+        />
       </div>
 
       <div className="event-card__body">
@@ -45,16 +58,16 @@ const EventCard = ({
             <AppIcon name="spark" size={14} />
             Возрастное ограничение: {ageLabel}
           </span>
-          {createdAtLabel && (
-            <span className="event-card__meta-item event-card__date">
-              <AppIcon name="clock" size={14} />
-              Добавлено: {createdAtLabel}
-            </span>
-          )}
           {organizationName && (
             <span className="event-card__meta-item">
               <AppIcon name="user" size={14} />
               Организация: {organizationName}
+            </span>
+          )}
+          {sessionSummary && (
+            <span className="event-card__meta-item event-card__sessions">
+              <AppIcon name="calendar" size={14} />
+              Сеансы: {sessionSummary}
             </span>
           )}
           <span className="event-card__meta-item event-card__address">

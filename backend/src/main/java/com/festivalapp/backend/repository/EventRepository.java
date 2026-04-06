@@ -1,6 +1,7 @@
 package com.festivalapp.backend.repository;
 
 import com.festivalapp.backend.entity.Event;
+import com.festivalapp.backend.entity.EventStatus;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -14,13 +15,16 @@ import java.util.Optional;
 
 public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecificationExecutor<Event> {
 
-    @EntityGraph(attributePaths = {"organization", "categories", "venue", "venue.city"})
+    @EntityGraph(attributePaths = {"organization", "categories", "venue", "venue.city", "sessions"})
     List<Event> findAll(Specification<Event> specification, Sort sort);
 
     @EntityGraph(attributePaths = {"organization", "categories", "venue", "venue.city", "sessions", "eventImages"})
     @Query("select e from Event e where e.id = :id")
     Optional<Event> findDetailedById(@Param("id") Long id);
 
-    @EntityGraph(attributePaths = {"organization", "categories", "venue", "venue.city"})
+    @EntityGraph(attributePaths = {"organization", "categories", "venue", "venue.city", "sessions"})
     List<Event> findAllByOrganizationId(Long organizationId, Sort sort);
+
+    @EntityGraph(attributePaths = {"organization", "categories", "venue", "venue.city", "sessions"})
+    List<Event> findAllByOrganizationIdAndStatus(Long organizationId, EventStatus status, Sort sort);
 }

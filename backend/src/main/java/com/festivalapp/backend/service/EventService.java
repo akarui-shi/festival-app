@@ -5,6 +5,7 @@ import com.festivalapp.backend.dto.CategoryResponse;
 import com.festivalapp.backend.dto.EventDetailsResponse;
 import com.festivalapp.backend.dto.EventImageRequest;
 import com.festivalapp.backend.dto.EventImageResponse;
+import com.festivalapp.backend.dto.OrganizationPublicResponse;
 import com.festivalapp.backend.dto.EventShortResponse;
 import com.festivalapp.backend.dto.EventUpdateRequest;
 import com.festivalapp.backend.dto.VenueResponse;
@@ -16,6 +17,7 @@ import com.festivalapp.backend.entity.EventStatus;
 import com.festivalapp.backend.entity.Organization;
 import com.festivalapp.backend.entity.Organizer;
 import com.festivalapp.backend.entity.RoleName;
+import com.festivalapp.backend.entity.Session;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.entity.Venue;
 import com.festivalapp.backend.exception.BadRequestException;
@@ -26,6 +28,7 @@ import com.festivalapp.backend.repository.EventCategoryRepository;
 import com.festivalapp.backend.repository.EventImageRepository;
 import com.festivalapp.backend.repository.EventRepository;
 import com.festivalapp.backend.repository.FavoriteRepository;
+import com.festivalapp.backend.repository.OrganizationRepository;
 import com.festivalapp.backend.repository.OrganizerRepository;
 import com.festivalapp.backend.repository.PublicationRepository;
 import com.festivalapp.backend.repository.RegistrationRepository;
@@ -65,6 +68,7 @@ public class EventService {
     private final EventCategoryRepository eventCategoryRepository;
     private final EventImageRepository eventImageRepository;
     private final OrganizerRepository organizerRepository;
+    private final OrganizationRepository organizationRepository;
     private final CategoryRepository categoryRepository;
     private final CityRepository cityRepository;
     private final UserRepository userRepository;
@@ -80,6 +84,7 @@ public class EventService {
                                            Long categoryId,
                                            Long venueId,
                                            Long cityId,
+                                           Long organizationId,
                                            LocalDate date,
                                            LocalDate dateFrom,
                                            LocalDate dateTo,
@@ -100,6 +105,7 @@ public class EventService {
             categoryId,
             venueId,
             cityId,
+            organizationId,
             effectiveDateFrom,
             effectiveDateTo,
             EventStatus.PUBLISHED
@@ -107,6 +113,34 @@ public class EventService {
         Sort sort = buildSort(sortBy, sortDir);
 
         return eventRepository.findAll(specification, sort).stream()
+            .map(this::toShortResponse)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public OrganizationPublicResponse getOrganizationProfile(Long organizationId) {
+        Organization organization = organizationRepository.findById(organizationId)
+            .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + organizationId));
+
+        return OrganizationPublicResponse.builder()
+            .id(organization.getId())
+            .name(organization.getName())
+            .description(organization.getDescription())
+            .contacts(organization.getContacts())
+            .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<EventShortResponse> getPublicByOrganization(Long organizationId) {
+        if (!organizationRepository.existsById(organizationId)) {
+            throw new ResourceNotFoundException("Organization not found: " + organizationId);
+        }
+
+        return eventRepository.findAllByOrganizationIdAndStatus(
+                organizationId,
+                EventStatus.PUBLISHED,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+            ).stream()
             .map(this::toShortResponse)
             .toList();
     }
@@ -591,6 +625,7 @@ public class EventService {
                                                     Long categoryId,
                                                     Long venueId,
                                                     Long cityId,
+                                                    Long organizationId,
                                                     LocalDate dateFrom,
                                                     LocalDate dateTo,
                                                     EventStatus status) {
@@ -618,6 +653,9 @@ public class EventService {
             }
             if (cityId != null) {
                 predicates.add(cb.equal(root.join("venue", JoinType.LEFT).join("city", JoinType.LEFT).get("id"), cityId));
+            }
+            if (organizationId != null) {
+                predicates.add(cb.equal(root.join("organization", JoinType.LEFT).get("id"), organizationId));
             }
             if (dateFrom != null || dateTo != null) {
                 var sessionJoin = root.join("sessions", JoinType.INNER);
@@ -677,6 +715,7 @@ public class EventService {
 
     private EventShortResponse toShortResponse(Event event) {
         Venue venue = event.getVenue();
+        List<LocalDateTime> sortedSessionDates = extractSortedSessionDates(event);
         return EventShortResponse.builder()
             .id(event.getId())
             .title(event.getTitle())
@@ -690,8 +729,35 @@ public class EventService {
             .venueAddress(venue != null ? venue.getAddress() : null)
             .cityName(venue != null && venue.getCity() != null ? venue.getCity().getName() : null)
             .categories(toCategoryResponses(event.getCategories()))
+            .nextSessionAt(resolveNextSessionDate(sortedSessionDates))
+            .sessionDates(sortedSessionDates)
             .coverUrl(event.getCoverUrl())
             .build();
+    }
+
+    private List<LocalDateTime> extractSortedSessionDates(Event event) {
+        if (event == null || event.getSessions() == null || event.getSessions().isEmpty()) {
+            return List.of();
+        }
+
+        return event.getSessions().stream()
+            .map(Session::getStartTime)
+            .filter(Objects::nonNull)
+            .distinct()
+            .sorted()
+            .toList();
+    }
+
+    private LocalDateTime resolveNextSessionDate(List<LocalDateTime> sortedSessionDates) {
+        if (sortedSessionDates == null || sortedSessionDates.isEmpty()) {
+            return null;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        return sortedSessionDates.stream()
+            .filter(date -> !date.isBefore(now))
+            .findFirst()
+            .orElse(sortedSessionDates.get(0));
     }
 
     private EventDetailsResponse toDetailsResponse(Event event) {

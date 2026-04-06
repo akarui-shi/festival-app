@@ -6,6 +6,7 @@ import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
 import EventsPage from '../pages/EventsPage';
 import EventDetailsPage from '../pages/EventDetailsPage';
+import OrganizationPage from '../pages/OrganizationPage';
 import PublicationsPage from '../pages/PublicationsPage';
 import PublicationDetailsPage from '../pages/PublicationDetailsPage';
 import PublicationCreatePage from '../pages/PublicationCreatePage';
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
       { path: 'register', element: <RegisterPage /> },
       { path: 'events', element: <EventsPage /> },
       { path: 'events/:id', element: <EventDetailsPage /> },
+      { path: 'organizations/:id', element: <OrganizationPage /> },
       { path: 'publications', element: <PublicationsPage /> },
       { path: 'publications/:id', element: <PublicationDetailsPage /> },
       {
