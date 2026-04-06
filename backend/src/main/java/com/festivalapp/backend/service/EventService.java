@@ -6,6 +6,7 @@ import com.festivalapp.backend.dto.EventDetailsResponse;
 import com.festivalapp.backend.dto.EventImageRequest;
 import com.festivalapp.backend.dto.EventImageResponse;
 import com.festivalapp.backend.dto.OrganizationPublicResponse;
+import com.festivalapp.backend.dto.OrganizerEventStatsResponse;
 import com.festivalapp.backend.dto.EventShortResponse;
 import com.festivalapp.backend.dto.EventUpdateRequest;
 import com.festivalapp.backend.dto.VenueResponse;
@@ -247,6 +248,60 @@ public class EventService {
 
         validateOrganizerViewAccess(actor, event);
         return toDetailsResponse(event);
+    }
+
+    @Transactional(readOnly = true)
+    public OrganizerEventStatsResponse getOrganizerEventStats(Long id, String actorIdentifier) {
+        User actor = loadActor(actorIdentifier);
+        Event event = eventRepository.findDetailedById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + id));
+        validateOrganizerViewAccess(actor, event);
+
+        List<Session> sortedSessions = event.getSessions().stream()
+            .sorted(Comparator.comparing(Session::getStartTime, Comparator.nullsLast(Comparator.naturalOrder())))
+            .toList();
+        List<Long> sessionIds = sortedSessions.stream()
+            .map(Session::getId)
+            .filter(Objects::nonNull)
+            .toList();
+
+        Map<Long, Integer> occupiedSeatsBySessionId = resolveOccupiedSeatsBySessionId(sessionIds);
+        int occupiedSeats = occupiedSeatsBySessionId.values().stream()
+            .mapToInt(Integer::intValue)
+            .sum();
+
+        int totalCapacity = sortedSessions.stream()
+            .mapToInt(this::resolveSessionCapacity)
+            .sum();
+
+        long registrationsCount = registrationRepository.countBySessionEventIdAndStatus(id, RegistrationStatus.CREATED);
+        long cancellationsCount = registrationRepository.countBySessionEventIdAndStatus(id, RegistrationStatus.CANCELLED);
+        int occupancyPercent = calculateOccupancyPercent(occupiedSeats, totalCapacity);
+
+        List<OrganizerEventStatsResponse.SessionStats> sessionStats = sortedSessions.stream()
+            .map(session -> {
+                int sessionCapacity = resolveSessionCapacity(session);
+                int sessionOccupiedSeats = occupiedSeatsBySessionId.getOrDefault(session.getId(), 0);
+                return OrganizerEventStatsResponse.SessionStats.builder()
+                    .sessionId(session.getId())
+                    .startAt(session.getStartTime())
+                    .endAt(session.getEndTime())
+                    .capacity(sessionCapacity > 0 ? sessionCapacity : null)
+                    .occupiedSeats(sessionOccupiedSeats)
+                    .occupancyPercent(calculateOccupancyPercent(sessionOccupiedSeats, sessionCapacity))
+                    .build();
+            })
+            .toList();
+
+        return OrganizerEventStatsResponse.builder()
+            .eventId(event.getId())
+            .registrationsCount(registrationsCount)
+            .cancellationsCount(cancellationsCount)
+            .occupiedSeats(occupiedSeats)
+            .totalCapacity(totalCapacity)
+            .occupancyPercent(occupancyPercent)
+            .sessions(sessionStats)
+            .build();
     }
 
     @Transactional(readOnly = true)
@@ -939,6 +994,48 @@ public class EventService {
             return null;
         }
         return event.getVenue().getCity().getId();
+    }
+
+    private Map<Long, Integer> resolveOccupiedSeatsBySessionId(List<Long> sessionIds) {
+        Map<Long, Integer> occupiedSeatsBySessionId = new HashMap<>();
+        if (sessionIds == null || sessionIds.isEmpty()) {
+            return occupiedSeatsBySessionId;
+        }
+
+        List<Object[]> rows = registrationRepository.sumParticipantsBySessionIdsAndStatuses(
+            sessionIds,
+            ACTIVE_REGISTRATION_STATUSES
+        );
+        for (Object[] row : rows) {
+            if (row == null || row.length < 2 || row[0] == null || row[1] == null) {
+                continue;
+            }
+
+            Number sessionId = (Number) row[0];
+            Number occupiedSeats = (Number) row[1];
+            occupiedSeatsBySessionId.put(sessionId.longValue(), occupiedSeats.intValue());
+        }
+
+        return occupiedSeatsBySessionId;
+    }
+
+    private int resolveSessionCapacity(Session session) {
+        if (session != null && session.getCapacity() != null && session.getCapacity() > 0) {
+            return session.getCapacity();
+        }
+
+        Venue venue = session != null && session.getEvent() != null ? session.getEvent().getVenue() : null;
+        if (venue != null && venue.getCapacity() != null && venue.getCapacity() > 0) {
+            return venue.getCapacity();
+        }
+        return 0;
+    }
+
+    private int calculateOccupancyPercent(int occupiedSeats, int totalCapacity) {
+        if (totalCapacity <= 0 || occupiedSeats <= 0) {
+            return 0;
+        }
+        return (int) Math.round((occupiedSeats * 100.0) / totalCapacity);
     }
 
     private EventShortResponse toShortResponse(Event event) {

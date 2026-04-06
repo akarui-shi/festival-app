@@ -7,5 +7,9 @@ export const organizerService = {
 
   getMyEventById(id) {
     return apiClient.get(`/api/organizer/events/${id}`);
+  },
+
+  getEventStats(id) {
+    return apiClient.get(`/api/organizer/events/${id}/stats`);
   }
 };

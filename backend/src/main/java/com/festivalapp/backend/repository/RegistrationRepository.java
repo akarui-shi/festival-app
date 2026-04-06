@@ -73,6 +73,8 @@ public interface RegistrationRepository extends JpaRepository<Registration, Long
     List<Object[]> sumParticipantsByEventIdsAndStatuses(@Param("eventIds") Collection<Long> eventIds,
                                                          @Param("statuses") Collection<RegistrationStatus> statuses);
 
+    long countBySessionEventIdAndStatus(Long eventId, RegistrationStatus status);
+
     long countBySessionIdAndStatusIn(Long sessionId, Collection<RegistrationStatus> statuses);
 
     @Modifying
