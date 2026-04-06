@@ -31,6 +31,10 @@ export const eventService = {
     return apiClient.get(`/api/events/organizations/${organizationId}/events`, { auth: false });
   },
 
+  getRecommendations(params = {}, options = {}) {
+    return apiClient.get(`/api/events/recommendations${buildQueryString(params)}`, options);
+  },
+
   createEvent(data) {
     return apiClient.post('/api/events', data);
   },

@@ -4,6 +4,7 @@ import EventCard from '../components/EventCard';
 import Loader from '../components/Loader';
 import AlertMessage from '../components/AlertMessage';
 import EmptyState from '../components/EmptyState';
+import RecommendedEventsSection from '../components/RecommendedEventsSection';
 import { useAuth } from '../context/AuthContext';
 import { useCity } from '../context/CityContext';
 import { ROLE } from '../utils/roles';
@@ -46,6 +47,7 @@ const HomePage = () => {
   const isAdmin = useMemo(() => hasRole([ROLE.ADMIN]), [hasRole]);
 
   const [events, setEvents] = useState([]);
+  const [recommendedEvents, setRecommendedEvents] = useState([]);
   const [stats, setStats] = useState({
     eventsCount: 0,
     citiesCount: 0,
@@ -54,6 +56,7 @@ const HomePage = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [recommendationsError, setRecommendationsError] = useState('');
 
   const [subscriptionEmail, setSubscriptionEmail] = useState('');
   const [subscriptionMessage, setSubscriptionMessage] = useState('');
@@ -65,19 +68,30 @@ const HomePage = () => {
       try {
         setIsLoading(true);
         setError('');
+        setRecommendationsError('');
 
-        const [eventsResult, citiesResult, venuesResult, usersResult] = await Promise.allSettled([
+        const [eventsResult, recommendationsResult, citiesResult, venuesResult, usersResult] = await Promise.allSettled([
           eventService.getEvents({ cityId: selectedCityId || undefined }),
+          eventService.getRecommendations({ cityId: selectedCityId || undefined, limit: 3 }),
           cityService.getCities(),
           venueService.getVenues(),
           isAuthenticated && isAdmin ? userService.getAdminUsers() : Promise.resolve(null)
         ]);
 
         const loadedEvents = eventsResult.status === 'fulfilled' && Array.isArray(eventsResult.value) ? eventsResult.value : [];
+        const loadedRecommendations =
+          recommendationsResult.status === 'fulfilled' && Array.isArray(recommendationsResult.value)
+            ? recommendationsResult.value
+            : [];
         const loadedCities = citiesResult.status === 'fulfilled' && Array.isArray(citiesResult.value) ? citiesResult.value : [];
         const loadedVenues = venuesResult.status === 'fulfilled' && Array.isArray(venuesResult.value) ? venuesResult.value : [];
         if (eventsResult.status === 'rejected') {
           setError(toUserErrorMessage(eventsResult.reason, 'Не удалось загрузить список мероприятий.'));
+        }
+        if (recommendationsResult.status === 'rejected') {
+          setRecommendationsError(toUserErrorMessage(recommendationsResult.reason, 'Не удалось загрузить рекомендации.'));
+        } else {
+          setRecommendationsError('');
         }
 
         let usersCount = FALLBACK_USER_COUNT;
@@ -86,6 +100,7 @@ const HomePage = () => {
         }
 
         setEvents(loadedEvents);
+        setRecommendedEvents(loadedRecommendations);
         setStats({
           eventsCount: loadedEvents.length,
           citiesCount: loadedCities.length,
@@ -239,6 +254,17 @@ const HomePage = () => {
             </article>
           ))}
         </div>
+      </section>
+
+      <section className="container home-section">
+        <RecommendedEventsSection
+          title="Рекомендуем вам"
+          events={recommendedEvents}
+          isLoading={isLoading}
+          error={recommendationsError}
+          onCloseError={() => setRecommendationsError('')}
+          emptyMessage="Пока нет рекомендаций для вашего города."
+        />
       </section>
 
       <section className="container home-section">
