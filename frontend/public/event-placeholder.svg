@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="800" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1F3B73"/>
+      <stop offset="1" stop-color="#3FA7D6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#bg)"/>
+  <circle cx="220" cy="170" r="110" fill="white" fill-opacity="0.18"/>
+  <circle cx="1010" cy="640" r="170" fill="white" fill-opacity="0.12"/>
+  <rect x="170" y="250" width="860" height="300" rx="28" fill="white" fill-opacity="0.14"/>
+  <text x="600" y="380" fill="white" font-family="Arial, sans-serif" font-size="68" text-anchor="middle" font-weight="700">
+    Festival Event
+  </text>
+  <text x="600" y="455" fill="white" fill-opacity="0.92" font-family="Arial, sans-serif" font-size="34" text-anchor="middle">
+    Image is temporarily unavailable
+  </text>
+</svg>

@@ -23,6 +23,14 @@ export const eventService = {
     return apiClient.get(`/api/events/${id}`, { auth: false });
   },
 
+  getOrganizationProfile(organizationId) {
+    return apiClient.get(`/api/events/organizations/${organizationId}`, { auth: false });
+  },
+
+  getOrganizationEvents(organizationId) {
+    return apiClient.get(`/api/events/organizations/${organizationId}/events`, { auth: false });
+  },
+
   createEvent(data) {
     return apiClient.post('/api/events', data);
   },

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Loader from '../components/Loader';
 import AlertMessage from '../components/AlertMessage';
 import EmptyState from '../components/EmptyState';
@@ -234,6 +234,7 @@ const EventDetailsPage = () => {
   }, [id, galleryImages.length]);
 
   const venue = event?.venue || null;
+  const fallbackCoverUrl = '/event-placeholder.svg';
   const venueLatitude = venue ? Number(venue.latitude) : NaN;
   const venueLongitude = venue ? Number(venue.longitude) : NaN;
   const hasVenueCoordinates = Number.isFinite(venueLatitude) && Number.isFinite(venueLongitude);
@@ -246,20 +247,42 @@ const EventDetailsPage = () => {
   if (!event) return null;
 
   return (
-    <section className="container page">
-      <h1>{event.title}</h1>
-      <p className="page-subtitle">{event.shortDescription || 'Краткое описание пока не добавлено.'}</p>
+    <section className="container page event-details-page">
+      <div className="panel event-details-hero">
+        <p className="event-details-hero__eyebrow">Мероприятие</p>
+        <h1>{event.title}</h1>
+        <p className="page-subtitle event-details-hero__subtitle">
+          {event.shortDescription || 'Краткое описание пока не добавлено.'}
+        </p>
 
-      <div className="panel details-grid">
-        <p><strong>Возрастное ограничение:</strong> {ageLabel}</p>
-        <p><strong>Создано:</strong> {formatDateTime(event.createdAt)}</p>
-        <p><strong>Организация:</strong> {event.organization?.name || '-'}</p>
-        <p><strong>Площадка:</strong> {venue?.name || 'Не указана'}</p>
-        <p><strong>Адрес:</strong> {venue?.address || 'Не указан'}</p>
+        <div className="event-details-hero__meta">
+          <span className="chip">Возраст: {ageLabel}</span>
+          <span className="chip">Площадка: {venue?.name || 'Не указана'}</span>
+          <span className="chip">Адрес: {venue?.address || 'Не указан'}</span>
+        </div>
+
+        {event.organization?.id ? (
+          <Link
+            to={`/organizations/${event.organization.id}?excludeEventId=${event.id}`}
+            className="btn btn--ghost event-details-hero__organization-link"
+          >
+            Организация: {event.organization?.name || '-'}
+          </Link>
+        ) : (
+          <p className="muted">Организация не указана</p>
+        )}
       </div>
 
       {galleryImages.length === 1 && (
-        <img src={galleryImages[0]} alt={event.title} className="details-cover" />
+        <img
+          src={galleryImages[0]}
+          alt={event.title}
+          className="details-cover"
+          onError={(eventTarget) => {
+            eventTarget.currentTarget.onerror = null;
+            eventTarget.currentTarget.src = fallbackCoverUrl;
+          }}
+        />
       )}
 
       {galleryImages.length > 1 && (
@@ -268,6 +291,10 @@ const EventDetailsPage = () => {
             src={galleryImages[selectedGalleryIndex] || galleryImages[0]}
             alt={`${event.title} — фото ${selectedGalleryIndex + 1}`}
             className="event-gallery__main"
+            onError={(eventTarget) => {
+              eventTarget.currentTarget.onerror = null;
+              eventTarget.currentTarget.src = fallbackCoverUrl;
+            }}
           />
           <div className="event-gallery__thumbs">
             {galleryImages.map((imageUrl, index) => (
@@ -277,11 +304,22 @@ const EventDetailsPage = () => {
                 className={`event-gallery__thumb ${index === selectedGalleryIndex ? 'event-gallery__thumb--active' : ''}`}
                 onClick={() => setSelectedGalleryIndex(index)}
               >
-                <img src={imageUrl} alt={`Миниатюра ${index + 1}`} />
+                <img
+                  src={imageUrl}
+                  alt={`Миниатюра ${index + 1}`}
+                  onError={(eventTarget) => {
+                    eventTarget.currentTarget.onerror = null;
+                    eventTarget.currentTarget.src = fallbackCoverUrl;
+                  }}
+                />
               </button>
             ))}
           </div>
         </div>
+      )}
+
+      {galleryImages.length === 0 && (
+        <img src={fallbackCoverUrl} alt={event.title} className="details-cover" />
       )}
 
       <div className="panel">
