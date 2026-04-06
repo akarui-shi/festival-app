@@ -13,6 +13,8 @@ import java.util.Optional;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
+    long countByStatus(ReviewStatus status);
+
     @EntityGraph(attributePaths = {"user", "event"})
     List<Review> findByEventIdAndStatusOrderByCreatedAtDesc(Long eventId, ReviewStatus status);
 
