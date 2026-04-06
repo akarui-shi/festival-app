@@ -24,6 +24,10 @@ public class RegisterRequest {
     @Size(min = 6, max = 128, message = "Пароль должен содержать от 6 до 128 символов")
     private String password;
 
+    private String role;
+
+    private String companyName;
+
     private String firstName;
 
     private String lastName;

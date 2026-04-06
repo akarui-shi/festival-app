@@ -4,6 +4,7 @@ import com.festivalapp.backend.dto.AuthResponse;
 import com.festivalapp.backend.dto.CurrentUserResponse;
 import com.festivalapp.backend.dto.LoginRequest;
 import com.festivalapp.backend.dto.RegisterRequest;
+import com.festivalapp.backend.entity.Organizer;
 import com.festivalapp.backend.entity.Role;
 import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.User;
@@ -12,6 +13,7 @@ import com.festivalapp.backend.entity.UserRoleId;
 import com.festivalapp.backend.entity.UserStatus;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.UnauthorizedException;
+import com.festivalapp.backend.repository.OrganizerRepository;
 import com.festivalapp.backend.repository.RoleRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import com.festivalapp.backend.repository.UserRoleRepository;
@@ -23,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -32,6 +35,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final OrganizerRepository organizerRepository;
     private final UserRoleRepository userRoleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -41,6 +45,8 @@ public class AuthService {
         String normalizedLogin = normalizeRequired(request.getLogin(), "Введите логин");
         String normalizedEmail = normalizeRequired(request.getEmail(), "Введите электронную почту");
         String normalizedPhone = normalizeOptional(request.getPhone());
+        RoleName requestedRoleName = resolveRegistrationRole(request.getRole());
+        String normalizedCompanyName = normalizeOptional(request.getCompanyName());
 
         if (userRepository.existsByLogin(normalizedLogin)) {
             throw new BadRequestException("Логин уже занят");
@@ -65,16 +71,23 @@ public class AuthService {
 
         User savedUser = userRepository.save(user);
 
-        // Assign default role for newly registered residents.
-        Role residentRole = roleRepository.findByName(RoleName.ROLE_RESIDENT)
-            .orElseGet(() -> roleRepository.save(Role.builder().name(RoleName.ROLE_RESIDENT).build()));
+        Role registrationRole = roleRepository.findByName(requestedRoleName)
+            .orElseGet(() -> roleRepository.save(Role.builder().name(requestedRoleName).build()));
 
         UserRole userRole = userRoleRepository.save(UserRole.builder()
-            .id(UserRoleId.builder().userId(savedUser.getId()).roleId(residentRole.getId()).build())
+            .id(UserRoleId.builder().userId(savedUser.getId()).roleId(registrationRole.getId()).build())
             .user(savedUser)
-            .role(residentRole)
+            .role(registrationRole)
             .build());
         savedUser.getUserRoles().add(userRole);
+
+        if (requestedRoleName == RoleName.ROLE_ORGANIZER) {
+            String organizerCompanyName = normalizeRequired(
+                normalizedCompanyName,
+                "Введите название компании для регистрации организатора"
+            );
+            ensureOrganizerProfile(savedUser, organizerCompanyName);
+        }
 
         return AuthResponse.builder()
             .token(jwtService.generateToken(savedUser.getLogin()))
@@ -116,6 +129,49 @@ public class AuthService {
 
     private String normalizeRoleName(String roleName) {
         return roleName.startsWith("ROLE_") ? roleName.substring(5) : roleName;
+    }
+
+    private RoleName resolveRegistrationRole(String rawRole) {
+        if (!StringUtils.hasText(rawRole)) {
+            return RoleName.ROLE_RESIDENT;
+        }
+
+        String normalized = rawRole.trim().toUpperCase(Locale.ROOT);
+        String prefixed = normalized.startsWith("ROLE_") ? normalized : "ROLE_" + normalized;
+
+        RoleName parsedRole;
+        try {
+            parsedRole = RoleName.valueOf(prefixed);
+        } catch (IllegalArgumentException ex) {
+            throw new BadRequestException("Недопустимая роль при регистрации: " + rawRole);
+        }
+
+        if (parsedRole == RoleName.ROLE_ADMIN) {
+            throw new BadRequestException("Нельзя зарегистрироваться с ролью администратора");
+        }
+
+        if (parsedRole != RoleName.ROLE_RESIDENT && parsedRole != RoleName.ROLE_ORGANIZER) {
+            throw new BadRequestException("Недопустимая роль при регистрации: " + rawRole);
+        }
+
+        return parsedRole;
+    }
+
+    private void ensureOrganizerProfile(User user, String companyName) {
+        if (organizerRepository.findByUserId(user.getId()).isPresent()) {
+            return;
+        }
+
+        String contacts = user.getPhone() != null
+            ? user.getEmail() + ", " + user.getPhone()
+            : user.getEmail();
+
+        organizerRepository.save(Organizer.builder()
+            .user(user)
+            .name(companyName)
+            .description("Профиль организатора")
+            .contacts(contacts)
+            .build());
     }
 
     private String normalizeRequired(String value, String message) {
