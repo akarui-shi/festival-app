@@ -21,3 +21,22 @@
 - Отзывы
 - Управление мероприятиями организатором
 - Модерация публикаций и отзывов администратором
+
+## Интеграция Яндекс Метрики (кабинет организатора)
+Для подключения внешней аналитики укажите переменные окружения backend:
+
+- `YANDEX_METRIKA_ENABLED=true`
+- `YANDEX_METRIKA_TOKEN=<oauth_token>`
+- `YANDEX_METRIKA_COUNTER_ID=<counter_id>`
+
+Конфигурация в `application.yml`:
+
+```yaml
+yandex:
+  metrika:
+    enabled: ${YANDEX_METRIKA_ENABLED:false}
+    token: ${YANDEX_METRIKA_TOKEN:}
+    counter-id: ${YANDEX_METRIKA_COUNTER_ID:}
+```
+
+Если Метрика не настроена, кабинет организатора продолжает работать на внутренней аналитике и показывает понятный статус внешних метрик.

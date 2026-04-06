@@ -35,3 +35,9 @@ app:
   upload:
     dir: uploads
     max-file-size-bytes: 5242880
+
+yandex:
+  metrika:
+    enabled: ${YANDEX_METRIKA_ENABLED:false}
+    token: ${YANDEX_METRIKA_TOKEN:}
+    counter-id: ${YANDEX_METRIKA_COUNTER_ID:}

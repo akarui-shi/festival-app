@@ -10,6 +10,7 @@ const OrganizerEventCard = ({
   isArchiving = false,
   onEdit,
   onSessions,
+  onAnalytics,
   onDelete,
   onArchive
 }) => {
@@ -151,6 +152,9 @@ const OrganizerEventCard = ({
           </button>
           <button type="button" className="btn btn--primary" onClick={() => onSessions(event.id)}>
             Сеансы
+          </button>
+          <button type="button" className="btn btn--ghost" onClick={() => onAnalytics?.(event.id)}>
+            Аналитика
           </button>
           <button
             type="button"

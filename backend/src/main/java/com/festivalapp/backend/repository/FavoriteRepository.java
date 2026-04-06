@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Collection;
 
 public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
 
@@ -27,6 +28,10 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
     List<Favorite> findByUserIdWithEventCategoriesOrderByIdDesc(@Param("userId") Long userId);
 
     Optional<Favorite> findByUserIdAndEventId(Long userId, Long eventId);
+
+    long countByEventId(Long eventId);
+
+    long countByEventIdIn(Collection<Long> eventIds);
 
     @Modifying
     @Query("delete from Favorite f where f.event.id = :eventId")

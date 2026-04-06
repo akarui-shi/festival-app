@@ -4,6 +4,7 @@ import EmptyState from '../components/EmptyState';
 import AlertMessage from '../components/AlertMessage';
 import Loader from '../components/Loader';
 import OrganizerEventCard from '../components/OrganizerEventCard';
+import OrganizerAnalyticsOverviewSection from '../components/organizer-analytics/OrganizerAnalyticsOverviewSection';
 import { organizerService } from '../services/organizerService';
 import { eventService } from '../services/eventService';
 import { toUserErrorMessage } from '../utils/errorMessages';
@@ -234,6 +235,8 @@ const OrganizerDashboardPage = () => {
         </div>
       </div>
 
+      <OrganizerAnalyticsOverviewSection />
+
       <div className="panel organizer-controls">
         <div className="organizer-controls__grid">
           <label>
@@ -281,6 +284,7 @@ const OrganizerDashboardPage = () => {
               isArchiving={archivingId === event.id}
               onEdit={(id) => navigate(`/organizer/events/${id}/edit`)}
               onSessions={(id) => navigate(`/organizer/events/${id}/sessions`)}
+              onAnalytics={(id) => navigate(`/organizer/events/${id}/analytics`)}
               onArchive={handleArchive}
               onDelete={handleDelete}
             />
