@@ -1,30 +1,25 @@
 import type { Favorite } from '@/types';
-import { mockFavorites, mockEvents } from '@/data/mock-data';
-
-const delay = (ms = 300) => new Promise(r => setTimeout(r, ms));
+import { apiDelete, apiGet, apiPost } from './api-client';
+import type { BackendFavorite } from './api-mappers';
+import { mapFavorite } from './api-mappers';
 
 export const favoriteService = {
-  async getMyFavorites(userId: string): Promise<Favorite[]> {
-    await delay();
-    return mockFavorites.filter(f => f.userId === userId);
+  async getMyFavorites(_userId: string): Promise<Favorite[]> {
+    const response = await apiGet<BackendFavorite[]>('/favorites/my');
+    return response.map(mapFavorite);
   },
 
-  async addFavorite(userId: string, eventId: string): Promise<Favorite> {
-    await delay();
-    const event = mockEvents.find(e => e.id === eventId);
-    const fav: Favorite = { id: `f${Date.now()}`, userId, eventId, event, createdAt: new Date().toISOString() };
-    mockFavorites.push(fav);
-    return fav;
+  async addFavorite(_userId: string, eventId: string): Promise<Favorite> {
+    const response = await apiPost<BackendFavorite>('/favorites', { eventId: Number(eventId) });
+    return mapFavorite(response);
   },
 
-  async removeFavorite(userId: string, eventId: string): Promise<void> {
-    await delay();
-    const idx = mockFavorites.findIndex(f => f.userId === userId && f.eventId === eventId);
-    if (idx !== -1) mockFavorites.splice(idx, 1);
+  async removeFavorite(_userId: string, eventId: string): Promise<void> {
+    await apiDelete(`/favorites/${eventId}`);
   },
 
   async isFavorite(userId: string, eventId: string): Promise<boolean> {
-    await delay(100);
-    return mockFavorites.some(f => f.userId === userId && f.eventId === eventId);
+    const favorites = await this.getMyFavorites(userId);
+    return favorites.some((favorite) => favorite.eventId === eventId);
   },
 };

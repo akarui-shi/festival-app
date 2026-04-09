@@ -53,9 +53,9 @@ export default function LoginPage() {
         <div className="mt-8 p-4 rounded-xl bg-muted text-sm">
           <p className="font-medium mb-2">Тестовые аккаунты:</p>
           <div className="space-y-1 text-muted-foreground text-xs">
-            <p>👤 ivan@mail.ru / password123 (Житель)</p>
-            <p>🎪 org@fest.ru / password123 (Организатор)</p>
-            <p>🛡️ admin@fest.ru / password123 (Администратор)</p>
+            <p>👤 resident1@mail.com / Passw0rd123 (Житель)</p>
+            <p>🎪 organizer1@mail.com / Passw0rd123 (Организатор)</p>
+            <p>🛡️ admin1@mail.com / Passw0rd123 (Администратор)</p>
           </div>
         </div>
       </div>

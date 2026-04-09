@@ -1052,6 +1052,7 @@ public class EventService {
             .venueId(venue != null ? venue.getId() : null)
             .venueName(venue != null ? venue.getName() : null)
             .venueAddress(venue != null ? venue.getAddress() : null)
+            .cityId(venue != null && venue.getCity() != null ? venue.getCity().getId() : null)
             .cityName(venue != null && venue.getCity() != null ? venue.getCity().getName() : null)
             .categories(toCategoryResponses(event.getCategories()))
             .nextSessionAt(resolveNextSessionDate(sortedSessionDates))

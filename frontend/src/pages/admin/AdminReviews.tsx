@@ -13,12 +13,6 @@ export default function AdminReviews() {
 
   useEffect(() => { reviewService.getAllReviews().then(r => { setReviews(r); setLoading(false); }); }, []);
 
-  const moderate = async (id: string, status: 'APPROVED' | 'REJECTED') => {
-    await reviewService.moderateReview(id, status);
-    setReviews(prev => prev.map(r => r.id === id ? { ...r, status } : r));
-    toast.success(status === 'APPROVED' ? 'Одобрено' : 'Отклонено');
-  };
-
   const del = async (id: string) => {
     await reviewService.deleteReview(id);
     setReviews(prev => prev.filter(r => r.id !== id));
@@ -29,7 +23,7 @@ export default function AdminReviews() {
 
   return (
     <div>
-      <h1 className="font-heading text-2xl font-bold mb-6">Модерация отзывов</h1>
+      <h1 className="font-heading text-2xl font-bold mb-6">Отзывы пользователей</h1>
       <div className="space-y-3">
         {reviews.map(r => (
           <div key={r.id} className="p-4 rounded-xl border border-border bg-card">
@@ -45,12 +39,6 @@ export default function AdminReviews() {
                 <p className="text-sm text-muted-foreground">{r.comment}</p>
               </div>
               <div className="flex items-center gap-1">
-                {r.status === 'PENDING' && (
-                  <>
-                    <Button size="sm" onClick={() => moderate(r.id, 'APPROVED')}>Одобрить</Button>
-                    <Button size="sm" variant="destructive" onClick={() => moderate(r.id, 'REJECTED')}>Отклонить</Button>
-                  </>
-                )}
                 <Button variant="ghost" size="sm" onClick={() => del(r.id)} className="text-destructive">Удалить</Button>
               </div>
             </div>

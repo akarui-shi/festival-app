@@ -27,6 +27,9 @@ public interface PublicationRepository extends JpaRepository<Publication, Long>,
     @EntityGraph(attributePaths = {"author", "event"})
     List<Publication> findAll(Specification<Publication> specification, Sort sort);
 
+    @EntityGraph(attributePaths = {"author", "event"})
+    List<Publication> findAllByAuthorIdOrderByCreatedAtDesc(Long authorId);
+
     @Modifying
     @Query("delete from Publication p where p.event.id = :eventId")
     void deleteByEventId(@Param("eventId") Long eventId);

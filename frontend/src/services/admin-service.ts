@@ -1,27 +1,31 @@
 import type { User, UserRole } from '@/types';
-import { mockUsers } from '@/data/mock-data';
-
-const delay = (ms = 300) => new Promise(r => setTimeout(r, ms));
+import { apiGet, apiPatch } from './api-client';
+import type { BackendAdminUser } from './api-mappers';
+import { mapAdminUser } from './api-mappers';
 
 export const adminService = {
   async getUsers(): Promise<User[]> {
-    await delay();
-    return [...mockUsers];
+    const response = await apiGet<BackendAdminUser[]>('/admin/users');
+    return response.map(mapAdminUser);
   },
 
   async updateUserRole(userId: string, role: UserRole): Promise<User> {
-    await delay();
-    const idx = mockUsers.findIndex(u => u.id === userId);
-    if (idx === -1) throw new Error('Пользователь не найден');
-    mockUsers[idx].role = role;
-    return mockUsers[idx];
+    const response = await apiPatch<BackendAdminUser>(`/admin/users/${userId}/roles`, {
+      roles: [role],
+    });
+    return mapAdminUser(response);
   },
 
   async toggleUserActive(userId: string): Promise<User> {
-    await delay();
-    const idx = mockUsers.findIndex(u => u.id === userId);
-    if (idx === -1) throw new Error('Пользователь не найден');
-    mockUsers[idx].active = !mockUsers[idx].active;
-    return mockUsers[idx];
+    const users = await this.getUsers();
+    const user = users.find((entry) => entry.id === userId);
+    if (!user) {
+      throw new Error('Пользователь не найден');
+    }
+
+    const response = await apiPatch<BackendAdminUser>(`/admin/users/${userId}/active`, {
+      active: !user.active,
+    });
+    return mapAdminUser(response);
   },
 };
