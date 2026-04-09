@@ -1,40 +1,119 @@
-// Central API client. Currently uses mock data.
-// Replace this with fetch/axios to connect to a real backend.
+type QueryValue = string | number | boolean | null | undefined;
 
-const API_BASE_URL = '/api';
+const DEFAULT_API_BASE_URL = '/api';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') || DEFAULT_API_BASE_URL;
 
-// Simulate network delay
-const delay = (ms = 300) => new Promise(resolve => setTimeout(resolve, ms));
+export class ApiError extends Error {
+  status: number;
+  details?: unknown;
 
-export async function apiGet<T>(endpoint: string, _params?: Record<string, string>): Promise<T> {
-  await delay();
-  // In real implementation:
-  // const url = new URL(`${API_BASE_URL}${endpoint}`);
-  // if (params) Object.entries(params).forEach(([k,v]) => url.searchParams.set(k,v));
-  // const res = await fetch(url.toString(), { headers: getAuthHeaders() });
-  // if (!res.ok) throw new ApiError(res.status, await res.text());
-  // return res.json();
-  throw new Error(`Mock not implemented for GET ${endpoint}`);
+  constructor(status: number, message: string, details?: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.details = details;
+  }
 }
 
-export async function apiPost<T>(endpoint: string, _body?: unknown): Promise<T> {
-  await delay();
-  throw new Error(`Mock not implemented for POST ${endpoint}`);
+interface RequestOptions {
+  params?: Record<string, QueryValue>;
+  body?: BodyInit | FormData | object | null;
+  headers?: Record<string, string>;
 }
 
-export async function apiPut<T>(endpoint: string, _body?: unknown): Promise<T> {
-  await delay();
-  throw new Error(`Mock not implemented for PUT ${endpoint}`);
+function buildUrl(endpoint: string, params?: Record<string, QueryValue>): string {
+  const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = new URL(`${API_BASE_URL}${path}`, window.location.origin);
+
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      if (value === undefined || value === null || value === '') {
+        continue;
+      }
+      url.searchParams.set(key, String(value));
+    }
+  }
+
+  return url.pathname + url.search;
 }
 
-export async function apiPatch<T>(endpoint: string, _body?: unknown): Promise<T> {
-  await delay();
-  throw new Error(`Mock not implemented for PATCH ${endpoint}`);
+async function parseError(response: Response): Promise<ApiError> {
+  let payload: any = null;
+
+  try {
+    payload = await response.clone().json();
+  } catch {
+    try {
+      payload = await response.clone().text();
+    } catch {
+      payload = null;
+    }
+  }
+
+  const message =
+    payload?.message ||
+    payload?.error ||
+    (typeof payload === 'string' && payload) ||
+    `HTTP ${response.status}`;
+
+  return new ApiError(response.status, message, payload?.details);
 }
 
-export async function apiDelete(endpoint: string): Promise<void> {
-  await delay();
-  throw new Error(`Mock not implemented for DELETE ${endpoint}`);
+async function request<T>(method: string, endpoint: string, options: RequestOptions = {}): Promise<T> {
+  const headers: Record<string, string> = {
+    ...getAuthHeaders(),
+    ...options.headers,
+  };
+
+  let body: BodyInit | undefined;
+  if (options.body instanceof FormData) {
+    body = options.body;
+  } else if (options.body != null) {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify(options.body);
+  }
+
+  const response = await fetch(buildUrl(endpoint, options.params), {
+    method,
+    headers,
+    body,
+    credentials: 'same-origin',
+  });
+
+  if (!response.ok) {
+    throw await parseError(response);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    return undefined as T;
+  }
+
+  return response.json() as Promise<T>;
+}
+
+export async function apiGet<T>(endpoint: string, params?: Record<string, QueryValue>): Promise<T> {
+  return request<T>('GET', endpoint, { params });
+}
+
+export async function apiPost<T>(endpoint: string, body?: BodyInit | FormData | object | null): Promise<T> {
+  return request<T>('POST', endpoint, { body });
+}
+
+export async function apiPut<T>(endpoint: string, body?: BodyInit | FormData | object | null): Promise<T> {
+  return request<T>('PUT', endpoint, { body });
+}
+
+export async function apiPatch<T>(endpoint: string, body?: BodyInit | FormData | object | null): Promise<T> {
+  return request<T>('PATCH', endpoint, { body });
+}
+
+export async function apiDelete<T = void>(endpoint: string): Promise<T> {
+  return request<T>('DELETE', endpoint);
 }
 
 export function getAuthToken(): string | null {
@@ -49,9 +128,9 @@ export function removeAuthToken(): void {
   localStorage.removeItem('auth_token');
 }
 
-function getAuthHeaders(): Record<string, string> {
+export function getAuthHeaders(): Record<string, string> {
   const token = getAuthToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export { API_BASE_URL, getAuthHeaders };
+export { API_BASE_URL };

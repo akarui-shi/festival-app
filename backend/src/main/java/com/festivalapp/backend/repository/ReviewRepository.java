@@ -15,6 +15,9 @@ import java.util.Optional;
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     @EntityGraph(attributePaths = {"user", "event"})
+    List<Review> findAllByOrderByCreatedAtDesc();
+
+    @EntityGraph(attributePaths = {"user", "event"})
     List<Review> findByEventIdOrderByCreatedAtDesc(Long eventId);
 
     boolean existsByUserIdAndEventId(Long userId, Long eventId);

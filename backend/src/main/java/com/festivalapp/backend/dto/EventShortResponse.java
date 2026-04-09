@@ -21,6 +21,7 @@ public class EventShortResponse {
     private Long venueId;
     private String venueName;
     private String venueAddress;
+    private Long cityId;
     private String cityName;
     private List<CategoryResponse> categories;
     private LocalDateTime nextSessionAt;

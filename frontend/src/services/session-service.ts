@@ -1,43 +1,47 @@
 import type { Session } from '@/types';
-import { mockSessions } from '@/data/mock-data';
+import { apiDelete, apiGet, apiPost, apiPut } from './api-client';
+import type { BackendSessionDetails, BackendSessionShort } from './api-mappers';
+import { mapSession } from './api-mappers';
 
-const delay = (ms = 300) => new Promise(r => setTimeout(r, ms));
+function toBackendDateTime(date: string, time: string): string {
+  const normalizedTime = time.length === 5 ? `${time}:00` : time;
+  return `${date}T${normalizedTime}`;
+}
+
+function buildSessionPayload(data: Partial<Session>) {
+  const startAt = data.date && data.startTime ? toBackendDateTime(data.date, data.startTime) : undefined;
+  const endAt = data.date && data.endTime ? toBackendDateTime(data.date, data.endTime) : undefined;
+
+  return {
+    eventId: data.eventId ? Number(data.eventId) : undefined,
+    startAt,
+    endAt,
+    capacity: data.maxParticipants,
+  };
+}
 
 export const sessionService = {
   async getSessionsByEvent(eventId: string): Promise<Session[]> {
-    await delay();
-    return mockSessions.filter(s => s.eventId === eventId);
+    const response = await apiGet<BackendSessionShort[]>('/sessions', { eventId });
+    return response.map(mapSession);
   },
 
   async getSessionById(id: string): Promise<Session> {
-    await delay();
-    const session = mockSessions.find(s => s.id === id);
-    if (!session) throw new Error('Сеанс не найден');
-    return session;
+    const response = await apiGet<BackendSessionDetails>(`/sessions/${id}`);
+    return mapSession(response);
   },
 
   async createSession(data: Partial<Session>): Promise<Session> {
-    await delay();
-    const session: Session = {
-      id: `s${Date.now()}`, eventId: data.eventId || '', date: data.date || '',
-      startTime: data.startTime || '', endTime: data.endTime || '',
-      maxParticipants: data.maxParticipants || 50, currentParticipants: 0,
-    };
-    mockSessions.push(session);
-    return session;
+    const response = await apiPost<BackendSessionDetails>('/sessions', buildSessionPayload(data));
+    return mapSession(response);
   },
 
   async updateSession(id: string, data: Partial<Session>): Promise<Session> {
-    await delay();
-    const idx = mockSessions.findIndex(s => s.id === id);
-    if (idx === -1) throw new Error('Сеанс не найден');
-    mockSessions[idx] = { ...mockSessions[idx], ...data };
-    return mockSessions[idx];
+    const response = await apiPut<BackendSessionDetails>(`/sessions/${id}`, buildSessionPayload(data));
+    return mapSession(response);
   },
 
   async deleteSession(id: string): Promise<void> {
-    await delay();
-    const idx = mockSessions.findIndex(s => s.id === id);
-    if (idx !== -1) mockSessions.splice(idx, 1);
+    await apiDelete(`/sessions/${id}`);
   },
 };

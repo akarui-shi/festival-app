@@ -66,6 +66,13 @@ public class ReviewService {
             .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<ReviewResponse> getAllForAdmin() {
+        return reviewRepository.findAllByOrderByCreatedAtDesc().stream()
+            .map(this::toResponse)
+            .toList();
+    }
+
     @Transactional
     public ReviewResponse update(Long reviewId, Integer rating, String text, String actorIdentifier) {
         User actor = loadActor(actorIdentifier);

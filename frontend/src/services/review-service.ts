@@ -1,51 +1,41 @@
 import type { Review } from '@/types';
-import { mockReviews, mockUsers } from '@/data/mock-data';
-
-const delay = (ms = 300) => new Promise(r => setTimeout(r, ms));
+import { apiDelete, apiGet, apiPost, apiPut } from './api-client';
+import type { BackendReview } from './api-mappers';
+import { mapReview } from './api-mappers';
 
 export const reviewService = {
   async getReviewsByEvent(eventId: string): Promise<Review[]> {
-    await delay();
-    return mockReviews.filter(r => r.eventId === eventId && r.status === 'APPROVED');
+    const response = await apiGet<BackendReview[]>(`/reviews/event/${eventId}`);
+    return response.map(mapReview);
   },
 
   async createReview(data: { userId: string; eventId: string; rating: number; comment: string }): Promise<Review> {
-    await delay();
-    const user = mockUsers.find(u => u.id === data.userId);
-    const review: Review = {
-      id: `rev${Date.now()}`, userId: data.userId, user, eventId: data.eventId,
-      rating: data.rating, comment: data.comment, status: 'PENDING',
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    };
-    mockReviews.push(review);
-    return review;
+    const response = await apiPost<BackendReview>('/reviews', {
+      eventId: Number(data.eventId),
+      rating: data.rating,
+      text: data.comment,
+    });
+    return mapReview(response);
   },
 
   async updateReview(id: string, data: { rating: number; comment: string }): Promise<Review> {
-    await delay();
-    const idx = mockReviews.findIndex(r => r.id === id);
-    if (idx === -1) throw new Error('Отзыв не найден');
-    mockReviews[idx] = { ...mockReviews[idx], ...data, updatedAt: new Date().toISOString() };
-    return mockReviews[idx];
+    const response = await apiPut<BackendReview>(`/reviews/${id}`, {
+      rating: data.rating,
+      text: data.comment,
+    });
+    return mapReview(response);
   },
 
   async deleteReview(id: string): Promise<void> {
-    await delay();
-    const idx = mockReviews.findIndex(r => r.id === id);
-    if (idx !== -1) mockReviews.splice(idx, 1);
+    await apiDelete(`/reviews/${id}`);
   },
 
-  // Admin
   async getAllReviews(): Promise<Review[]> {
-    await delay();
-    return [...mockReviews];
+    const response = await apiGet<BackendReview[]>('/admin/reviews');
+    return response.map(mapReview);
   },
 
-  async moderateReview(id: string, status: 'APPROVED' | 'REJECTED'): Promise<Review> {
-    await delay();
-    const idx = mockReviews.findIndex(r => r.id === id);
-    if (idx === -1) throw new Error('Отзыв не найден');
-    mockReviews[idx].status = status;
-    return mockReviews[idx];
+  async moderateReview(): Promise<Review> {
+    throw new Error('Модерация отзывов не поддерживается текущим API');
   },
 };

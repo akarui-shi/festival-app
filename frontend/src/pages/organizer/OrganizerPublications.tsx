@@ -26,7 +26,7 @@ export default function OrganizerPublications() {
 
   useEffect(() => {
     publicationService.getAllPublications().then(p => {
-      setPubs(p.filter(pub => pub.authorId === user?.id));
+      setPubs(p);
       setLoading(false);
     });
   }, [user]);

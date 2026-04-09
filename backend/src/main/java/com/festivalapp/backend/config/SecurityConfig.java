@@ -55,6 +55,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/events/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/categories", "/api/venues", "/api/cities").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/admin/reviews").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/sessions", "/api/sessions/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/sessions/*/registrations").hasAnyRole("ORGANIZER", "ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/organizer/analytics/**").hasRole("ORGANIZER")

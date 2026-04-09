@@ -82,7 +82,7 @@ export default function EventDetailPage() {
       const review = await reviewService.createReview({ userId: user.id, eventId: id, rating: newRating, comment: newComment });
       setReviews(prev => [review, ...prev]);
       setNewRating(0); setNewComment('');
-      toast.success('Отзыв отправлен на модерацию');
+      toast.success('Отзыв опубликован');
     } catch (e: any) { toast.error(e.message); }
     setSubmittingReview(false);
   };

@@ -1,65 +1,100 @@
-import type { User, AuthResponse, LoginRequest, RegisterRequest } from '@/types';
-import { mockUsers, MOCK_PASSWORDS } from '@/data/mock-data';
-import { setAuthToken, removeAuthToken } from './api-client';
-
-const delay = (ms = 400) => new Promise(r => setTimeout(r, ms));
+import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types';
+import { ApiError, apiGet, apiPost, apiPut, removeAuthToken, setAuthToken } from './api-client';
+import type { BackendAuthResponse, BackendCurrentUser } from './api-mappers';
+import { mapCurrentUser } from './api-mappers';
 
 const CURRENT_USER_KEY = 'current_user';
+const CURRENT_USER_LOGIN_KEY = 'current_user_login';
+
+function buildLoginFromEmail(email: string): string {
+  const localPart = email.split('@')[0] || 'user';
+  const normalized = localPart.toLowerCase().replace(/[^a-z0-9_]/g, '');
+  return `${normalized || 'user'}_${Date.now().toString().slice(-6)}`;
+}
+
+function persistUser(user: User, login: string, token?: string): void {
+  if (token) {
+    setAuthToken(token);
+  }
+  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+  localStorage.setItem(CURRENT_USER_LOGIN_KEY, login);
+}
+
+function clearSession(): void {
+  removeAuthToken();
+  localStorage.removeItem(CURRENT_USER_KEY);
+  localStorage.removeItem(CURRENT_USER_LOGIN_KEY);
+}
+
+function normalizeAuthResponse(response: BackendAuthResponse): AuthResponse {
+  const user = mapCurrentUser(response.user);
+  persistUser(user, response.user.login, response.token);
+  return { token: response.token, user };
+}
 
 export const authService = {
   async login(req: LoginRequest): Promise<AuthResponse> {
-    await delay();
-    const user = mockUsers.find(u => u.email === req.email);
-    if (!user || MOCK_PASSWORDS[req.email] !== req.password) {
-      throw new Error('Неверный email или пароль');
-    }
-    if (!user.active) throw new Error('Аккаунт деактивирован');
-    const token = `mock-token-${user.id}-${Date.now()}`;
-    setAuthToken(token);
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-    return { user, token };
+    const response = await apiPost<BackendAuthResponse>('/auth/login', {
+      loginOrEmail: req.email,
+      password: req.password,
+    });
+
+    return normalizeAuthResponse(response);
   },
 
   async register(req: RegisterRequest): Promise<AuthResponse> {
-    await delay();
-    if (mockUsers.find(u => u.email === req.email)) {
-      throw new Error('Пользователь с таким email уже существует');
-    }
-    const newUser: User = {
-      id: `u${Date.now()}`,
+    const response = await apiPost<BackendAuthResponse>('/auth/register', {
+      login: buildLoginFromEmail(req.email),
       email: req.email,
+      password: req.password,
       firstName: req.firstName,
       lastName: req.lastName,
       role: 'RESIDENT',
-      active: true,
-      createdAt: new Date().toISOString(),
-    };
-    mockUsers.push(newUser);
-    MOCK_PASSWORDS[req.email] = req.password;
-    const token = `mock-token-${newUser.id}-${Date.now()}`;
-    setAuthToken(token);
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(newUser));
-    return { user: newUser, token };
+    });
+
+    return normalizeAuthResponse(response);
   },
 
   async getCurrentUser(): Promise<User | null> {
-    await delay(100);
-    const stored = localStorage.getItem(CURRENT_USER_KEY);
-    if (!stored) return null;
-    try { return JSON.parse(stored); } catch { return null; }
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      return null;
+    }
+
+    try {
+      const response = await apiGet<BackendCurrentUser>('/users/me');
+      const user = mapCurrentUser(response);
+      persistUser(user, response.login);
+      return user;
+    } catch (error) {
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+        clearSession();
+        return null;
+      }
+      throw error;
+    }
   },
 
   async updateCurrentUser(data: Partial<User>): Promise<User> {
-    await delay();
-    const stored = localStorage.getItem(CURRENT_USER_KEY);
-    if (!stored) throw new Error('Не авторизован');
-    const user = { ...JSON.parse(stored), ...data };
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-    return user;
+    const current = await this.getCurrentUser();
+    if (!current) {
+      throw new Error('Не авторизован');
+    }
+
+    const login = localStorage.getItem(CURRENT_USER_LOGIN_KEY) || buildLoginFromEmail(current.email);
+    const response = await apiPut<BackendAuthResponse>('/users/me', {
+      login,
+      email: data.email ?? current.email,
+      firstName: data.firstName ?? current.firstName,
+      lastName: data.lastName ?? current.lastName,
+      phone: data.phone ?? current.phone ?? '',
+      avatarUrl: data.avatarUrl ?? current.avatarUrl ?? '',
+    });
+
+    return normalizeAuthResponse(response).user;
   },
 
   logout(): void {
-    removeAuthToken();
-    localStorage.removeItem(CURRENT_USER_KEY);
+    clearSession();
   },
 };

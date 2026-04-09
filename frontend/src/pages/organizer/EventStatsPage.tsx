@@ -68,7 +68,7 @@ export default function EventStatsPage() {
           <Calendar className="h-4 w-4 text-info mb-1" /><p className="text-xs text-muted-foreground">Сеансов</p><p className="text-xl font-bold">{stats.sessionsCount}</p>
         </div>
         <div className="p-4 rounded-xl border border-border bg-card">
-          <Clock className="h-4 w-4 text-success mb-1" /><p className="text-xs text-muted-foreground">Посетили</p><p className="text-xl font-bold">{stats.totalAttended}</p>
+          <Clock className="h-4 w-4 text-success mb-1" /><p className="text-xs text-muted-foreground">Активных участников</p><p className="text-xl font-bold">{stats.totalAttended}</p>
         </div>
       </div>
 

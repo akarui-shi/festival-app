@@ -69,6 +69,15 @@ public class PublicationService {
     }
 
     @Transactional(readOnly = true)
+    public List<PublicationShortResponse> getMine(String actorIdentifier) {
+        User actor = loadActor(actorIdentifier);
+
+        return publicationRepository.findAllByAuthorIdOrderByCreatedAtDesc(actor.getId()).stream()
+            .map(this::toShortResponse)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<PublicationShortResponse> getPublicList(Long eventId, String title) {
         Specification<Publication> specification = buildPublicSpecification(eventId, title);
         List<Publication> publications = publicationRepository.findAll(

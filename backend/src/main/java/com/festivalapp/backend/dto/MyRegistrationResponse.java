@@ -12,6 +12,7 @@ public class MyRegistrationResponse {
 
     private Long registrationId;
     private Long sessionId;
+    private Long eventId;
     private String eventTitle;
     private String sessionTitle;
     private String venueName;

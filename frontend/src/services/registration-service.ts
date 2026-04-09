@@ -1,37 +1,36 @@
 import type { Registration } from '@/types';
-import { mockRegistrations, mockEvents, mockSessions } from '@/data/mock-data';
-
-const delay = (ms = 300) => new Promise(r => setTimeout(r, ms));
+import { apiDelete, apiGet, apiPost } from './api-client';
+import type { BackendRegistration, BackendSessionRegistration } from './api-mappers';
+import { mapRegistration, mapSessionRegistration } from './api-mappers';
+import { sessionService } from './session-service';
 
 export const registrationService = {
-  async createRegistration(sessionId: string, userId: string): Promise<Registration> {
-    await delay();
-    const session = mockSessions.find(s => s.id === sessionId);
-    if (!session) throw new Error('Сеанс не найден');
-    if (session.currentParticipants >= session.maxParticipants) throw new Error('Все места заняты');
-    const event = mockEvents.find(e => e.id === session.eventId);
-    const reg: Registration = {
-      id: `r${Date.now()}`, userId, sessionId, eventId: session.eventId,
-      event, session, status: 'CONFIRMED', createdAt: new Date().toISOString(),
-    };
-    mockRegistrations.push(reg);
-    session.currentParticipants++;
-    return reg;
+  async createRegistration(sessionId: string, _userId: string): Promise<Registration> {
+    const response = await apiPost<BackendRegistration>('/registrations', {
+      sessionId: Number(sessionId),
+      quantity: 1,
+    });
+    return mapRegistration(response);
   },
 
-  async getMyRegistrations(userId: string): Promise<Registration[]> {
-    await delay();
-    return mockRegistrations.filter(r => r.userId === userId && r.status !== 'CANCELLED');
+  async getMyRegistrations(_userId: string): Promise<Registration[]> {
+    const response = await apiGet<BackendRegistration[]>('/registrations/my');
+    return response.map(mapRegistration);
   },
 
   async cancelRegistration(id: string): Promise<void> {
-    await delay();
-    const reg = mockRegistrations.find(r => r.id === id);
-    if (reg) reg.status = 'CANCELLED';
+    await apiDelete(`/registrations/${id}`);
   },
 
   async getRegistrationsByEvent(eventId: string): Promise<Registration[]> {
-    await delay();
-    return mockRegistrations.filter(r => r.eventId === eventId);
+    const sessions = await sessionService.getSessionsByEvent(eventId);
+    const response = await Promise.all(
+      sessions.map(async (session) => {
+        const registrations = await apiGet<BackendSessionRegistration[]>(`/sessions/${session.id}/registrations`);
+        return registrations.map((registration) => mapSessionRegistration(registration, session, eventId));
+      }),
+    );
+
+    return response.flat();
   },
 };

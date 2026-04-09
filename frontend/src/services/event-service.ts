@@ -1,83 +1,104 @@
 import type { Event, EventFilters, PaginatedResponse } from '@/types';
-import { mockEvents } from '@/data/mock-data';
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut, getAuthToken } from './api-client';
+import type { BackendEventDetails, BackendEventShort, BackendSessionShort } from './api-mappers';
+import { mapEventDetails, mapEventShort, mapSession, toBackendEventStatus } from './api-mappers';
 
-const delay = (ms = 300) => new Promise(r => setTimeout(r, ms));
+function buildEventPayload(data: Partial<Event>) {
+  return {
+    title: data.title,
+    shortDescription: data.shortDescription || undefined,
+    fullDescription: data.description || undefined,
+    venueId: data.venueId ? Number(data.venueId) : undefined,
+    categoryIds: data.categoryId ? [Number(data.categoryId)] : undefined,
+  };
+}
 
 export const eventService = {
   async getEvents(filters?: EventFilters): Promise<PaginatedResponse<Event>> {
-    await delay();
-    let events = mockEvents.filter(e => e.status === 'PUBLISHED');
+    const response = await apiGet<BackendEventShort[]>('/events', {
+      title: filters?.search,
+      categoryId: filters?.categoryId,
+      cityId: filters?.cityId,
+      dateFrom: filters?.startDate,
+      dateTo: filters?.endDate,
+      status: filters?.status ? toBackendEventStatus(filters.status) : undefined,
+    });
 
-    if (filters?.search) {
-      const s = filters.search.toLowerCase();
-      events = events.filter(e => e.title.toLowerCase().includes(s) || e.shortDescription.toLowerCase().includes(s));
+    let events = response.map(mapEventShort);
+    if (filters?.format) {
+      events = events.filter((event) => event.format === filters.format);
     }
-    if (filters?.categoryId) events = events.filter(e => e.categoryId === filters.categoryId);
-    if (filters?.cityId) events = events.filter(e => e.cityId === filters.cityId);
-    if (filters?.format) events = events.filter(e => e.format === filters.format);
 
     const page = filters?.page || 0;
     const size = filters?.size || 12;
     const start = page * size;
+
     return {
       content: events.slice(start, start + size),
       totalElements: events.length,
-      totalPages: Math.ceil(events.length / size),
-      page, size,
+      totalPages: Math.max(Math.ceil(events.length / size), 1),
+      page,
+      size,
     };
   },
 
   async getEventById(id: string): Promise<Event> {
-    await delay();
-    const event = mockEvents.find(e => e.id === id);
-    if (!event) throw new Error('Мероприятие не найдено');
-    return event;
+    const sessionsPromise = apiGet<BackendSessionShort[]>('/sessions', { eventId: id });
+
+    try {
+      const [eventResponse, sessionsResponse] = await Promise.all([
+        apiGet<BackendEventDetails>(`/events/${id}`),
+        sessionsPromise,
+      ]);
+
+      return mapEventDetails(eventResponse, sessionsResponse.map(mapSession));
+    } catch (error) {
+      if (!getAuthToken()) {
+        throw error;
+      }
+
+      const [eventResponse, sessionsResponse] = await Promise.all([
+        apiGet<BackendEventDetails>(`/organizer/events/${id}`),
+        sessionsPromise,
+      ]);
+
+      return mapEventDetails(eventResponse, sessionsResponse.map(mapSession));
+    }
   },
 
   async getRecommendations(): Promise<Event[]> {
-    await delay();
-    return mockEvents.filter(e => e.status === 'PUBLISHED').slice(0, 4);
+    const response = await apiGet<BackendEventShort[]>('/events/recommendations', { limit: 4 });
+    return response.map(mapEventShort);
   },
 
   async createEvent(data: Partial<Event>): Promise<Event> {
-    await delay();
-    const event: Event = {
-      id: `e${Date.now()}`, title: data.title || '', description: data.description || '',
-      shortDescription: data.shortDescription || '', imageUrl: '', categoryId: data.categoryId || '',
-      venueId: data.venueId || '', cityId: data.cityId || '', organizerId: data.organizerId || '',
-      format: data.format || 'OFFLINE', status: 'DRAFT',
-      startDate: data.startDate || '', endDate: data.endDate || '',
-      isFree: data.isFree ?? true, price: data.price, tags: data.tags || [],
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-      sessionsCount: 0, registrationsCount: 0, averageRating: 0, reviewsCount: 0,
-    };
-    mockEvents.push(event);
-    return event;
+    const response = await apiPost<BackendEventShort>('/events', buildEventPayload(data));
+    return mapEventShort(response);
   },
 
   async updateEvent(id: string, data: Partial<Event>): Promise<Event> {
-    await delay();
-    const idx = mockEvents.findIndex(e => e.id === id);
-    if (idx === -1) throw new Error('Мероприятие не найдено');
-    mockEvents[idx] = { ...mockEvents[idx], ...data, updatedAt: new Date().toISOString() };
-    return mockEvents[idx];
+    if (data.status && Object.keys(data).length === 1) {
+      const response = await apiPatch<BackendEventShort>(`/admin/events/${id}/status`, {
+        status: toBackendEventStatus(data.status),
+      });
+      return mapEventShort(response);
+    }
+
+    const response = await apiPut<BackendEventShort>(`/events/${id}`, buildEventPayload(data));
+    return mapEventShort(response);
   },
 
   async deleteEvent(id: string): Promise<void> {
-    await delay();
-    const idx = mockEvents.findIndex(e => e.id === id);
-    if (idx !== -1) mockEvents.splice(idx, 1);
+    await apiDelete(`/events/${id}`);
   },
 
-  // Admin
   async getAllEvents(): Promise<Event[]> {
-    await delay();
-    return [...mockEvents];
+    const response = await apiGet<BackendEventShort[]>('/admin/events');
+    return response.map(mapEventShort);
   },
 
-  // Organizer
-  async getOrganizerEvents(organizerId: string): Promise<Event[]> {
-    await delay();
-    return mockEvents.filter(e => e.organizerId === organizerId);
+  async getOrganizerEvents(_organizerId: string): Promise<Event[]> {
+    const response = await apiGet<BackendEventShort[]>('/organizer/events');
+    return response.map(mapEventShort);
   },
 };
