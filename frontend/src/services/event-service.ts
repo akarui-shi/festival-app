@@ -3,13 +3,61 @@ import { apiDelete, apiGet, apiPatch, apiPost, apiPut, getAuthToken } from './ap
 import type { BackendEventDetails, BackendEventShort, BackendSessionShort } from './api-mappers';
 import { mapEventDetails, mapEventShort, mapSession, toBackendEventStatus } from './api-mappers';
 
-function buildEventPayload(data: Partial<Event>) {
+interface EventImagePayload {
+  imageUrl: string;
+  isCover?: boolean;
+  sortOrder?: number;
+}
+
+export interface EventUpsertPayload extends Partial<Event> {
+  categoryIds?: Array<string | number>;
+  venueAddress?: string;
+  venueLatitude?: number;
+  venueLongitude?: number;
+  venueCityId?: string | number;
+  venueCityName?: string;
+  venueRegion?: string;
+  venueCountry?: string;
+  venueName?: string;
+  venueContacts?: string;
+  venueCapacity?: number;
+  coverUrl?: string;
+  eventImages?: EventImagePayload[];
+}
+
+function toNumber(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === '') {
+    return undefined;
+  }
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : undefined;
+}
+
+function buildEventPayload(data: EventUpsertPayload) {
+  const categoryIds = (data.categoryIds && data.categoryIds.length > 0
+    ? data.categoryIds
+    : data.categoryId ? [data.categoryId] : [])
+    .map(toNumber)
+    .filter((value): value is number => value !== undefined);
+
   return {
     title: data.title,
     shortDescription: data.shortDescription || undefined,
     fullDescription: data.description || undefined,
-    venueId: data.venueId ? Number(data.venueId) : undefined,
-    categoryIds: data.categoryId ? [Number(data.categoryId)] : undefined,
+    venueId: toNumber(data.venueId),
+    venueAddress: data.venueAddress || undefined,
+    venueLatitude: toNumber(data.venueLatitude),
+    venueLongitude: toNumber(data.venueLongitude),
+    venueCityId: toNumber(data.venueCityId),
+    venueCityName: data.venueCityName || undefined,
+    venueRegion: data.venueRegion || undefined,
+    venueCountry: data.venueCountry || undefined,
+    venueName: data.venueName || undefined,
+    venueContacts: data.venueContacts || undefined,
+    venueCapacity: toNumber(data.venueCapacity),
+    coverUrl: data.coverUrl || undefined,
+    eventImages: data.eventImages?.length ? data.eventImages : undefined,
+    categoryIds: categoryIds.length ? categoryIds : undefined,
   };
 }
 
@@ -71,12 +119,12 @@ export const eventService = {
     return response.map(mapEventShort);
   },
 
-  async createEvent(data: Partial<Event>): Promise<Event> {
+  async createEvent(data: EventUpsertPayload): Promise<Event> {
     const response = await apiPost<BackendEventShort>('/events', buildEventPayload(data));
     return mapEventShort(response);
   },
 
-  async updateEvent(id: string, data: Partial<Event>): Promise<Event> {
+  async updateEvent(id: string, data: EventUpsertPayload): Promise<Event> {
     if (data.status && Object.keys(data).length === 1) {
       const response = await apiPatch<BackendEventShort>(`/admin/events/${id}/status`, {
         status: toBackendEventStatus(data.status),

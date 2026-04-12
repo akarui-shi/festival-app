@@ -17,23 +17,53 @@ export default function EventsCatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState<Event[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [categoryId, setCategoryId] = useState(searchParams.get('category') || '');
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      eventService.getEvents({ size: 60 }),
-      directoryService.getCategories(),
-    ])
-      .then(([eventsResponse, categoriesResponse]) => {
-        setEvents(eventsResponse.content);
+    let active = true;
+    setCategoriesLoading(true);
+
+    directoryService
+      .getCategories()
+      .then((categoriesResponse) => {
+        if (!active) return;
         setCategories(categoriesResponse);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (active) setCategoriesLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    setEventsLoading(true);
+
+    eventService
+      .getEvents({
+        size: 400,
+        cityId: selectedCity?.id || undefined,
+      })
+      .then((eventsResponse) => {
+        if (!active) return;
+        setEvents(eventsResponse.content);
+      })
+      .finally(() => {
+        if (active) setEventsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedCity?.id]);
 
   useEffect(() => {
     const nextParams: Record<string, string> = {};
@@ -41,22 +71,39 @@ export default function EventsCatalogPage() {
     if (search) nextParams.search = search;
     if (categoryId) nextParams.category = categoryId;
 
-    setSearchParams(nextParams);
+    setSearchParams(nextParams, { replace: true });
   }, [search, categoryId, setSearchParams]);
 
   const filteredEvents = useMemo(() => {
+    const searchTerms = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+
     return events.filter((event) => {
-      const normalizedSearch = search.trim().toLowerCase();
-      const matchesSearch =
-        normalizedSearch.length === 0
-        || event.title.toLowerCase().includes(normalizedSearch)
-        || event.shortDescription.toLowerCase().includes(normalizedSearch);
+      const searchableText = [
+        event.title,
+        event.shortDescription,
+        event.description,
+        event.category?.name,
+        event.city?.name,
+        ...event.tags,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      const matchesSearch = searchTerms.length === 0 || searchTerms.every((term) => searchableText.includes(term));
       const matchesCategory = !categoryId || event.categoryId === categoryId;
-      const matchesCity = !selectedCity || event.cityId === selectedCity.id;
+      const matchesCity = !selectedCity
+        || event.cityId === selectedCity.id
+        || (event.cityId === '' && event.city?.name?.toLowerCase() === selectedCity.name.toLowerCase());
 
       return matchesSearch && matchesCategory && matchesCity;
     });
   }, [events, search, categoryId, selectedCity]);
+
+  const loading = eventsLoading || categoriesLoading;
+  const selectedCityLabel = selectedCity
+    ? `${selectedCity.name}${selectedCity.region ? `, ${selectedCity.region}` : ''}`
+    : '';
 
   const hasFilters = Boolean(search || categoryId);
 
@@ -80,7 +127,7 @@ export default function EventsCatalogPage() {
           <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Мероприятия</h1>
           <p className="mt-1 text-muted-foreground">
             {selectedCity
-              ? `Подборка мероприятий в городе ${selectedCity.name}`
+              ? `Подборка мероприятий: ${selectedCityLabel}`
               : 'Найдите интересные культурные события рядом с вами'}
           </p>
         </div>
@@ -91,7 +138,7 @@ export default function EventsCatalogPage() {
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Поиск мероприятий..."
+              placeholder="Поиск мероприятий…"
               className="pl-9"
             />
           </div>
@@ -153,7 +200,7 @@ export default function EventsCatalogPage() {
             icon={Search}
             title="Нет мероприятий"
             description={selectedCity
-              ? `В городе ${selectedCity.name} пока нет подходящих мероприятий`
+              ? `Для города ${selectedCityLabel} пока нет подходящих мероприятий`
               : 'Попробуйте изменить параметры поиска'}
           />
         )}

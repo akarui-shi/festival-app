@@ -322,7 +322,7 @@ export default function EventDetailPage() {
                     placeholder="Поделитесь впечатлениями"
                   />
                   <Button className="mt-3" size="sm" onClick={submitReview} disabled={!newRating || submittingReview}>
-                    {submittingReview ? 'Отправка...' : 'Отправить отзыв'}
+                    {submittingReview ? 'Отправка…' : 'Отправить отзыв'}
                   </Button>
                 </div>
               )}
@@ -391,6 +391,7 @@ export default function EventDetailPage() {
                   <Button
                     variant="outline"
                     size="icon"
+                    aria-label="Скопировать ссылку на мероприятие"
                     onClick={() => {
                       navigator.clipboard.writeText(window.location.href);
                       toast.success('Ссылка скопирована');

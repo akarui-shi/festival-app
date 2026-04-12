@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { organizerService } from '@/services/organizer-service';
 import { LoadingState } from '@/components/StateDisplays';
 import { EmptyState } from '@/components/EmptyState';
+import { Button } from '@/components/ui/button';
 import type { OrganizerOverview } from '@/types';
 
 export default function OrganizerDashboard() {
@@ -33,29 +34,29 @@ export default function OrganizerDashboard() {
     <div className="space-y-8">
       <section className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Обзор</h1>
+          <h1 className="page-title">Обзор</h1>
           <p className="mt-1 text-muted-foreground">Краткая статистика ваших мероприятий</p>
         </div>
-        <Link to="/organizer/events/create" className="inline-flex">
-          <span className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted">
+        <Button asChild variant="outline">
+          <Link to="/organizer/events/create">
             Создать мероприятие
-          </span>
-        </Link>
+          </Link>
+        </Button>
       </section>
 
       <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {stats.map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-border bg-card p-5 shadow-soft">
-            <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+          <div key={stat.label} className="metric-card">
+            <div className="metric-icon">
               <stat.icon className={`h-4 w-4 ${stat.color}`} />
             </div>
-            <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+            <p className="text-2xl font-semibold text-foreground">{stat.value}</p>
             <p className="mt-1 text-xs text-muted-foreground">{stat.label}</p>
           </div>
         ))}
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-6 shadow-card">
+      <section className="surface-panel">
         <h2 className="font-heading text-2xl text-foreground">Топ мероприятий</h2>
         <div className="mt-4 space-y-2">
           {overview.topEvents.length === 0 && (
@@ -66,7 +67,7 @@ export default function OrganizerDashboard() {
             <Link
               key={event.eventId}
               to={`/organizer/events/${event.eventId}/stats`}
-              className="flex flex-col gap-3 rounded-xl border border-border bg-background/60 p-4 transition-colors hover:bg-muted/60 sm:flex-row sm:items-center sm:justify-between"
+              className="surface-row flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
                 <p className="font-medium text-foreground">{event.eventTitle}</p>

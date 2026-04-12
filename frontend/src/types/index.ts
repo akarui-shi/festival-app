@@ -51,6 +51,8 @@ export interface Venue {
   city?: City;
   capacity?: number;
   description?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export type EventStatus = 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'CANCELLED';
@@ -62,6 +64,7 @@ export interface Event {
   description: string;
   shortDescription: string;
   imageUrl: string;
+  imageUrls?: string[];
   categoryId: string;
   category?: Category;
   venueId: string;

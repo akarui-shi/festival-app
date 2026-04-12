@@ -133,7 +133,7 @@ export default function RegisterPage() {
               {error && <p className="text-sm text-destructive">{error}</p>}
 
               <Button className="w-full" type="submit" disabled={loading}>
-                {loading ? 'Регистрация...' : 'Зарегистрироваться'}
+                {loading ? 'Регистрация…' : 'Зарегистрироваться'}
               </Button>
             </form>
 

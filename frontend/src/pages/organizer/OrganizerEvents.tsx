@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart3, Calendar, Edit, Eye, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmActionDialog } from '@/components/ConfirmActionDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { eventService } from '@/services/event-service';
 import { LoadingState } from '@/components/StateDisplays';
@@ -22,6 +23,7 @@ export default function OrganizerEvents() {
   const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -32,10 +34,10 @@ export default function OrganizerEvents() {
   }, [user]);
 
   const del = async (id: string) => {
-    if (!confirm('Удалить мероприятие?')) return;
     await eventService.deleteEvent(id);
     setEvents((prev) => prev.filter((event) => event.id !== id));
     toast.success('Мероприятие удалено');
+    setEventToDelete(null);
   };
 
   if (loading) return <LoadingState />;
@@ -54,6 +56,23 @@ export default function OrganizerEvents() {
           </Link>
         </Button>
       </div>
+
+      <ConfirmActionDialog
+        open={Boolean(eventToDelete)}
+        onOpenChange={(open) => {
+          if (!open) setEventToDelete(null);
+        }}
+        title="Удалить мероприятие?"
+        description={eventToDelete
+          ? `Мероприятие «${eventToDelete.title}» будет удалено без возможности восстановления.`
+          : ''}
+        confirmLabel="Удалить"
+        onConfirm={() => {
+          if (eventToDelete) {
+            return del(eventToDelete.id);
+          }
+        }}
+      />
 
       {events.length === 0 ? (
         <div className="space-y-4">
@@ -87,20 +106,29 @@ export default function OrganizerEvents() {
                 <div className="flex items-center gap-1">
                   <Button variant="ghost" size="icon" asChild>
                     <Link to={`/events/${event.id}`}>
+                      <span className="sr-only">Открыть страницу мероприятия</span>
                       <Eye className="h-4 w-4" />
                     </Link>
                   </Button>
                   <Button variant="ghost" size="icon" asChild>
                     <Link to={`/organizer/events/${event.id}/edit`}>
+                      <span className="sr-only">Редактировать мероприятие</span>
                       <Edit className="h-4 w-4" />
                     </Link>
                   </Button>
                   <Button variant="ghost" size="icon" asChild>
                     <Link to={`/organizer/events/${event.id}/stats`}>
+                      <span className="sr-only">Открыть статистику</span>
                       <BarChart3 className="h-4 w-4" />
                     </Link>
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => del(event.id)} className="text-destructive">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setEventToDelete(event)}
+                    className="text-destructive"
+                    aria-label="Удалить мероприятие"
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>

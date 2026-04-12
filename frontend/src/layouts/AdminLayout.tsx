@@ -101,6 +101,7 @@ export function AdminLayout() {
                 <Button
                   variant="ghost"
                   size="icon"
+                  aria-label="Выйти из аккаунта"
                   onClick={() => {
                     logout();
                     navigate('/');
@@ -129,6 +130,7 @@ export function AdminLayout() {
                 <button
                   type="button"
                   onClick={() => setSidebarOpen((prev) => !prev)}
+                  aria-label={sidebarOpen ? 'Закрыть меню' : 'Открыть меню'}
                   className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card md:hidden"
                 >
                   {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}

@@ -61,36 +61,69 @@ export function PublicLayout({ children }: { children: ReactNode }) {
     return links;
   }, [isAdmin, isOrganizer]);
 
-  const cityNameCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    cities.forEach((city) => {
-      counts.set(city.name, (counts.get(city.name) || 0) + 1);
-    });
-    return counts;
-  }, [cities]);
-
-  const getCityDisambiguator = (city: { region?: string; country?: string; id: string }) =>
-    city.region || city.country || `id ${city.id}`;
+  const getCityRegionLabel = (city: { region?: string; country?: string; id: string }) =>
+    city.region || city.country || 'Регион не указан';
 
   const getCityLabel = (city: { id: string; name: string; region?: string; country?: string }) => {
-    if ((cityNameCounts.get(city.name) || 0) <= 1) return city.name;
-    return `${city.name}, ${getCityDisambiguator(city)}`;
+    const regionLabel = getCityRegionLabel(city);
+    return `${city.name}, ${regionLabel}`;
   };
 
   const cityLabel = cityLoading
-    ? 'Загрузка...'
-    : selectedCity ? getCityLabel(selectedCity) : 'Выберите город';
+    ? 'Загрузка…'
+    : selectedCity ? selectedCity.name : 'Выберите город';
   const requiresCitySelection = !cityLoading && !selectedCity && cities.length > 0;
-  const citySearchTerms = citySearch
-    .trim()
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean);
-  const visibleCities = cities.filter((city) => {
-    if (citySearchTerms.length === 0) return true;
-    const normalizedSearchBase = `${city.name} ${city.region || ''} ${city.country || ''}`.toLowerCase();
-    return citySearchTerms.every((term) => normalizedSearchBase.includes(term));
-  });
+  const visibleCities = useMemo(() => {
+    const normalizedQuery = citySearch.trim().toLowerCase();
+    const terms = normalizedQuery.split(/\s+/).filter(Boolean);
+
+    const withScore = cities
+      .map((city) => {
+        const name = city.name.toLowerCase();
+        const region = `${city.region || ''} ${city.country || ''}`.trim().toLowerCase();
+        const full = `${name} ${region}`.trim();
+        const matchesByName = terms.length === 0 || terms.every((term) => name.includes(term));
+        const matchesByRegion = terms.length > 0 && terms.every((term) => region.includes(term));
+        const matchesByFull = terms.length > 0 && terms.every((term) => full.includes(term));
+
+        if (!matchesByName && !matchesByRegion && !matchesByFull) {
+          return null;
+        }
+
+        let score = 0;
+        if (normalizedQuery.length > 0) {
+          if (name === normalizedQuery) {
+            score = 0;
+          } else if (name.startsWith(normalizedQuery)) {
+            score = 1;
+          } else if (terms.every((term) => name.includes(term))) {
+            score = 2;
+          } else if (full.startsWith(normalizedQuery)) {
+            score = 3;
+          } else if (full.includes(normalizedQuery) && name.includes(normalizedQuery)) {
+            score = 4;
+          } else if (region.startsWith(normalizedQuery)) {
+            score = 5;
+          } else if (terms.every((term) => region.includes(term))) {
+            score = 6;
+          } else {
+            score = 7;
+          }
+        }
+
+        return { city, score };
+      })
+      .filter((item): item is { city: typeof cities[number]; score: number } => item !== null);
+
+    withScore.sort((left, right) => {
+      if (left.score !== right.score) return left.score - right.score;
+      const nameCompare = left.city.name.localeCompare(right.city.name, 'ru');
+      if (nameCompare !== 0) return nameCompare;
+      return getCityRegionLabel(left.city).localeCompare(getCityRegionLabel(right.city), 'ru');
+    });
+
+    return withScore.map((item) => item.city);
+  }, [cities, citySearch]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -136,7 +169,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
                       <Input
                         value={citySearch}
                         onChange={(event) => setCitySearch(event.target.value)}
-                        placeholder="Поиск города..."
+                        placeholder="Поиск города…"
                         className="h-9 w-64 pl-8 text-sm"
                       />
                     </div>
@@ -205,12 +238,22 @@ export function PublicLayout({ children }: { children: ReactNode }) {
             {isAuthenticated ? (
               <>
                 <Link to="/favorites">
-                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-primary"
+                    aria-label="Открыть избранное"
+                  >
                     <Heart className="h-5 w-5" />
                   </Button>
                 </Link>
                 <Link to="/registrations">
-                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-primary"
+                    aria-label="Открыть мои записи"
+                  >
                     <Calendar className="h-5 w-5" />
                   </Button>
                 </Link>
@@ -224,6 +267,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
                   variant="ghost"
                   size="icon"
                   className="text-muted-foreground hover:text-destructive"
+                  aria-label="Выйти из аккаунта"
                   onClick={() => {
                     logout();
                     navigate('/');
@@ -245,6 +289,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => setMobileOpen((prev) => !prev)}
+            aria-label={mobileOpen ? 'Закрыть меню' : 'Открыть меню'}
             className="flex h-9 w-9 items-center justify-center rounded-lg text-foreground md:hidden"
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -333,7 +378,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
                 <Input
                   value={citySearch}
                   onChange={(event) => setCitySearch(event.target.value)}
-                  placeholder="Поиск города..."
+                  placeholder="Поиск города…"
                   className="h-10 pl-8 text-sm"
                 />
               </div>
