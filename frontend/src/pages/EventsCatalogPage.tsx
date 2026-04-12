@@ -7,32 +7,30 @@ import { EventCard } from '@/components/EventCard';
 import { EmptyState } from '@/components/EmptyState';
 import { LoadingState } from '@/components/StateDisplays';
 import { PublicLayout } from '@/layouts/PublicLayout';
+import { useCity } from '@/contexts/CityContext';
 import { eventService } from '@/services/event-service';
 import { directoryService } from '@/services/directory-service';
-import type { Category, City, Event } from '@/types';
+import type { Category, Event } from '@/types';
 
 export default function EventsCatalogPage() {
+  const { selectedCity } = useCity();
   const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState<Event[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [cities, setCities] = useState<City[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [categoryId, setCategoryId] = useState(searchParams.get('category') || '');
-  const [cityId, setCityId] = useState(searchParams.get('city') || '');
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     Promise.all([
       eventService.getEvents({ size: 60 }),
       directoryService.getCategories(),
-      directoryService.getCities(),
     ])
-      .then(([eventsResponse, categoriesResponse, citiesResponse]) => {
+      .then(([eventsResponse, categoriesResponse]) => {
         setEvents(eventsResponse.content);
         setCategories(categoriesResponse);
-        setCities(citiesResponse);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -42,10 +40,9 @@ export default function EventsCatalogPage() {
 
     if (search) nextParams.search = search;
     if (categoryId) nextParams.category = categoryId;
-    if (cityId) nextParams.city = cityId;
 
     setSearchParams(nextParams);
-  }, [search, categoryId, cityId, setSearchParams]);
+  }, [search, categoryId, setSearchParams]);
 
   const filteredEvents = useMemo(() => {
     return events.filter((event) => {
@@ -55,18 +52,17 @@ export default function EventsCatalogPage() {
         || event.title.toLowerCase().includes(normalizedSearch)
         || event.shortDescription.toLowerCase().includes(normalizedSearch);
       const matchesCategory = !categoryId || event.categoryId === categoryId;
-      const matchesCity = !cityId || event.cityId === cityId;
+      const matchesCity = !selectedCity || event.cityId === selectedCity.id;
 
       return matchesSearch && matchesCategory && matchesCity;
     });
-  }, [events, search, categoryId, cityId]);
+  }, [events, search, categoryId, selectedCity]);
 
-  const hasFilters = Boolean(search || categoryId || cityId);
+  const hasFilters = Boolean(search || categoryId);
 
   const clearFilters = () => {
     setSearch('');
     setCategoryId('');
-    setCityId('');
   };
 
   if (loading) {
@@ -82,7 +78,11 @@ export default function EventsCatalogPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Мероприятия</h1>
-          <p className="mt-1 text-muted-foreground">Найдите интересные культурные события рядом с вами</p>
+          <p className="mt-1 text-muted-foreground">
+            {selectedCity
+              ? `Подборка мероприятий в городе ${selectedCity.name}`
+              : 'Найдите интересные культурные события рядом с вами'}
+          </p>
         </div>
 
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -135,35 +135,6 @@ export default function EventsCatalogPage() {
             ))}
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setCityId('')}
-              className={`rounded-full border px-3.5 py-1.5 text-sm transition-all ${
-                cityId === ''
-                  ? 'border-primary bg-primary/10 font-semibold text-primary'
-                  : 'border-border bg-card text-muted-foreground hover:border-primary/40'
-              }`}
-            >
-              Все города
-            </button>
-
-            {cities.map((city) => (
-              <button
-                type="button"
-                key={city.id}
-                onClick={() => setCityId(city.id)}
-                className={`rounded-full border px-3.5 py-1.5 text-sm transition-all ${
-                  cityId === city.id
-                    ? 'border-primary bg-primary/10 font-semibold text-primary'
-                    : 'border-border bg-card text-muted-foreground hover:border-primary/40'
-                }`}
-              >
-                {city.name}
-              </button>
-            ))}
-          </div>
-
           {hasFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 text-muted-foreground">
               Сбросить фильтры
@@ -181,7 +152,9 @@ export default function EventsCatalogPage() {
           <EmptyState
             icon={Search}
             title="Нет мероприятий"
-            description="Попробуйте изменить параметры поиска или выбрать другой город"
+            description={selectedCity
+              ? `В городе ${selectedCity.name} пока нет подходящих мероприятий`
+              : 'Попробуйте изменить параметры поиска'}
           />
         )}
       </div>

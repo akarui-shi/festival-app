@@ -420,6 +420,7 @@ export function mapCity(dto: BackendCity): City {
     id: toId(dto.id),
     name: dto.name,
     region: dto.region || undefined,
+    country: dto.country || undefined,
   };
 }
 
