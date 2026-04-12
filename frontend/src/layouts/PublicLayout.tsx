@@ -9,23 +9,25 @@ import {
   LogOut,
   MapPin,
   Menu,
+  Search,
   Shield,
   User,
   X,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCity } from '@/contexts/CityContext';
 import { Button } from '@/components/ui/button';
-
-const cityOptions = ['Суздаль', 'Ярославль', 'Кострома', 'Переславль-Залесский', 'Ростов'];
+import { Input } from '@/components/ui/input';
 
 export function PublicLayout({ children }: { children: ReactNode }) {
   const { user, isAuthenticated, isOrganizer, isAdmin, logout } = useAuth();
+  const { cities, selectedCity, loading: cityLoading, setSelectedCityById } = useCity();
   const location = useLocation();
   const navigate = useNavigate();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cityOpen, setCityOpen] = useState(false);
-  const [selectedCity, setSelectedCity] = useState(cityOptions[0]);
+  const [citySearch, setCitySearch] = useState('');
 
   const navLinks = useMemo(() => {
     const baseLinks = [
@@ -59,54 +61,112 @@ export function PublicLayout({ children }: { children: ReactNode }) {
     return links;
   }, [isAdmin, isOrganizer]);
 
+  const cityNameCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    cities.forEach((city) => {
+      counts.set(city.name, (counts.get(city.name) || 0) + 1);
+    });
+    return counts;
+  }, [cities]);
+
+  const getCityDisambiguator = (city: { region?: string; country?: string; id: string }) =>
+    city.region || city.country || `id ${city.id}`;
+
+  const getCityLabel = (city: { id: string; name: string; region?: string; country?: string }) => {
+    if ((cityNameCounts.get(city.name) || 0) <= 1) return city.name;
+    return `${city.name}, ${getCityDisambiguator(city)}`;
+  };
+
+  const cityLabel = cityLoading
+    ? 'Загрузка...'
+    : selectedCity ? getCityLabel(selectedCity) : 'Выберите город';
+  const requiresCitySelection = !cityLoading && !selectedCity && cities.length > 0;
+  const citySearchTerms = citySearch
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+  const visibleCities = cities.filter((city) => {
+    if (citySearchTerms.length === 0) return true;
+    const normalizedSearchBase = `${city.name} ${city.region || ''} ${city.country || ''}`.toLowerCase();
+    return citySearchTerms.every((term) => normalizedSearchBase.includes(term));
+  });
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-              <span className="font-heading text-lg text-primary-foreground">К</span>
-            </div>
-            <span className="hidden font-heading text-xl text-foreground sm:block">Культура</span>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link to="/" className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+                <span className="font-heading text-lg text-primary-foreground">К</span>
+              </div>
+              <span className="hidden font-heading text-xl text-foreground sm:block">Культура</span>
+            </Link>
 
-          <div className="relative hidden md:block">
-            <button
-              type="button"
-              onClick={() => setCityOpen((prev) => !prev)}
-              className="flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1.5 text-sm font-body text-foreground transition-all hover:border-primary/40 hover:shadow-soft"
-            >
-              <MapPin className="h-3.5 w-3.5 text-primary" />
-              <span>{selectedCity}</span>
-              <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${cityOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {cityOpen && (
-              <>
-                <button
-                  type="button"
-                  aria-label="Закрыть список городов"
-                  className="fixed inset-0 z-40 cursor-default"
-                  onClick={() => setCityOpen(false)}
-                />
-                <div className="absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 rounded-xl border border-border bg-card p-1.5 shadow-card">
-                  {cityOptions.map((city) => (
-                    <button
-                      type="button"
-                      key={city}
-                      onClick={() => {
-                        setSelectedCity(city);
-                        setCityOpen(false);
-                      }}
-                      className={`block w-full rounded-lg px-4 py-2 text-left text-sm transition-colors hover:bg-muted ${
-                        selectedCity === city ? 'bg-primary/10 font-semibold text-primary' : 'text-foreground'
-                      }`}
-                    >
-                      {city}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
+            <div className="relative hidden sm:block">
+              <button
+                type="button"
+                onClick={() => {
+                  setCityOpen((prev) => !prev);
+                  setCitySearch('');
+                }}
+                disabled={cityLoading || cities.length === 0}
+                className="flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1.5 text-sm font-body text-foreground transition-all hover:border-primary/40 hover:shadow-soft"
+              >
+                <MapPin className="h-3.5 w-3.5 text-primary" />
+                <span className="max-w-28 truncate">{cityLabel}</span>
+                <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${cityOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {cityOpen && (
+                <>
+                  <button
+                    type="button"
+                    aria-label="Закрыть список городов"
+                    className="fixed inset-0 z-40 cursor-default"
+                    onClick={() => {
+                      if (requiresCitySelection) return;
+                      setCityOpen(false);
+                      setCitySearch('');
+                    }}
+                  />
+                  <div className="absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 rounded-xl border border-border bg-card p-1.5 shadow-card">
+                    <div className="relative mb-1.5">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        value={citySearch}
+                        onChange={(event) => setCitySearch(event.target.value)}
+                        placeholder="Поиск города..."
+                        className="h-9 w-64 pl-8 text-sm"
+                      />
+                    </div>
+
+                    <div className="max-h-64 overflow-auto">
+                      {visibleCities.length === 0 && (
+                        <p className="px-4 py-3 text-sm text-muted-foreground">Ничего не найдено</p>
+                      )}
+
+                      {visibleCities.map((city) => (
+                        <button
+                          type="button"
+                          key={city.id}
+                          onClick={() => {
+                            setSelectedCityById(city.id);
+                            setCityOpen(false);
+                            setCitySearch('');
+                          }}
+                          className={`block w-full rounded-lg px-4 py-2 text-left text-sm transition-colors hover:bg-muted ${
+                            selectedCity?.id === city.id ? 'bg-primary/10 font-semibold text-primary' : 'text-foreground'
+                          }`}
+                        >
+                          {getCityLabel(city)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           <nav className="hidden items-center gap-1 lg:flex">
@@ -259,6 +319,46 @@ export function PublicLayout({ children }: { children: ReactNode }) {
       </header>
 
       <main className="flex-1">{children}</main>
+
+      {requiresCitySelection && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-foreground/40 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-card">
+            <h2 className="font-heading text-2xl text-foreground">Выберите ваш город</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Мы покажем мероприятия именно для выбранного города.
+            </p>
+            <div className="mt-4 max-h-72 space-y-2 overflow-auto">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={citySearch}
+                  onChange={(event) => setCitySearch(event.target.value)}
+                  placeholder="Поиск города..."
+                  className="h-10 pl-8 text-sm"
+                />
+              </div>
+
+              {visibleCities.length === 0 && (
+                <p className="px-1 py-3 text-sm text-muted-foreground">Ничего не найдено</p>
+              )}
+
+              {visibleCities.map((city) => (
+                <button
+                  key={city.id}
+                  type="button"
+                  className="w-full rounded-xl border border-border px-4 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted"
+                  onClick={() => {
+                    setSelectedCityById(city.id);
+                    setCitySearch('');
+                  }}
+                >
+                  {getCityLabel(city)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <footer className="border-t border-border bg-muted/50">
         <div className="container mx-auto px-4 py-10">

@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { CityProvider } from "@/contexts/CityContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 import HomePage from "./pages/HomePage";
@@ -43,42 +44,44 @@ const App = () => (
       <Toaster />
       <Sonner />
       <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/events" element={<EventsCatalogPage />} />
-            <Route path="/events/:id" element={<EventDetailPage />} />
-            <Route path="/publications" element={<PublicationsPage />} />
-            <Route path="/publications/:id" element={<PublicationDetailPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+        <CityProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/events" element={<EventsCatalogPage />} />
+              <Route path="/events/:id" element={<EventDetailPage />} />
+              <Route path="/publications" element={<PublicationsPage />} />
+              <Route path="/publications/:id" element={<PublicationDetailPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
 
-            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-            <Route path="/favorites" element={<ProtectedRoute><FavoritesPage /></ProtectedRoute>} />
-            <Route path="/registrations" element={<ProtectedRoute><RegistrationsPage /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+              <Route path="/favorites" element={<ProtectedRoute><FavoritesPage /></ProtectedRoute>} />
+              <Route path="/registrations" element={<ProtectedRoute><RegistrationsPage /></ProtectedRoute>} />
 
-            <Route path="/organizer" element={<ProtectedRoute roles={['ORGANIZER']}><OrganizerLayout /></ProtectedRoute>}>
-              <Route index element={<OrganizerDashboard />} />
-              <Route path="events" element={<OrganizerEvents />} />
-              <Route path="events/create" element={<EventFormPage />} />
-              <Route path="events/:id/edit" element={<EventFormPage />} />
-              <Route path="events/:id/stats" element={<EventStatsPage />} />
-              <Route path="analytics" element={<OrganizerAnalytics />} />
-              <Route path="publications" element={<OrganizerPublications />} />
-            </Route>
+              <Route path="/organizer" element={<ProtectedRoute roles={['ORGANIZER']}><OrganizerLayout /></ProtectedRoute>}>
+                <Route index element={<OrganizerDashboard />} />
+                <Route path="events" element={<OrganizerEvents />} />
+                <Route path="events/create" element={<EventFormPage />} />
+                <Route path="events/:id/edit" element={<EventFormPage />} />
+                <Route path="events/:id/stats" element={<EventStatsPage />} />
+                <Route path="analytics" element={<OrganizerAnalytics />} />
+                <Route path="publications" element={<OrganizerPublications />} />
+              </Route>
 
-            <Route path="/admin" element={<ProtectedRoute roles={['ADMIN']}><AdminLayout /></ProtectedRoute>}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="users" element={<AdminUsers />} />
-              <Route path="events" element={<AdminEvents />} />
-              <Route path="publications" element={<AdminPublications />} />
-              <Route path="reviews" element={<AdminReviews />} />
-              <Route path="directories" element={<AdminDirectories />} />
-            </Route>
+              <Route path="/admin" element={<ProtectedRoute roles={['ADMIN']}><AdminLayout /></ProtectedRoute>}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="events" element={<AdminEvents />} />
+                <Route path="publications" element={<AdminPublications />} />
+                <Route path="reviews" element={<AdminReviews />} />
+                <Route path="directories" element={<AdminDirectories />} />
+              </Route>
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </CityProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

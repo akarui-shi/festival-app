@@ -40,6 +40,7 @@ export interface City {
   id: string;
   name: string;
   region?: string;
+  country?: string;
 }
 
 export interface Venue {
