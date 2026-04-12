@@ -1,48 +1,83 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowRight, CalendarDays, FileText } from 'lucide-react';
 import { PublicLayout } from '@/layouts/PublicLayout';
-import { LoadingState, EmptyState } from '@/components/StateDisplays';
+import { LoadingState } from '@/components/StateDisplays';
+import { EmptyState } from '@/components/EmptyState';
 import { publicationService } from '@/services/publication-service';
 import type { Publication } from '@/types';
-import { Calendar, ArrowRight } from 'lucide-react';
-import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
+
+function formatDate(value?: string): string {
+  if (!value) return 'Черновик';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 'Черновик';
+  }
+
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
+}
 
 export default function PublicationsPage() {
   const [publications, setPublications] = useState<Publication[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    publicationService.getPublications().then(p => { setPublications(p); setLoading(false); });
+    publicationService
+      .getPublications()
+      .then((response) => setPublications(response))
+      .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <PublicLayout><LoadingState /></PublicLayout>;
+  if (loading) {
+    return (
+      <PublicLayout>
+        <LoadingState />
+      </PublicLayout>
+    );
+  }
 
   return (
     <PublicLayout>
-      <div className="container py-8">
-        <h1 className="font-heading text-3xl md:text-4xl font-bold mb-2">Новости и статьи</h1>
-        <p className="text-muted-foreground mb-8">Читайте о культурной жизни города</p>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Публикации</h1>
+        <p className="mt-1 text-muted-foreground">Статьи и новости о культурной жизни</p>
 
         {publications.length === 0 ? (
-          <EmptyState icon="📰" title="Пока нет публикаций" description="Скоро здесь появятся новости" />
+          <EmptyState
+            icon={FileText}
+            title="Нет публикаций"
+            description="Публикации появятся здесь, когда организаторы начнут делиться новостями"
+          />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {publications.map(pub => (
-              <Link key={pub.id} to={`/publications/${pub.id}`}
-                className="group block rounded-xl border border-border bg-card overflow-hidden hover:shadow-lg transition-all hover:-translate-y-1">
-                <div className="h-40 bg-gradient-to-br from-accent/10 via-primary/5 to-background flex items-center justify-center">
-                  <span className="text-4xl opacity-30">📰</span>
+          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {publications.map((publication) => (
+              <Link
+                key={publication.id}
+                to={`/publications/${publication.id}`}
+                className="group overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-hover"
+              >
+                <div className="flex aspect-[3/2] items-center justify-center bg-gradient-to-br from-primary/10 via-golden-light/20 to-muted">
+                  <FileText className="h-10 w-10 text-primary/60" />
                 </div>
-                <div className="p-5">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                    <Calendar className="h-3.5 w-3.5" />
-                    {pub.publishedAt ? format(new Date(pub.publishedAt), 'd MMMM yyyy', { locale: ru }) : 'Черновик'}
-                    {pub.author && <span>· {pub.author.firstName} {pub.author.lastName}</span>}
+                <div className="p-4">
+                  <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <CalendarDays className="h-3.5 w-3.5 text-primary/70" />
+                    <span>{formatDate(publication.publishedAt)}</span>
                   </div>
-                  <h3 className="font-heading text-lg font-semibold mb-2 group-hover:text-primary transition-colors">{pub.title}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{pub.excerpt}</p>
-                  <span className="text-sm text-primary flex items-center gap-1">Читать далее <ArrowRight className="h-3.5 w-3.5" /></span>
+                  <h2 className="font-heading text-lg text-foreground group-hover:text-primary">
+                    {publication.title}
+                  </h2>
+                  <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">
+                    {publication.excerpt || 'Краткое описание публикации появится позже'}
+                  </p>
+                  <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary">
+                    Читать <ArrowRight className="h-3.5 w-3.5" />
+                  </span>
                 </div>
               </Link>
             ))}

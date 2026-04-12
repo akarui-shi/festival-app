@@ -1,113 +1,168 @@
-import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { PublicLayout } from '@/layouts/PublicLayout';
-import { EventCard } from '@/components/EventCard';
+import { Link } from 'react-router-dom';
+import { ArrowRight, CalendarDays, MapPin, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { EventCard } from '@/components/EventCard';
 import { LoadingState } from '@/components/StateDisplays';
+import { PublicLayout } from '@/layouts/PublicLayout';
 import { eventService } from '@/services/event-service';
-import { directoryService } from '@/services/directory-service';
-import type { Event, Category } from '@/types';
-import { ArrowRight, Search, Sparkles } from 'lucide-react';
+import type { Event } from '@/types';
+
+function formatDate(value?: string): string {
+  if (!value) return 'Скоро';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 'Скоро';
+  }
+
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: 'long',
+  }).format(date);
+}
 
 export default function HomePage() {
   const [events, setEvents] = useState<Event[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      eventService.getEvents({ size: 6 }),
-      directoryService.getCategories(),
-    ]).then(([res, cats]) => {
-      setEvents(res.content);
-      setCategories(cats);
-      setLoading(false);
-    });
+    eventService
+      .getEvents({ size: 6 })
+      .then((response) => setEvents(response.content))
+      .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <PublicLayout><LoadingState /></PublicLayout>;
+  if (loading) {
+    return (
+      <PublicLayout>
+        <LoadingState />
+      </PublicLayout>
+    );
+  }
 
-  const featured = events[0];
-  const upcoming = events.slice(1, 5);
+  const upcomingEvent = events[0];
+  const featuredEvents = events.slice(0, 3);
 
   return (
     <PublicLayout>
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-accent/5 to-background">
-        <div className="container py-16 md:py-24">
-          <div className="max-w-2xl animate-slide-up">
-            <Badge variant="secondary" className="mb-4 text-sm px-3 py-1">
-              <Sparkles className="h-3.5 w-3.5 mr-1" /> Сезон 2026
-            </Badge>
-            <h1 className="font-heading text-4xl md:text-6xl font-bold leading-tight mb-4">
-              Культурная жизнь<br />
-              <span className="text-gradient">вашего города</span>
-            </h1>
-            <p className="text-lg text-muted-foreground mb-8 max-w-lg">
-              Фестивали, выставки, концерты, мастер-классы и многое другое. Откройте для себя лучшие события рядом с вами.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Button size="lg" asChild>
-                <Link to="/events"><Search className="h-4 w-4 mr-2" />Смотреть афишу</Link>
-              </Button>
-              <Button size="lg" variant="outline" asChild>
-                <Link to="/publications">Читать новости</Link>
-              </Button>
+      <section className="relative overflow-hidden bg-gradient-to-br from-warm-cream via-background to-golden-light/20">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--terracotta)/0.06),transparent_70%)]" />
+        <div className="container relative mx-auto px-4 py-16 sm:py-24">
+          <div className="grid items-center gap-10 lg:grid-cols-2">
+            <div className="animate-fade-in">
+              <div className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                <Sparkles className="h-3.5 w-3.5" />
+                Культурная жизнь малых городов
+              </div>
+              <h1 className="font-heading text-4xl leading-tight text-foreground sm:text-5xl lg:text-6xl">
+                Откройте для себя
+                <span className="block text-primary"> культурные события</span>
+              </h1>
+              <p className="mt-4 max-w-lg text-lg text-muted-foreground">
+                Находите фестивали, концерты, выставки и мастер-классы в уютных городах России.
+                Записывайтесь и делитесь впечатлениями.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link to="/events">
+                  <Button size="lg" className="gap-2">
+                    Смотреть мероприятия
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link to="/register">
+                  <Button variant="outline" size="lg">
+                    Создать аккаунт
+                  </Button>
+                </Link>
+              </div>
             </div>
+
+            {upcomingEvent && (
+              <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
+                <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+                  <div className="relative aspect-video overflow-hidden">
+                    <img
+                      src={upcomingEvent.imageUrl || '/placeholder.svg'}
+                      alt={upcomingEvent.title}
+                      className="h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 to-transparent" />
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <span className="mb-1 inline-block rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
+                        Ближайшее событие
+                      </span>
+                      <h3 className="font-heading text-xl text-primary-foreground">{upcomingEvent.title}</h3>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-4">
+                    <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <CalendarDays className="h-4 w-4 text-primary" />
+                        {formatDate(upcomingEvent.startDate)}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <MapPin className="h-4 w-4 text-primary" />
+                        {upcomingEvent.city?.name || 'Город уточняется'}
+                      </span>
+                    </div>
+                    <Link to={`/events/${upcomingEvent.id}`}>
+                      <Button variant="outline" size="sm" className="gap-1">
+                        Подробнее <ArrowRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-        <div className="absolute -right-20 -top-20 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute -left-10 bottom-0 w-72 h-72 bg-accent/5 rounded-full blur-3xl" />
       </section>
 
-      {/* Categories */}
-      <section className="container py-12">
-        <h2 className="font-heading text-2xl font-bold mb-6">Категории</h2>
-        <div className="flex flex-wrap gap-3">
-          {categories.map(cat => (
-            <Link key={cat.id} to={`/events?category=${cat.id}`}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-card hover:border-primary/30 hover:bg-primary/5 transition-colors">
-              <span className="text-lg">{cat.icon}</span>
-              <span className="text-sm font-medium">{cat.name}</span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* Featured Event */}
-      {featured && (
-        <section className="container py-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-heading text-2xl font-bold">Главное событие</h2>
+      <section className="container mx-auto px-4 py-16">
+        <div className="mb-8 flex items-end justify-between">
+          <div>
+            <h2 className="font-heading text-2xl text-foreground sm:text-3xl">Популярные мероприятия</h2>
+            <p className="mt-1 text-muted-foreground">Самые интересные события в ближайшее время</p>
           </div>
-          <EventCard event={featured} variant="featured" />
-        </section>
-      )}
-
-      {/* Upcoming Events */}
-      <section className="container py-12">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="font-heading text-2xl font-bold">Ближайшие события</h2>
-          <Button variant="ghost" asChild>
-            <Link to="/events">Все мероприятия <ArrowRight className="h-4 w-4 ml-1" /></Link>
-          </Button>
+          <Link
+            to="/events"
+            className="hidden items-center gap-1 text-sm font-semibold text-primary hover:underline sm:flex"
+          >
+            Все мероприятия <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {upcoming.map(event => (
-            <EventCard key={event.id} event={event} />
-          ))}
+
+        {featuredEvents.length > 0 ? (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {featuredEvents.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Пока нет опубликованных мероприятий</p>
+        )}
+
+        <div className="mt-8 text-center sm:hidden">
+          <Link to="/events">
+            <Button variant="outline" className="gap-1">
+              Все мероприятия <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="container pb-16">
-        <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-accent/5 to-primary/5 p-8 md:p-12 text-center">
-          <h2 className="font-heading text-2xl md:text-3xl font-bold mb-3">Организуете мероприятие?</h2>
-          <p className="text-muted-foreground mb-6 max-w-md mx-auto">Зарегистрируйтесь как организатор и разместите своё событие на нашей платформе</p>
-          <Button size="lg" asChild>
-            <Link to="/register">Начать бесплатно</Link>
-          </Button>
+      <section className="bg-gradient-to-r from-primary/5 via-golden-light/10 to-primary/5">
+        <div className="container mx-auto px-4 py-16 text-center">
+          <h2 className="font-heading text-2xl text-foreground sm:text-3xl">Вы организатор мероприятий?</h2>
+          <p className="mx-auto mt-2 max-w-md text-muted-foreground">
+            Создавайте события, управляйте записями и привлекайте аудиторию на нашей платформе
+          </p>
+          <Link to="/register" className="mt-6 inline-block">
+            <Button size="lg" className="gap-2">
+              Начать бесплатно <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
         </div>
       </section>
     </PublicLayout>
