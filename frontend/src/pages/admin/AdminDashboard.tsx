@@ -57,36 +57,36 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-8">
       <section>
-        <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Обзор системы</h1>
+        <h1 className="page-title">Обзор системы</h1>
         <p className="mt-1 text-muted-foreground">Ключевые показатели платформы и очередь модерации</p>
       </section>
 
       <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {cards.map((card) => (
-          <div key={card.label} className="rounded-xl border border-border bg-card p-5 shadow-soft">
-            <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+          <div key={card.label} className="metric-card">
+            <div className="metric-icon">
               <card.icon className={`h-4 w-4 ${card.color}`} />
             </div>
-            <p className="text-2xl font-bold text-foreground">{card.value}</p>
+            <p className="text-2xl font-semibold text-foreground">{card.value}</p>
             <p className="mt-1 text-xs text-muted-foreground">{card.label}</p>
           </div>
         ))}
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-6 shadow-card">
+      <section className="surface-panel">
         <h2 className="font-heading text-2xl text-foreground">Требует внимания</h2>
         <div className="mt-4 space-y-2">
           {pendingItems.map((item) => (
             <Link
               key={item.label}
               to={item.link}
-              className="flex items-center justify-between rounded-xl border border-border bg-background/60 px-4 py-3 transition-colors hover:bg-muted/70"
+              className="surface-row flex items-center justify-between"
             >
               <div className="flex items-center gap-2.5">
                 <AlertCircle className="h-4 w-4 text-warning" />
                 <span className="text-sm font-medium text-foreground">{item.label}</span>
               </div>
-              <span className="text-xl font-bold text-foreground">{item.count}</span>
+              <span className="text-xl font-semibold text-foreground">{item.count}</span>
             </Link>
           ))}
         </div>

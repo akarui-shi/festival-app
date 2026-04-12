@@ -87,7 +87,7 @@ export default function ProfilePage() {
             </div>
 
             <Button type="submit" disabled={loading}>
-              {loading ? 'Сохранение...' : 'Сохранить'}
+              {loading ? 'Сохранение…' : 'Сохранить'}
             </Button>
           </form>
         </div>

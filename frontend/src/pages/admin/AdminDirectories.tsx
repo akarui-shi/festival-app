@@ -6,6 +6,7 @@ import { LoadingState } from '@/components/StateDisplays';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Category, City, Venue } from '@/types';
 
@@ -60,7 +61,7 @@ export default function AdminDirectories() {
   return (
     <div className="space-y-6">
       <section>
-        <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Справочники</h1>
+        <h1 className="page-title">Справочники</h1>
         <p className="mt-1 text-muted-foreground">Категории, города и площадки для мероприятий</p>
       </section>
 
@@ -72,7 +73,7 @@ export default function AdminDirectories() {
         </TabsList>
 
         <TabsContent value="categories" className="mt-4 space-y-4">
-          <div className="grid gap-3 rounded-xl border border-border bg-card p-4 shadow-soft sm:grid-cols-[1fr_220px_auto] sm:items-end">
+          <div className="surface-soft grid gap-3 sm:grid-cols-[1fr_220px_auto] sm:items-end">
             <div>
               <Label>Название</Label>
               <Input
@@ -97,7 +98,7 @@ export default function AdminDirectories() {
 
           <div className="space-y-2">
             {categories.map((category) => (
-              <div key={category.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 text-sm shadow-soft">
+              <div key={category.id} className="surface-row flex items-center gap-3 py-3 text-sm">
                 <span>{category.icon}</span>
                 <span className="font-medium text-foreground">{category.name}</span>
                 <span className="text-muted-foreground">{category.slug}</span>
@@ -107,7 +108,7 @@ export default function AdminDirectories() {
         </TabsContent>
 
         <TabsContent value="cities" className="mt-4 space-y-4">
-          <div className="grid gap-3 rounded-xl border border-border bg-card p-4 shadow-soft sm:grid-cols-[1fr_260px_auto] sm:items-end">
+          <div className="surface-soft grid gap-3 sm:grid-cols-[1fr_260px_auto] sm:items-end">
             <div>
               <Label>Название</Label>
               <Input
@@ -132,7 +133,7 @@ export default function AdminDirectories() {
 
           <div className="space-y-2">
             {cities.map((city) => (
-              <div key={city.id} className="rounded-xl border border-border bg-card p-3 text-sm shadow-soft">
+              <div key={city.id} className="surface-row py-3 text-sm">
                 <span className="font-medium text-foreground">{city.name}</span>
                 {city.region && <span className="ml-2 text-muted-foreground">{city.region}</span>}
               </div>
@@ -141,7 +142,7 @@ export default function AdminDirectories() {
         </TabsContent>
 
         <TabsContent value="venues" className="mt-4 space-y-4">
-          <div className="grid grid-cols-1 items-end gap-3 rounded-xl border border-border bg-card p-4 shadow-soft sm:grid-cols-4">
+          <div className="surface-soft grid grid-cols-1 items-end gap-3 sm:grid-cols-4">
             <div>
               <Label>Название</Label>
               <Input
@@ -158,18 +159,21 @@ export default function AdminDirectories() {
             </div>
             <div>
               <Label>Город</Label>
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              <Select
                 value={newVenue.cityId}
-                onChange={(event) => setNewVenue((prev) => ({ ...prev, cityId: event.target.value }))}
+                onValueChange={(value) => setNewVenue((prev) => ({ ...prev, cityId: value }))}
               >
-                <option value="">Выберите</option>
-                {cities.map((city) => (
-                  <option key={city.id} value={city.id}>
-                    {city.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="Выберите город" />
+                </SelectTrigger>
+                <SelectContent>
+                  {cities.map((city) => (
+                    <SelectItem key={city.id} value={city.id}>
+                      {city.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <Button onClick={addVenue} className="gap-1.5">
               <Plus className="h-4 w-4" />
@@ -179,7 +183,7 @@ export default function AdminDirectories() {
 
           <div className="space-y-2">
             {venues.map((venue) => (
-              <div key={venue.id} className="rounded-xl border border-border bg-card p-3 text-sm shadow-soft">
+              <div key={venue.id} className="surface-row py-3 text-sm">
                 <span className="font-medium text-foreground">{venue.name}</span>
                 <span className="ml-2 text-muted-foreground">{venue.address}</span>
                 {venue.city && <span className="ml-2 text-muted-foreground">· {venue.city.name}</span>}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FileText, Plus, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmActionDialog } from '@/components/ConfirmActionDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { publicationService } from '@/services/publication-service';
 import { LoadingState } from '@/components/StateDisplays';
@@ -25,6 +26,7 @@ export default function OrganizerPublications() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: '', excerpt: '', content: '', tags: '' });
   const [saving, setSaving] = useState(false);
+  const [publicationToDelete, setPublicationToDelete] = useState<Publication | null>(null);
 
   useEffect(() => {
     publicationService.getAllPublications().then((response) => {
@@ -60,6 +62,7 @@ export default function OrganizerPublications() {
     await publicationService.deletePublication(id);
     setPubs((prev) => prev.filter((publication) => publication.id !== id));
     toast.success('Удалено');
+    setPublicationToDelete(null);
   };
 
   if (loading) return <LoadingState />;
@@ -77,8 +80,25 @@ export default function OrganizerPublications() {
         </Button>
       </div>
 
+      <ConfirmActionDialog
+        open={Boolean(publicationToDelete)}
+        onOpenChange={(open) => {
+          if (!open) setPublicationToDelete(null);
+        }}
+        title="Удалить публикацию?"
+        description={publicationToDelete
+          ? `Публикация «${publicationToDelete.title}» будет удалена без возможности восстановления.`
+          : ''}
+        confirmLabel="Удалить"
+        onConfirm={() => {
+          if (publicationToDelete) {
+            return del(publicationToDelete.id);
+          }
+        }}
+      />
+
       {showForm && (
-        <div className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-soft">
+        <div className="surface-panel space-y-4">
           <Input
             className="text-lg"
             placeholder="Заголовок"
@@ -92,7 +112,7 @@ export default function OrganizerPublications() {
           />
           <Textarea
             className="min-h-32"
-            placeholder="Содержание..."
+            placeholder="Содержание…"
             value={form.content}
             onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
           />
@@ -103,7 +123,7 @@ export default function OrganizerPublications() {
           />
           <div className="flex gap-2">
             <Button size="sm" onClick={create} disabled={saving}>
-              {saving ? 'Сохранение...' : 'Создать'}
+              {saving ? 'Сохранение…' : 'Создать'}
             </Button>
             <Button size="sm" variant="outline" onClick={() => setShowForm(false)}>
               Отмена
@@ -137,7 +157,13 @@ export default function OrganizerPublications() {
                       На модерацию
                     </Button>
                   )}
-                  <Button variant="ghost" size="icon" onClick={() => del(pub.id)} className="text-destructive">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setPublicationToDelete(pub)}
+                    className="text-destructive"
+                    aria-label="Удалить публикацию"
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>

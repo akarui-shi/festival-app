@@ -61,9 +61,17 @@ export interface BackendVenue {
   name: string;
   address: string;
   contacts?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   capacity?: number | null;
   cityId?: number | null;
   cityName?: string | null;
+}
+
+export interface BackendEventImage {
+  imageUrl?: string | null;
+  isCover?: boolean | null;
+  sortOrder?: number | null;
 }
 
 export interface BackendEventShort {
@@ -92,6 +100,7 @@ export interface BackendEventDetails {
   createdAt?: string | null;
   status?: string | null;
   coverUrl?: string | null;
+  eventImages?: BackendEventImage[] | null;
   venue?: BackendVenue | null;
   categories?: BackendCategory[] | null;
   organization?: {
@@ -434,6 +443,8 @@ export function mapVenue(dto: BackendVenue): Venue {
     cityId,
     capacity: dto.capacity || undefined,
     description: dto.contacts || undefined,
+    latitude: dto.latitude == null ? undefined : Number(dto.latitude),
+    longitude: dto.longitude == null ? undefined : Number(dto.longitude),
     city: dto.cityName ? { id: cityId, name: dto.cityName } : undefined,
   };
 }
@@ -502,6 +513,12 @@ export function mapEventDetails(dto: BackendEventDetails, sessions: Session[] = 
   const categories = (dto.categories || []).map(mapCategory);
   const category = categories[0];
   const venue = dto.venue ? mapVenue(dto.venue) : undefined;
+  const mappedImageUrls = (dto.eventImages || [])
+    .map((item) => item?.imageUrl || '')
+    .filter(Boolean);
+  const imageUrls = mappedImageUrls.length > 0
+    ? mappedImageUrls
+    : dto.coverUrl ? [dto.coverUrl] : [];
   const sessionDates = sessions
     .map((session) => `${session.date}T${session.startTime}:00`)
     .filter(Boolean)
@@ -514,6 +531,7 @@ export function mapEventDetails(dto: BackendEventDetails, sessions: Session[] = 
     description: dto.fullDescription || dto.shortDescription || '',
     shortDescription: dto.shortDescription || '',
     imageUrl: dto.coverUrl || '',
+    imageUrls,
     categoryId: category?.id || '',
     category,
     venueId: venue?.id || '',
