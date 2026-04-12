@@ -17,6 +17,8 @@ public class PublicationShortResponse {
     private PublicationStatus status;
     private String authorName;
     private String imageUrl;
+    private Long organizationId;
+    private String organizationName;
     private Long eventId;
     private String eventTitle;
 }

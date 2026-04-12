@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Calendar, User } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar, User } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { LoadingState, ErrorState } from '@/components/StateDisplays';
@@ -43,6 +43,7 @@ export default function PublicationDetailPage() {
 
   if (loading) return <PublicLayout><LoadingState /></PublicLayout>;
   if (error || !pub) return <PublicLayout><ErrorState message={error || 'Не найдено'} /></PublicLayout>;
+  const organizationLink = pub.organizationId ? `/organizations/${pub.organizationId}` : null;
 
   return (
     <PublicLayout>
@@ -79,6 +80,18 @@ export default function PublicationDetailPage() {
                 <span className="inline-flex items-center gap-1.5">
                   <User className="h-4 w-4 text-primary" />
                   {pub.author.firstName} {pub.author.lastName}
+                </span>
+              )}
+              {pub.organization && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  {organizationLink ? (
+                    <Link to={organizationLink} className="hover:text-primary hover:underline">
+                      {pub.organization.name}
+                    </Link>
+                  ) : (
+                    <span>{pub.organization.name}</span>
+                  )}
                 </span>
               )}
             </div>

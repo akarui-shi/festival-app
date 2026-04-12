@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, CalendarDays, Clock, Heart, MapPin } from 'lucide-react';
+import { ArrowRight, Building2, CalendarDays, Clock, Heart, MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { Event } from '@/types';
 
@@ -52,6 +52,28 @@ function resolvePrice(event: Event): string {
   }
 
   return 'Цена уточняется';
+}
+
+function toShortAddress(address?: string): string {
+  if (!address) {
+    return '';
+  }
+
+  const parts = address
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length <= 2) {
+    return parts.join(', ');
+  }
+
+  const streetIndex = parts.findIndex((part) => /^(ул\.?|улица|пр-?кт|проспект|пер\.?|переулок|бул\.?|бульвар|наб\.?|набережная|ш\.?|шоссе|пл\.?|площадь|проезд|аллея|д\.)/i.test(part));
+  if (streetIndex >= 0) {
+    return parts.slice(streetIndex).join(', ');
+  }
+
+  return parts.slice(-2).join(', ');
 }
 
 export function EventCard({ event, onFavoriteToggle, isFavorite }: EventCardProps) {
@@ -122,7 +144,11 @@ export function EventCard({ event, onFavoriteToggle, isFavorite }: EventCardProp
             </div>
             <div className="flex items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5 text-primary/70" />
-              <span className="truncate">{event.venue?.address || event.venue?.name || 'Площадка уточняется'}, {event.city?.name || 'город уточняется'}</span>
+              <span className="truncate">{toShortAddress(event.venue?.address) || event.venue?.name || 'Площадка уточняется'}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Building2 className="h-3.5 w-3.5 text-primary/70" />
+              <span className="truncate">{event.organization?.name || 'Организация уточняется'}</span>
             </div>
           </div>
 

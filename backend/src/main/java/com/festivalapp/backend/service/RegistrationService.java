@@ -42,8 +42,8 @@ public class RegistrationService {
     @Transactional
     public RegistrationResponse create(RegistrationCreateRequest request, String actorIdentifier) {
         User user = loadActor(actorIdentifier);
-        if (hasRole(user, RoleName.ROLE_ADMIN)) {
-            throw new AccessDeniedException("Администратор не может регистрироваться на мероприятия");
+        if (hasRole(user, RoleName.ROLE_ADMIN) || hasRole(user, RoleName.ROLE_ORGANIZER)) {
+            throw new AccessDeniedException("Только жители могут регистрироваться на мероприятия");
         }
 
         Session session = sessionRepository.findDetailedById(request.getSessionId())

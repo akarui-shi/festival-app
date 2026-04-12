@@ -49,7 +49,8 @@ export const authService = {
       password: req.password,
       firstName: req.firstName,
       lastName: req.lastName,
-      role: 'RESIDENT',
+      role: req.role || 'RESIDENT',
+      companyName: req.companyName,
     });
 
     return normalizeAuthResponse(response);

@@ -1,7 +1,13 @@
-import type { Event, EventFilters, PaginatedResponse } from '@/types';
+import type { Event, EventFilters, Organization, PaginatedResponse } from '@/types';
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut, getAuthToken } from './api-client';
-import type { BackendEventDetails, BackendEventShort, BackendSessionShort } from './api-mappers';
-import { mapEventDetails, mapEventShort, mapSession, toBackendEventStatus } from './api-mappers';
+import type { BackendEventDetails, BackendEventShort, BackendOrganizationPublic, BackendSessionShort } from './api-mappers';
+import {
+  mapEventDetails,
+  mapEventShort,
+  mapOrganizationPublic,
+  mapSession,
+  toBackendEventStatus,
+} from './api-mappers';
 
 interface EventImagePayload {
   imageUrl: string;
@@ -147,6 +153,16 @@ export const eventService = {
 
   async getOrganizerEvents(_organizerId: string): Promise<Event[]> {
     const response = await apiGet<BackendEventShort[]>('/organizer/events');
+    return response.map(mapEventShort);
+  },
+
+  async getOrganizationById(organizationId: string): Promise<Organization> {
+    const response = await apiGet<BackendOrganizationPublic>(`/events/organizations/${organizationId}`);
+    return mapOrganizationPublic(response);
+  },
+
+  async getOrganizationEvents(organizationId: string): Promise<Event[]> {
+    const response = await apiGet<BackendEventShort[]>(`/events/organizations/${organizationId}/events`);
     return response.map(mapEventShort);
   },
 };

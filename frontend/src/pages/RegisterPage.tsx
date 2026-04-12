@@ -18,6 +18,8 @@ export default function RegisterPage() {
     email: '',
     password: '',
     confirmPassword: '',
+    role: 'RESIDENT' as 'RESIDENT' | 'ORGANIZER',
+    companyName: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -44,10 +46,22 @@ export default function RegisterPage() {
       return;
     }
 
+    if (form.role === 'ORGANIZER' && !form.companyName.trim()) {
+      setError('Для организатора укажите название организации');
+      return;
+    }
+
     setError('');
     setLoading(true);
     try {
-      await register(form.email, form.password, form.firstName, form.lastName);
+      await register(
+        form.email,
+        form.password,
+        form.firstName,
+        form.lastName,
+        form.role,
+        form.role === 'ORGANIZER' ? form.companyName : undefined,
+      );
       toast.success('Регистрация прошла успешно');
       navigate('/');
     } catch (registerError: any) {
@@ -76,6 +90,34 @@ export default function RegisterPage() {
             </div>
 
             <form className="space-y-4" onSubmit={handleSubmit}>
+              <div className="space-y-2">
+                <Label>Тип аккаунта</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => updateField('role', 'RESIDENT')}
+                    className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                      form.role === 'RESIDENT'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border text-muted-foreground hover:border-primary/40'
+                    }`}
+                  >
+                    Житель
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateField('role', 'ORGANIZER')}
+                    className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                      form.role === 'ORGANIZER'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border text-muted-foreground hover:border-primary/40'
+                    }`}
+                  >
+                    Организатор
+                  </button>
+                </div>
+              </div>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">Имя</Label>
@@ -107,6 +149,18 @@ export default function RegisterPage() {
                   placeholder="your@email.com"
                 />
               </div>
+
+              {form.role === 'ORGANIZER' && (
+                <div className="space-y-2">
+                  <Label htmlFor="companyName">Организация</Label>
+                  <Input
+                    id="companyName"
+                    value={form.companyName}
+                    onChange={(event) => updateField('companyName', event.target.value)}
+                    placeholder="Название организации"
+                  />
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="password">Пароль</Label>

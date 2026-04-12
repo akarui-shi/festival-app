@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CalendarDays, FileText } from 'lucide-react';
+import { ArrowRight, Building2, CalendarDays, FileText } from 'lucide-react';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { LoadingState } from '@/components/StateDisplays';
 import { EmptyState } from '@/components/EmptyState';
@@ -75,6 +75,10 @@ export default function PublicationsPage() {
                   <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">
                     {publication.excerpt || 'Краткое описание публикации появится позже'}
                   </p>
+                  <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Building2 className="h-3.5 w-3.5 text-primary/70" />
+                    <span className="truncate">{publication.organization?.name || 'Организация не указана'}</span>
+                  </div>
                   <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary">
                     Читать <ArrowRight className="h-3.5 w-3.5" />
                   </span>

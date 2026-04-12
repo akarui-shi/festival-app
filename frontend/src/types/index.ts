@@ -8,6 +8,7 @@ export interface User {
   role: UserRole;
   avatarUrl?: string;
   phone?: string;
+  organization?: Organization;
   active: boolean;
   createdAt: string;
 }
@@ -27,6 +28,8 @@ export interface RegisterRequest {
   password: string;
   firstName: string;
   lastName: string;
+  role?: 'RESIDENT' | 'ORGANIZER';
+  companyName?: string;
 }
 
 export interface Category {
@@ -41,6 +44,13 @@ export interface City {
   name: string;
   region?: string;
   country?: string;
+}
+
+export interface Organization {
+  id: string;
+  name: string;
+  description?: string;
+  contacts?: string;
 }
 
 export interface Venue {
@@ -67,10 +77,13 @@ export interface Event {
   imageUrls?: string[];
   categoryId: string;
   category?: Category;
+  categories?: Category[];
   venueId: string;
   venue?: Venue;
   cityId: string;
   city?: City;
+  organizationId: string;
+  organization?: Organization;
   organizerId: string;
   organizer?: User;
   format: EventFormat;
@@ -143,6 +156,10 @@ export interface Publication {
   imageUrl: string;
   authorId: string;
   author?: User;
+  organizationId?: string;
+  organization?: Organization;
+  eventId?: string;
+  eventTitle?: string;
   status: PublicationStatus;
   publishedAt?: string;
   createdAt: string;

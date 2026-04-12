@@ -72,9 +72,31 @@ function formatPrice(event: Event): string {
   return 'Цена уточняется';
 }
 
+function toShortAddress(address?: string): string {
+  if (!address) {
+    return '';
+  }
+
+  const parts = address
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length <= 2) {
+    return parts.join(', ');
+  }
+
+  const streetIndex = parts.findIndex((part) => /^(ул\.?|улица|пр-?кт|проспект|пер\.?|переулок|бул\.?|бульвар|наб\.?|набережная|ш\.?|шоссе|пл\.?|площадь|проезд|аллея|д\.)/i.test(part));
+  if (streetIndex >= 0) {
+    return parts.slice(streetIndex).join(', ');
+  }
+
+  return parts.slice(-2).join(', ');
+}
+
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isResident } = useAuth();
 
   const [event, setEvent] = useState<Event | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -109,6 +131,11 @@ export default function EventDetailPage() {
     if (!user || !id) return;
 
     favoriteService.isFavorite(user.id, id).then(setIsFavorite);
+    if (!isResident) {
+      setRegisteredSessionIds([]);
+      return;
+    }
+
     registrationService.getMyRegistrations(user.id).then((registrations) => {
       setRegisteredSessionIds(
         registrations
@@ -116,7 +143,7 @@ export default function EventDetailPage() {
           .map((registration) => registration.sessionId),
       );
     });
-  }, [id, user]);
+  }, [id, user, isResident]);
 
   const toggleFavorite = async () => {
     if (!user || !id) return;
@@ -134,7 +161,10 @@ export default function EventDetailPage() {
   };
 
   const registerForSession = async (sessionId: string) => {
-    if (!user) return;
+    if (!user || !isResident) {
+      toast.error('Запись доступна только жителям');
+      return;
+    }
 
     try {
       await registrationService.createRegistration(sessionId, user.id);
@@ -147,6 +177,10 @@ export default function EventDetailPage() {
 
   const submitReview = async () => {
     if (!user || !id || !newRating) return;
+    if (!isResident) {
+      toast.error('Отзывы могут оставлять только жители');
+      return;
+    }
 
     setSubmittingReview(true);
     try {
@@ -186,6 +220,9 @@ export default function EventDetailPage() {
   const firstAvailableSession = sessions.find(
     (session) => session.currentParticipants < session.maxParticipants && !registeredSessionIds.includes(session.id),
   );
+  const organizationLink = event.organization?.id ? `/organizations/${event.organization.id}` : null;
+  const canRegisterForEvent = isAuthenticated && isResident;
+  const canLeaveReview = isAuthenticated && isResident;
 
   return (
     <PublicLayout>
@@ -235,12 +272,14 @@ export default function EventDetailPage() {
                 <Building2 className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Организатор</p>
-                <p className="font-semibold text-foreground">
-                  {event.organizer?.firstName || event.organizer?.lastName
-                    ? `${event.organizer?.firstName || ''} ${event.organizer?.lastName || ''}`.trim()
-                    : 'Организатор мероприятия'}
-                </p>
+                <p className="text-xs text-muted-foreground">Организация</p>
+                {organizationLink ? (
+                  <Link to={organizationLink} className="font-semibold text-foreground hover:text-primary hover:underline">
+                    {event.organization?.name || 'Организация мероприятия'}
+                  </Link>
+                ) : (
+                  <p className="font-semibold text-foreground">{event.organization?.name || 'Организация мероприятия'}</p>
+                )}
               </div>
             </div>
 
@@ -287,7 +326,7 @@ export default function EventDetailPage() {
                           {Math.max(session.maxParticipants - session.currentParticipants, 0)} мест
                         </span>
 
-                        {isAuthenticated ? (
+                        {canRegisterForEvent ? (
                           isRegistered ? (
                             <Badge className="bg-primary/10 text-primary">Вы записаны</Badge>
                           ) : (
@@ -295,6 +334,8 @@ export default function EventDetailPage() {
                               {isFull ? 'Мест нет' : 'Записаться'}
                             </Button>
                           )
+                        ) : isAuthenticated ? (
+                          <span className="text-xs text-muted-foreground">Только для жителей</span>
                         ) : (
                           <Button size="sm" variant="outline" asChild>
                             <Link to="/login">Войти</Link>
@@ -310,7 +351,7 @@ export default function EventDetailPage() {
             <div className="mt-8">
               <h2 className="font-heading text-xl text-foreground">Отзывы</h2>
 
-              {isAuthenticated && (
+              {canLeaveReview && (
                 <div className="mt-3 rounded-xl border border-border bg-card p-4">
                   <p className="mb-2 text-sm text-muted-foreground">Оцените мероприятие</p>
                   <StarRating rating={newRating} onChange={setNewRating} />
@@ -324,6 +365,11 @@ export default function EventDetailPage() {
                   <Button className="mt-3" size="sm" onClick={submitReview} disabled={!newRating || submittingReview}>
                     {submittingReview ? 'Отправка…' : 'Отправить отзыв'}
                   </Button>
+                </div>
+              )}
+              {isAuthenticated && !canLeaveReview && (
+                <div className="mt-3 rounded-xl border border-border bg-card p-4">
+                  <p className="text-sm text-muted-foreground">Отзывы могут оставлять только жители.</p>
                 </div>
               )}
 
@@ -355,7 +401,7 @@ export default function EventDetailPage() {
               <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
                 <p className="text-2xl font-bold text-foreground">{formatPrice(event)}</p>
 
-                {isAuthenticated ? (
+                {canRegisterForEvent ? (
                   <Button
                     className="mt-4 w-full gap-2"
                     size="lg"
@@ -371,6 +417,11 @@ export default function EventDetailPage() {
                   >
                     <CheckCircle2 className="h-5 w-5" />
                     {firstAvailableSession ? 'Записаться' : sessions.length > 0 ? 'Мест нет' : 'Выбрать сеанс'}
+                  </Button>
+                ) : isAuthenticated ? (
+                  <Button className="mt-4 w-full gap-2" size="lg" variant="outline" disabled>
+                    <CheckCircle2 className="h-5 w-5" />
+                    Запись доступна только жителям
                   </Button>
                 ) : (
                   <Button className="mt-4 w-full gap-2" size="lg" asChild>
@@ -421,8 +472,9 @@ export default function EventDetailPage() {
                   <div className="flex items-start gap-3">
                     <MapPin className="mt-0.5 h-4 w-4 text-primary" />
                     <div>
-                      <p className="text-sm font-semibold text-foreground">{event.venue?.address || 'Адрес уточняется'}</p>
-                      <p className="text-xs text-muted-foreground">{event.city?.name || 'Город уточняется'}</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {toShortAddress(event.venue?.address) || event.venue?.name || 'Адрес уточняется'}
+                      </p>
                     </div>
                   </div>
                 </div>

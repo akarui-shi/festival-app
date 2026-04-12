@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User } from 'lucide-react';
+import { Building2, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -57,6 +57,19 @@ export default function ProfilePage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {user?.organization && (
+              <div className="rounded-xl border border-border bg-muted/40 p-4">
+                <p className="mb-2 inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  Организация
+                </p>
+                <p className="text-sm text-foreground">{user.organization.name}</p>
+                {user.organization.contacts && (
+                  <p className="mt-1 text-xs text-muted-foreground">{user.organization.contacts}</p>
+                )}
+              </div>
+            )}
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="firstName">Имя</Label>

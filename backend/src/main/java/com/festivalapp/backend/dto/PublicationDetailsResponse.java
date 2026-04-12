@@ -18,6 +18,8 @@ public class PublicationDetailsResponse {
     private PublicationStatus status;
     private String authorName;
     private Long authorId;
+    private Long organizationId;
+    private String organizationName;
     private Long eventId;
     private String eventTitle;
 }

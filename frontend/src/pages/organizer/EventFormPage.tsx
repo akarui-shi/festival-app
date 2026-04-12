@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { eventService } from '@/services/event-service';
 import { directoryService } from '@/services/directory-service';
 import { sessionService } from '@/services/session-service';
@@ -15,6 +14,7 @@ import { yandexMapsService } from '@/services/yandex-maps-service';
 import type { Category, City, Session, Venue } from '@/types';
 import { LoadingState } from '@/components/StateDisplays';
 import { LocationPickerMap } from '@/components/LocationPickerMap';
+import { useCity } from '@/contexts/CityContext';
 
 const STEPS = [
   { key: 'details', title: 'Основное' },
@@ -53,11 +53,9 @@ interface EventFormState {
   title: string;
   shortDescription: string;
   description: string;
-  categoryId: string;
+  categoryIds: string[];
   venueId: string;
   venueName: string;
-  venueContacts: string;
-  venueCapacity: string;
   address: string;
   latitude: string;
   longitude: string;
@@ -73,11 +71,9 @@ const EMPTY_FORM: EventFormState = {
   title: '',
   shortDescription: '',
   description: '',
-  categoryId: '',
+  categoryIds: [],
   venueId: '',
   venueName: '',
-  venueContacts: '',
-  venueCapacity: '',
   address: '',
   latitude: '',
   longitude: '',
@@ -174,6 +170,7 @@ export default function EventFormPage() {
   const { id } = useParams();
   const isEdit = Boolean(id);
   const navigate = useNavigate();
+  const { selectedCity } = useCity();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [cities, setCities] = useState<City[]>([]);
@@ -191,6 +188,7 @@ export default function EventFormPage() {
   const [addressLookupLoading, setAddressLookupLoading] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingGallery, setUploadingGallery] = useState(false);
+  const [cityCenter, setCityCenter] = useState<[number, number] | undefined>(undefined);
 
   useEffect(() => {
     let active = true;
@@ -213,16 +211,17 @@ export default function EventFormPage() {
           const eventVenue = eventResponse.venue;
           const venueCity = eventVenue?.city;
           const galleryFromEvent = (eventResponse.imageUrls || []).filter((url) => url !== eventResponse.imageUrl);
+          const eventCategoryIds = eventResponse.categories?.map((category) => category.id).filter(Boolean) || [];
 
           setForm({
             title: eventResponse.title || '',
             shortDescription: eventResponse.shortDescription || '',
             description: eventResponse.description || '',
-            categoryId: eventResponse.categoryId || '',
+            categoryIds: eventCategoryIds.length > 0
+              ? eventCategoryIds
+              : (eventResponse.categoryId ? [eventResponse.categoryId] : []),
             venueId: eventVenue?.id || '',
             venueName: eventVenue?.name || '',
-            venueContacts: eventVenue?.description || '',
-            venueCapacity: eventVenue?.capacity ? String(eventVenue.capacity) : '',
             address: eventVenue?.address || '',
             latitude: eventVenue?.latitude != null ? String(eventVenue.latitude) : '',
             longitude: eventVenue?.longitude != null ? String(eventVenue.longitude) : '',
@@ -260,6 +259,52 @@ export default function EventFormPage() {
       active = false;
     };
   }, [id, isEdit]);
+
+  useEffect(() => {
+    if (!selectedCity || isEdit) {
+      return;
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      cityId: prev.cityId || selectedCity.id,
+      cityName: prev.cityName || selectedCity.name,
+      region: prev.region || selectedCity.region || '',
+      country: prev.country || selectedCity.country || '',
+    }));
+  }, [isEdit, selectedCity]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!selectedCity) {
+      setCityCenter(undefined);
+      return;
+    }
+
+    const cityQuery = [selectedCity.name, selectedCity.region, selectedCity.country]
+      .filter(Boolean)
+      .join(', ');
+
+    yandexMapsService.searchAddressSuggestions(cityQuery, 1)
+      .then((suggestions) => {
+        if (cancelled) return;
+        const first = suggestions[0];
+        if (!first) {
+          setCityCenter(undefined);
+          return;
+        }
+        setCityCenter([first.latitude, first.longitude]);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCityCenter(undefined);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCity]);
 
   const localAddressSuggestions = useMemo<AddressSuggestion[]>(() => {
     const query = form.address.trim().toLowerCase();
@@ -349,6 +394,18 @@ export default function EventFormPage() {
       ...prev,
       [field]: value,
     }));
+  };
+
+  const toggleCategory = (categoryId: string) => {
+    setForm((prev) => {
+      const exists = prev.categoryIds.includes(categoryId);
+      return {
+        ...prev,
+        categoryIds: exists
+          ? prev.categoryIds.filter((id) => id !== categoryId)
+          : [...prev.categoryIds, categoryId],
+      };
+    });
   };
 
   const selectAddressSuggestion = (suggestion: AddressSuggestion) => {
@@ -471,7 +528,7 @@ export default function EventFormPage() {
   const currentStepError = useMemo(() => {
     if (currentStep === 0) {
       if (!form.title.trim()) return 'Укажите название мероприятия';
-      if (!form.categoryId) return 'Выберите категорию';
+      if (form.categoryIds.length === 0) return 'Выберите хотя бы одну категорию';
       return null;
     }
 
@@ -493,7 +550,7 @@ export default function EventFormPage() {
     }
 
     return null;
-  }, [currentStep, form.address, form.categoryId, form.latitude, form.longitude, form.title, sessions]);
+  }, [currentStep, form.address, form.categoryIds, form.latitude, form.longitude, form.title, sessions]);
 
   const nextStep = () => {
     if (currentStepError) {
@@ -545,7 +602,7 @@ export default function EventFormPage() {
       return;
     }
 
-    if (!form.title.trim() || !form.categoryId) {
+    if (!form.title.trim() || form.categoryIds.length === 0) {
       toast.error('Заполните основные данные');
       setCurrentStep(0);
       return;
@@ -574,7 +631,7 @@ export default function EventFormPage() {
         title: form.title.trim(),
         shortDescription: form.shortDescription.trim() || undefined,
         description: form.description.trim() || undefined,
-        categoryIds: [form.categoryId],
+        categoryIds: form.categoryIds,
         venueId: form.venueId || undefined,
         venueName: form.venueName.trim() || undefined,
         venueAddress: hasVenueId ? undefined : form.address.trim(),
@@ -584,8 +641,6 @@ export default function EventFormPage() {
         venueCityName: form.cityName.trim() || undefined,
         venueRegion: form.region.trim() || undefined,
         venueCountry: form.country.trim() || undefined,
-        venueContacts: form.venueContacts.trim() || undefined,
-        venueCapacity: form.venueCapacity ? Number(form.venueCapacity) : undefined,
         coverUrl: form.coverUrl || orderedImageUrls[0] || undefined,
         eventImages: orderedImageUrls.map((url, index) => ({
           imageUrl: url,
@@ -674,30 +729,26 @@ export default function EventFormPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <Label>Категория *</Label>
-                <Select value={form.categoryId} onValueChange={(value) => updateForm('categoryId', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите категорию" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.icon} {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Название площадки</Label>
-                <Input
-                  value={form.venueName}
-                  onChange={(event) => updateForm('venueName', event.target.value)}
-                  placeholder="Например, Дом культуры"
-                />
+            <div>
+              <Label>Категории *</Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {categories.map((category) => {
+                  const selected = form.categoryIds.includes(category.id);
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => toggleCategory(category.id)}
+                      className={`rounded-full border px-3.5 py-1.5 text-sm transition-all ${
+                        selected
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                      }`}
+                    >
+                      {category.name}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -725,6 +776,15 @@ export default function EventFormPage() {
         {currentStep === 1 && (
           <div className="space-y-4">
             <h2 className="font-heading text-2xl text-foreground">Место проведения</h2>
+
+            <div>
+              <Label>Название площадки</Label>
+              <Input
+                value={form.venueName}
+                onChange={(event) => updateForm('venueName', event.target.value)}
+                placeholder="Например, Дом культуры"
+              />
+            </div>
 
             <div className="relative">
               <Label>Адрес *</Label>
@@ -765,87 +825,21 @@ export default function EventFormPage() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <Label>Контакты площадки</Label>
-                <Input
-                  value={form.venueContacts}
-                  onChange={(event) => updateForm('venueContacts', event.target.value)}
-                  placeholder="Телефон, сайт или email"
-                />
-              </div>
-              <div>
-                <Label>Вместимость площадки</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={form.venueCapacity}
-                  onChange={(event) => updateForm('venueCapacity', event.target.value)}
-                  placeholder="Например, 300"
-                />
-              </div>
-            </div>
-
             <div className="rounded-xl border border-border bg-muted/30 p-3">
               <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-foreground">
                 <MapPin className="h-4 w-4 text-primary" />
                 Выбор точки на карте
               </p>
               <p className="mb-3 text-sm text-muted-foreground">
-                Можно не вводить адрес вручную: кликните по карте, и мы автоматически подставим координаты и попробуем определить адрес.
+                Кликните по карте, и мы автоматически подставим адрес места проведения.
               </p>
 
               <LocationPickerMap
                 latitude={Number.isFinite(latitudeValue) ? latitudeValue : undefined}
                 longitude={Number.isFinite(longitudeValue) ? longitudeValue : undefined}
+                initialCenter={cityCenter}
                 onPick={onMapPick}
               />
-
-              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <Label>Широта *</Label>
-                  <Input
-                    value={form.latitude}
-                    onChange={(event) => updateForm('latitude', event.target.value)}
-                    placeholder="55.751244"
-                  />
-                </div>
-                <div>
-                  <Label>Долгота *</Label>
-                  <Input
-                    value={form.longitude}
-                    onChange={(event) => updateForm('longitude', event.target.value)}
-                    placeholder="37.618423"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div>
-                <Label>Город</Label>
-                <Input
-                  value={form.cityName}
-                  onChange={(event) => updateForm('cityName', event.target.value)}
-                  placeholder="Город"
-                />
-              </div>
-              <div>
-                <Label>Регион</Label>
-                <Input
-                  value={form.region}
-                  onChange={(event) => updateForm('region', event.target.value)}
-                  placeholder="Регион"
-                />
-              </div>
-              <div>
-                <Label>Страна</Label>
-                <Input
-                  value={form.country}
-                  onChange={(event) => updateForm('country', event.target.value)}
-                  placeholder="Страна"
-                />
-              </div>
             </div>
           </div>
         )}

@@ -3,6 +3,7 @@ import type {
   City,
   Event,
   Favorite,
+  Organization,
   OrganizerEventStats,
   OrganizerOverview,
   Publication,
@@ -30,6 +31,14 @@ export interface BackendCurrentUser {
   phone?: string | null;
   avatarUrl?: string | null;
   roles?: string[] | null;
+  organization?: BackendOrganizationInfo | null;
+}
+
+export interface BackendOrganizationInfo {
+  id: number;
+  name: string;
+  description?: string | null;
+  contacts?: string | null;
 }
 
 export interface BackendAdminUser {
@@ -85,6 +94,7 @@ export interface BackendEventShort {
   venueAddress?: string | null;
   cityId?: number | null;
   cityName?: string | null;
+  organizationId?: number | null;
   organizationName?: string | null;
   categories?: BackendCategory[] | null;
   nextSessionAt?: string | null;
@@ -106,6 +116,8 @@ export interface BackendEventDetails {
   organization?: {
     id: number;
     name: string;
+    description?: string | null;
+    contacts?: string | null;
   } | null;
 }
 
@@ -189,6 +201,8 @@ export interface BackendPublicationShort {
   status?: string | null;
   authorName?: string | null;
   imageUrl?: string | null;
+  organizationId?: number | null;
+  organizationName?: string | null;
   eventId?: number | null;
   eventTitle?: string | null;
 }
@@ -202,6 +216,8 @@ export interface BackendPublicationDetails {
   status?: string | null;
   authorName?: string | null;
   authorId?: number | null;
+  organizationId?: number | null;
+  organizationName?: string | null;
   eventId?: number | null;
   eventTitle?: string | null;
 }
@@ -229,6 +245,13 @@ export interface BackendOrganizerEventStats {
   registrationsCount?: number | null;
   cancellationsCount?: number | null;
   sessions?: Array<unknown> | null;
+}
+
+export interface BackendOrganizationPublic {
+  id: number;
+  name: string;
+  description?: string | null;
+  contacts?: string | null;
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -365,9 +388,11 @@ function buildMinimalEvent(data: {
     shortDescription: data.shortDescription || '',
     imageUrl: data.coverUrl || '',
     categoryId: '',
+    categories: [],
     venueId: '',
     venue: buildMinimalVenue(data.venueName),
     cityId: '',
+    organizationId: '',
     organizerId: '',
     format: 'OFFLINE',
     status: 'PUBLISHED',
@@ -388,6 +413,26 @@ function buildExcerpt(content?: string | null, fallback?: string | null): string
   return normalized.length > 160 ? `${normalized.slice(0, 157)}...` : normalized;
 }
 
+function toOrganization(
+  dto?: {
+    id: number;
+    name: string;
+    description?: string | null;
+    contacts?: string | null;
+  } | null,
+): Organization | undefined {
+  if (!dto) {
+    return undefined;
+  }
+
+  return {
+    id: toId(dto.id),
+    name: dto.name,
+    description: dto.description || undefined,
+    contacts: dto.contacts || undefined,
+  };
+}
+
 export function mapCurrentUser(dto: BackendCurrentUser, active = true): User {
   return {
     id: toId(dto.id),
@@ -397,8 +442,18 @@ export function mapCurrentUser(dto: BackendCurrentUser, active = true): User {
     role: resolvePrimaryRole(dto.roles),
     avatarUrl: dto.avatarUrl || undefined,
     phone: dto.phone || undefined,
+    organization: toOrganization(dto.organization),
     active,
     createdAt: '',
+  };
+}
+
+export function mapOrganizationPublic(dto: BackendOrganizationPublic): Organization {
+  return {
+    id: toId(dto.id),
+    name: dto.name,
+    description: dto.description || undefined,
+    contacts: dto.contacts || undefined,
   };
 }
 
@@ -479,6 +534,10 @@ export function mapEventShort(dto: BackendEventShort): Event {
   const categories = (dto.categories || []).map(mapCategory);
   const category = categories[0];
   const cityId = toId(dto.cityId);
+  const organizationId = toId(dto.organizationId);
+  const organization = dto.organizationName
+    ? { id: organizationId, name: dto.organizationName }
+    : undefined;
   const venue = dto.venueId || dto.venueName
     ? buildMinimalVenue(dto.venueName, dto.venueAddress, cityId, dto.cityName)
     : undefined;
@@ -492,11 +551,14 @@ export function mapEventShort(dto: BackendEventShort): Event {
     imageUrl: dto.coverUrl || '',
     categoryId: category?.id || '',
     category,
+    categories,
     venueId: toId(dto.venueId),
     venue,
     cityId,
     city: dto.cityName ? { id: cityId, name: dto.cityName } : venue?.city,
-    organizerId: '',
+    organizationId,
+    organization,
+    organizerId: organizationId,
     format: 'OFFLINE',
     status: mapEventStatus(dto.status),
     startDate: range.startDate,
@@ -524,6 +586,14 @@ export function mapEventDetails(dto: BackendEventDetails, sessions: Session[] = 
     .filter(Boolean)
     .sort();
   const range = resolveEventRange(sessionDates, dto.createdAt);
+  const organization = dto.organization
+    ? {
+        id: toId(dto.organization.id),
+        name: dto.organization.name,
+        description: dto.organization.description || undefined,
+        contacts: dto.organization.contacts || undefined,
+      }
+    : undefined;
 
   return {
     id: toId(dto.id),
@@ -534,10 +604,13 @@ export function mapEventDetails(dto: BackendEventDetails, sessions: Session[] = 
     imageUrls,
     categoryId: category?.id || '',
     category,
+    categories,
     venueId: venue?.id || '',
     venue,
     cityId: venue?.cityId || '',
     city: venue?.city,
+    organizationId: toId(dto.organization?.id),
+    organization,
     organizerId: toId(dto.organization?.id),
     format: 'OFFLINE',
     status: mapEventStatus(dto.status),
@@ -643,6 +716,10 @@ export function mapSessionRegistration(dto: BackendSessionRegistration, session:
 
 export function mapPublicationShort(dto: BackendPublicationShort): Publication {
   const name = splitDisplayName(dto.authorName);
+  const organizationId = toId(dto.organizationId);
+  const organization = dto.organizationName
+    ? { id: organizationId, name: dto.organizationName }
+    : undefined;
 
   return {
     id: toId(dto.publicationId),
@@ -662,6 +739,10 @@ export function mapPublicationShort(dto: BackendPublicationShort): Publication {
           createdAt: '',
         }
       : undefined,
+    organizationId,
+    organization,
+    eventId: toId(dto.eventId),
+    eventTitle: dto.eventTitle || undefined,
     status: mapPublicationStatus(dto.status),
     publishedAt: dto.status === 'PUBLISHED' ? dto.createdAt || undefined : undefined,
     createdAt: dto.createdAt || '',
@@ -672,6 +753,10 @@ export function mapPublicationShort(dto: BackendPublicationShort): Publication {
 
 export function mapPublicationDetails(dto: BackendPublicationDetails): Publication {
   const name = splitDisplayName(dto.authorName);
+  const organizationId = toId(dto.organizationId);
+  const organization = dto.organizationName
+    ? { id: organizationId, name: dto.organizationName }
+    : undefined;
 
   return {
     id: toId(dto.publicationId),
@@ -691,6 +776,10 @@ export function mapPublicationDetails(dto: BackendPublicationDetails): Publicati
           createdAt: '',
         }
       : undefined,
+    organizationId,
+    organization,
+    eventId: toId(dto.eventId),
+    eventTitle: dto.eventTitle || undefined,
     status: mapPublicationStatus(dto.status),
     publishedAt: dto.status === 'PUBLISHED' ? dto.createdAt || undefined : undefined,
     createdAt: dto.createdAt || '',

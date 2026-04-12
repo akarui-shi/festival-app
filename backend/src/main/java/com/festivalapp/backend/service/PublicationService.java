@@ -305,6 +305,7 @@ public class PublicationService {
     }
 
     private PublicationShortResponse toShortResponse(Publication publication) {
+        Organization organization = resolvePublicationOrganization(publication);
         return PublicationShortResponse.builder()
             .publicationId(publication.getId())
             .title(publication.getTitle())
@@ -313,12 +314,15 @@ public class PublicationService {
             .status(publication.getStatus())
             .authorName(resolveAuthorName(publication.getAuthor()))
             .imageUrl(publication.getImageUrl())
+            .organizationId(organization != null ? organization.getId() : null)
+            .organizationName(organization != null ? organization.getName() : null)
             .eventId(publication.getEvent() != null ? publication.getEvent().getId() : null)
             .eventTitle(publication.getEvent() != null ? publication.getEvent().getTitle() : null)
             .build();
     }
 
     private PublicationDetailsResponse toDetailsResponse(Publication publication) {
+        Organization organization = resolvePublicationOrganization(publication);
         return PublicationDetailsResponse.builder()
             .publicationId(publication.getId())
             .title(publication.getTitle())
@@ -328,9 +332,34 @@ public class PublicationService {
             .status(publication.getStatus())
             .authorName(resolveAuthorName(publication.getAuthor()))
             .authorId(publication.getAuthor() != null ? publication.getAuthor().getId() : null)
+            .organizationId(organization != null ? organization.getId() : null)
+            .organizationName(organization != null ? organization.getName() : null)
             .eventId(publication.getEvent() != null ? publication.getEvent().getId() : null)
             .eventTitle(publication.getEvent() != null ? publication.getEvent().getTitle() : null)
             .build();
+    }
+
+    private Organization resolvePublicationOrganization(Publication publication) {
+        if (publication == null) {
+            return null;
+        }
+        if (publication.getEvent() != null && publication.getEvent().getOrganization() != null) {
+            return publication.getEvent().getOrganization();
+        }
+
+        User author = publication.getAuthor();
+        if (author == null) {
+            return null;
+        }
+        if (author.getOrganizer() != null && author.getOrganizer().getOrganization() != null) {
+            return author.getOrganizer().getOrganization();
+        }
+
+        Organizer organizer = organizerRepository.findByUserId(author.getId()).orElse(null);
+        if (organizer != null && organizer.getOrganization() != null) {
+            return organizer.getOrganization();
+        }
+        return null;
     }
 
     private String normalizeOptional(String value) {
