@@ -10,6 +10,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import HomePage from "./pages/HomePage";
 import EventsCatalogPage from "./pages/EventsCatalogPage";
 import EventDetailPage from "./pages/EventDetailPage";
+import OrganizationPage from "./pages/OrganizationPage";
 import PublicationsPage from "./pages/PublicationsPage";
 import PublicationDetailPage from "./pages/PublicationDetailPage";
 import LoginPage from "./pages/LoginPage";
@@ -50,6 +51,7 @@ const App = () => (
               <Route path="/" element={<HomePage />} />
               <Route path="/events" element={<EventsCatalogPage />} />
               <Route path="/events/:id" element={<EventDetailPage />} />
+              <Route path="/organizations/:id" element={<OrganizationPage />} />
               <Route path="/publications" element={<PublicationsPage />} />
               <Route path="/publications/:id" element={<PublicationDetailPage />} />
               <Route path="/login" element={<LoginPage />} />

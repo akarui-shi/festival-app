@@ -1048,6 +1048,7 @@ public class EventService {
             .ageRating(event.getAgeRating())
             .createdAt(event.getCreatedAt())
             .status(event.getStatus())
+            .organizationId(event.getOrganization() != null ? event.getOrganization().getId() : null)
             .organizationName(event.getOrganization() != null ? event.getOrganization().getName() : null)
             .venueId(venue != null ? venue.getId() : null)
             .venueName(venue != null ? venue.getName() : null)

@@ -42,8 +42,6 @@ export function PublicLayout({ children }: { children: ReactNode }) {
 
     return [
       ...baseLinks,
-      { label: 'Избранное', path: '/favorites' },
-      { label: 'Профиль', path: '/profile' },
     ];
   }, [isAuthenticated]);
 

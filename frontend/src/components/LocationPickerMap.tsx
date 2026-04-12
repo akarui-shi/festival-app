@@ -6,10 +6,11 @@ const MOSCOW_CENTER: [number, number] = [55.751244, 37.618423];
 interface LocationPickerMapProps {
   latitude?: number;
   longitude?: number;
+  initialCenter?: [number, number];
   onPick: (latitude: number, longitude: number) => void;
 }
 
-export function LocationPickerMap({ latitude, longitude, onPick }: LocationPickerMapProps) {
+export function LocationPickerMap({ latitude, longitude, initialCenter, onPick }: LocationPickerMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
   const placemarkRef = useRef<any>(null);
@@ -22,7 +23,7 @@ export function LocationPickerMap({ latitude, longitude, onPick }: LocationPicke
 
   const center: [number, number] = latitude != null && longitude != null
     ? [latitude, longitude]
-    : MOSCOW_CENTER;
+    : initialCenter || MOSCOW_CENTER;
 
   useEffect(() => {
     let destroyed = false;
@@ -75,7 +76,12 @@ export function LocationPickerMap({ latitude, longitude, onPick }: LocationPicke
 
     map.setCenter(center, 12, { duration: 200 });
 
-    if (latitude == null || longitude == null) {
+    const markerCoordinates: [number, number] | null = latitude != null && longitude != null
+      ? [latitude, longitude]
+      : initialCenter || null;
+    const isPickedPoint = latitude != null && longitude != null;
+
+    if (!markerCoordinates) {
       if (placemarkRef.current) {
         map.geoObjects.remove(placemarkRef.current);
         placemarkRef.current = null;
@@ -88,18 +94,19 @@ export function LocationPickerMap({ latitude, longitude, onPick }: LocationPicke
       if (!ymaps) return;
 
       placemarkRef.current = new ymaps.Placemark(
-        [latitude, longitude],
+        markerCoordinates,
         {},
         {
-          preset: 'islands#redDotIcon',
+          preset: isPickedPoint ? 'islands#redDotIcon' : 'islands#grayDotIcon',
         },
       );
       map.geoObjects.add(placemarkRef.current);
       return;
     }
 
-    placemarkRef.current.geometry.setCoordinates([latitude, longitude]);
-  }, [center, latitude, longitude]);
+    placemarkRef.current.geometry.setCoordinates(markerCoordinates);
+    placemarkRef.current.options.set('preset', isPickedPoint ? 'islands#redDotIcon' : 'islands#grayDotIcon');
+  }, [center, initialCenter, latitude, longitude]);
 
   return (
     <div className="overflow-hidden rounded-xl border border-border">

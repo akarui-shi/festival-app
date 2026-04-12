@@ -33,6 +33,9 @@ public class ReviewService {
     @Transactional
     public ReviewResponse create(ReviewCreateRequest request, String actorIdentifier) {
         User user = loadActor(actorIdentifier);
+        if (hasRole(user, RoleName.ROLE_ADMIN) || hasRole(user, RoleName.ROLE_ORGANIZER)) {
+            throw new AccessDeniedException("Только жители могут оставлять отзывы");
+        }
 
         Event event = eventRepository.findById(request.getEventId())
             .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + request.getEventId()));

@@ -19,6 +19,7 @@ export const publicationService = {
       title: data.title,
       content: data.content,
       imageUrl: data.imageUrl,
+      eventId: data.eventId ? Number(data.eventId) : undefined,
     });
     return mapPublicationDetails(response);
   },
@@ -28,6 +29,7 @@ export const publicationService = {
       title: data.title,
       content: data.content,
       imageUrl: data.imageUrl,
+      eventId: data.eventId ? Number(data.eventId) : undefined,
     });
     return mapPublicationDetails(response);
   },
