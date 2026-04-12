@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { Calendar } from 'lucide-react';
+import { toast } from 'sonner';
 import { eventService } from '@/services/event-service';
 import { LoadingState } from '@/components/StateDisplays';
+import { EmptyState } from '@/components/EmptyState';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { Event, EventStatus } from '@/types';
-import { toast } from 'sonner';
 
 const statusMap: Record<string, { label: string; cls: string }> = {
   DRAFT: { label: 'Черновик', cls: 'bg-muted text-muted-foreground' },
@@ -18,40 +20,65 @@ export default function AdminEvents() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { eventService.getAllEvents().then(e => { setEvents(e); setLoading(false); }); }, []);
+  useEffect(() => {
+    eventService.getAllEvents().then((response) => {
+      setEvents(response);
+      setLoading(false);
+    });
+  }, []);
 
   const changeStatus = async (id: string, status: EventStatus) => {
     await eventService.updateEvent(id, { status });
-    setEvents(prev => prev.map(e => e.id === id ? { ...e, status } : e));
+    setEvents((prev) => prev.map((event) => (event.id === id ? { ...event, status } : event)));
     toast.success('Статус обновлён');
   };
 
   if (loading) return <LoadingState />;
 
+  if (events.length === 0) {
+    return <EmptyState icon={Calendar} title="Нет мероприятий" description="Модерация пока не требуется" />;
+  }
+
   return (
-    <div>
-      <h1 className="font-heading text-2xl font-bold mb-6">Модерация мероприятий</h1>
+    <div className="space-y-6">
+      <section>
+        <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Мероприятия</h1>
+        <p className="mt-1 text-muted-foreground">Проверка и публикация мероприятий организаторов</p>
+      </section>
+
       <div className="space-y-3">
-        {events.map(event => {
-          const st = statusMap[event.status];
+        {events.map((event) => {
+          const status = statusMap[event.status];
           return (
-            <div key={event.id} className="p-4 rounded-xl border border-border bg-card flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div
+              key={event.id}
+              className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-soft md:flex-row md:items-center md:justify-between"
+            >
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium">{event.title}</span>
-                  <Badge className={`${st.cls} border-0 text-xs`}>{st.label}</Badge>
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="font-medium text-foreground">{event.title}</span>
+                  <Badge className={`${status.cls} border-0 text-xs`}>{status.label}</Badge>
                 </div>
-                <p className="text-xs text-muted-foreground">{event.category?.name} · {event.city?.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {event.category?.name || 'Категория не указана'} · {event.city?.name || 'Город не указан'}
+                </p>
               </div>
+
               <div className="flex items-center gap-2">
                 {event.status === 'PENDING' && (
                   <>
-                    <Button size="sm" onClick={() => changeStatus(event.id, 'PUBLISHED')}>Опубликовать</Button>
-                    <Button size="sm" variant="destructive" onClick={() => changeStatus(event.id, 'REJECTED')}>Отклонить</Button>
+                    <Button size="sm" onClick={() => changeStatus(event.id, 'PUBLISHED')}>
+                      Опубликовать
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => changeStatus(event.id, 'REJECTED')}>
+                      Отклонить
+                    </Button>
                   </>
                 )}
                 {event.status === 'PUBLISHED' && (
-                  <Button size="sm" variant="outline" onClick={() => changeStatus(event.id, 'CANCELLED')}>Отменить</Button>
+                  <Button size="sm" variant="outline" onClick={() => changeStatus(event.id, 'CANCELLED')}>
+                    Отменить
+                  </Button>
                 )}
               </div>
             </div>

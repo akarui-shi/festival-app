@@ -1,8 +1,18 @@
-import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import {
+  BarChart3,
+  Calendar,
+  ChevronLeft,
+  FileText,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  PlusCircle,
+  X,
+} from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Calendar, PlusCircle, BarChart3, FileText, LogOut, Menu, X, ChevronLeft } from 'lucide-react';
-import { useState } from 'react';
 
 const navItems = [
   { to: '/organizer', label: 'Обзор', icon: LayoutDashboard, end: true },
@@ -21,51 +31,122 @@ export function OrganizerLayout() {
   const isActive = (path: string, end?: boolean) =>
     end ? location.pathname === path : location.pathname.startsWith(path);
 
+  const activeLabel = useMemo(
+    () => navItems.find((item) => isActive(item.to, item.end))?.label ?? 'Панель организатора',
+    [location.pathname],
+  );
+
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-40 w-64 border-r border-border bg-card transform transition-transform md:relative md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex flex-col h-full">
-          <div className="p-4 border-b border-border">
-            <Link to="/" className="flex items-center gap-2">
-              <span className="text-xl">🎭</span>
-              <span className="font-heading text-lg font-bold">КультурАфиша</span>
-            </Link>
-            <p className="text-xs text-muted-foreground mt-1">Панель организатора</p>
-          </div>
-          <nav className="flex-1 p-3 space-y-1">
-            {navItems.map(item => (
-              <Link key={item.to} to={item.to} onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive(item.to, item.end) ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>
-                <item.icon className="h-4 w-4" />
-                {item.label}
+    <div className="min-h-screen bg-gradient-to-br from-warm-cream/40 via-background to-background">
+      <div className="mx-auto flex min-h-screen w-full">
+        <aside
+          className={`fixed inset-y-0 left-0 z-40 w-72 border-r border-border bg-card/95 backdrop-blur-sm transition-transform md:sticky md:top-0 md:h-screen md:translate-x-0 ${
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          <div className="flex h-full flex-col">
+            <div className="border-b border-border px-5 py-5">
+              <Link to="/organizer" className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
+                  <span className="font-heading text-lg text-primary-foreground">К</span>
+                </div>
+                <div>
+                  <p className="font-heading text-lg text-foreground">Организатор</p>
+                  <p className="text-xs text-muted-foreground">Управление событиями</p>
+                </div>
               </Link>
-            ))}
-          </nav>
-          <div className="p-3 border-t border-border">
-            <div className="px-3 py-2 text-sm text-muted-foreground">{user?.firstName} {user?.lastName}</div>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" className="flex-1 justify-start" onClick={() => navigate('/')}>
-                <ChevronLeft className="h-4 w-4 mr-1" />На сайт
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => { logout(); navigate('/'); }}>
-                <LogOut className="h-4 w-4" />
-              </Button>
+            </div>
+
+            <nav className="flex-1 space-y-1.5 p-4">
+              {navItems.map((item) => {
+                const active = isActive(item.to, item.end);
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm transition-all ${
+                      active
+                        ? 'bg-primary/10 font-semibold text-primary shadow-soft'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    }`}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <div className="border-t border-border p-4">
+              <div className="mb-3 rounded-xl bg-muted/70 px-3 py-2">
+                <p className="text-sm font-semibold text-foreground">
+                  {user?.firstName} {user?.lastName}
+                </p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 justify-start gap-1.5"
+                  onClick={() => navigate('/')}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  На сайт
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    logout();
+                    navigate('/');
+                  }}
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
+        </aside>
+
+        {sidebarOpen && (
+          <button
+            type="button"
+            aria-label="Закрыть меню"
+            className="fixed inset-0 z-30 bg-foreground/20 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-20 border-b border-border bg-background/90 px-4 py-3 backdrop-blur-md md:px-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen((prev) => !prev)}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card md:hidden"
+                >
+                  {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+                </button>
+                <div>
+                  <p className="font-heading text-xl text-foreground">{activeLabel}</p>
+                  <p className="text-xs text-muted-foreground">Рабочая зона организатора</p>
+                </div>
+              </div>
+
+              <Button variant="outline" size="sm" className="hidden md:inline-flex" asChild>
+                <Link to="/">Открыть сайт</Link>
+              </Button>
+            </div>
+          </header>
+
+          <main className="flex-1 p-4 md:p-8">
+            <Outlet />
+          </main>
         </div>
-      </aside>
-
-      {sidebarOpen && <div className="fixed inset-0 z-30 bg-foreground/20 md:hidden" onClick={() => setSidebarOpen(false)} />}
-
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-20 h-14 border-b border-border bg-card/95 backdrop-blur flex items-center px-4 md:hidden">
-          <button onClick={() => setSidebarOpen(true)}><Menu className="h-5 w-5" /></button>
-          <span className="ml-3 font-heading font-semibold">Организатор</span>
-        </header>
-        <main className="flex-1 p-4 md:p-6">
-          <Outlet />
-        </main>
       </div>
     </div>
   );

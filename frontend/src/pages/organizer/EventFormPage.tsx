@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -10,7 +12,6 @@ import { eventService } from '@/services/event-service';
 import { directoryService } from '@/services/directory-service';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Category, City, Venue, Event } from '@/types';
-import { toast } from 'sonner';
 import { LoadingState } from '@/components/StateDisplays';
 
 export default function EventFormPage() {
@@ -35,7 +36,9 @@ export default function EventFormPage() {
       directoryService.getVenues(),
       isEdit ? eventService.getEventById(id!) : Promise.resolve(null),
     ]).then(([cats, cits, vens, event]) => {
-      setCategories(cats); setCities(cits); setVenues(vens);
+      setCategories(cats);
+      setCities(cits);
+      setVenues(vens);
       if (event) {
         setForm({
           title: event.title, description: event.description, shortDescription: event.shortDescription,
@@ -74,38 +77,78 @@ export default function EventFormPage() {
     setForm(p => ({ ...p, [field]: e.target.value }));
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="font-heading text-2xl font-bold mb-6">{isEdit ? 'Редактирование' : 'Новое мероприятие'}</h1>
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div><Label>Название *</Label><Input value={form.title} onChange={upd('title')} placeholder="Название мероприятия" /></div>
-        <div><Label>Краткое описание</Label><Input value={form.shortDescription} onChange={upd('shortDescription')} placeholder="В одно предложение" /></div>
-        <div><Label>Полное описание</Label><Textarea value={form.description} onChange={upd('description')} rows={5} /></div>
+    <div className="mx-auto max-w-4xl space-y-6">
+      <section className="space-y-2">
+        <Link
+          to="/organizer/events"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          К списку мероприятий
+        </Link>
+        <h1 className="font-heading text-3xl text-foreground sm:text-4xl">
+          {isEdit ? 'Редактирование мероприятия' : 'Новое мероприятие'}
+        </h1>
+        <p className="text-muted-foreground">Заполните основные данные и отправьте событие на модерацию</p>
+      </section>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <form onSubmit={handleSubmit} className="space-y-5 rounded-2xl border border-border bg-card p-6 shadow-card sm:p-8">
+        <div>
+          <Label>Название *</Label>
+          <Input value={form.title} onChange={upd('title')} placeholder="Название мероприятия" />
+        </div>
+        <div>
+          <Label>Краткое описание</Label>
+          <Input value={form.shortDescription} onChange={upd('shortDescription')} placeholder="В одно предложение" />
+        </div>
+        <div>
+          <Label>Полное описание</Label>
+          <Textarea value={form.description} onChange={upd('description')} rows={5} />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <Label>Категория *</Label>
-            <Select value={form.categoryId} onValueChange={v => setForm(p => ({ ...p, categoryId: v }))}>
+            <Select value={form.categoryId} onValueChange={(value) => setForm((prev) => ({ ...prev, categoryId: value }))}>
               <SelectTrigger><SelectValue placeholder="Выберите" /></SelectTrigger>
-              <SelectContent>{categories.map(c => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}</SelectContent>
+              <SelectContent>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.icon} {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
           <div>
             <Label>Город *</Label>
-            <Select value={form.cityId} onValueChange={v => setForm(p => ({ ...p, cityId: v }))}>
+            <Select value={form.cityId} onValueChange={(value) => setForm((prev) => ({ ...prev, cityId: value }))}>
               <SelectTrigger><SelectValue placeholder="Выберите" /></SelectTrigger>
-              <SelectContent>{cities.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+              <SelectContent>
+                {cities.map((city) => (
+                  <SelectItem key={city.id} value={city.id}>
+                    {city.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
           <div>
             <Label>Площадка</Label>
-            <Select value={form.venueId} onValueChange={v => setForm(p => ({ ...p, venueId: v }))}>
+            <Select value={form.venueId} onValueChange={(value) => setForm((prev) => ({ ...prev, venueId: value }))}>
               <SelectTrigger><SelectValue placeholder="Выберите" /></SelectTrigger>
-              <SelectContent>{venues.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
+              <SelectContent>
+                {venues.map((venue) => (
+                  <SelectItem key={venue.id} value={venue.id}>
+                    {venue.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
           <div>
             <Label>Формат</Label>
-            <Select value={form.format} onValueChange={v => setForm(p => ({ ...p, format: v as any }))}>
+            <Select value={form.format} onValueChange={(value) => setForm((prev) => ({ ...prev, format: value as Event['format'] }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="OFFLINE">Офлайн</SelectItem>
@@ -116,22 +159,40 @@ export default function EventFormPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div><Label>Начало</Label><Input type="datetime-local" value={form.startDate} onChange={upd('startDate')} /></div>
-          <div><Label>Окончание</Label><Input type="datetime-local" value={form.endDate} onChange={upd('endDate')} /></div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <Label>Начало</Label>
+            <Input type="datetime-local" value={form.startDate} onChange={upd('startDate')} />
+          </div>
+          <div>
+            <Label>Окончание</Label>
+            <Input type="datetime-local" value={form.endDate} onChange={upd('endDate')} />
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Switch checked={form.isFree} onCheckedChange={v => setForm(p => ({ ...p, isFree: v }))} />
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/50 px-3 py-2">
+          <Switch checked={form.isFree} onCheckedChange={(value) => setForm((prev) => ({ ...prev, isFree: value }))} />
           <Label>Бесплатное</Label>
         </div>
-        {!form.isFree && <div><Label>Стоимость (₽)</Label><Input type="number" value={form.price} onChange={upd('price')} /></div>}
+        {!form.isFree && (
+          <div>
+            <Label>Стоимость (₽)</Label>
+            <Input type="number" value={form.price} onChange={upd('price')} />
+          </div>
+        )}
 
-        <div><Label>Теги (через запятую)</Label><Input value={form.tags} onChange={upd('tags')} placeholder="музыка, лето, фестиваль" /></div>
+        <div>
+          <Label>Теги (через запятую)</Label>
+          <Input value={form.tags} onChange={upd('tags')} placeholder="музыка, лето, фестиваль" />
+        </div>
 
-        <div className="flex gap-3 pt-4">
-          <Button type="submit" disabled={saving}>{saving ? 'Сохранение...' : isEdit ? 'Сохранить' : 'Создать'}</Button>
-          <Button type="button" variant="outline" onClick={() => navigate('/organizer/events')}>Отмена</Button>
+        <div className="flex gap-3 pt-2">
+          <Button type="submit" disabled={saving}>
+            {saving ? 'Сохранение...' : isEdit ? 'Сохранить' : 'Создать'}
+          </Button>
+          <Button type="button" variant="outline" onClick={() => navigate('/organizer/events')}>
+            Отмена
+          </Button>
         </div>
       </form>
     </div>

@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { BarChart3, Calendar, Edit, Eye, Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { eventService } from '@/services/event-service';
-import { LoadingState, EmptyState } from '@/components/StateDisplays';
+import { LoadingState } from '@/components/StateDisplays';
+import { EmptyState } from '@/components/EmptyState';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { Event } from '@/types';
-import { Plus, Calendar, Edit, Trash2, Eye, BarChart3 } from 'lucide-react';
-import { toast } from 'sonner';
 
 const statusMap: Record<string, { label: string; cls: string }> = {
   DRAFT: { label: 'Черновик', cls: 'bg-muted text-muted-foreground' },
@@ -24,46 +25,84 @@ export default function OrganizerEvents() {
 
   useEffect(() => {
     if (!user) return;
-    eventService.getOrganizerEvents(user.id).then(e => { setEvents(e); setLoading(false); });
+    eventService.getOrganizerEvents(user.id).then((response) => {
+      setEvents(response);
+      setLoading(false);
+    });
   }, [user]);
 
   const del = async (id: string) => {
     if (!confirm('Удалить мероприятие?')) return;
     await eventService.deleteEvent(id);
-    setEvents(prev => prev.filter(e => e.id !== id));
+    setEvents((prev) => prev.filter((event) => event.id !== id));
     toast.success('Мероприятие удалено');
   };
 
   if (loading) return <LoadingState />;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="font-heading text-2xl font-bold">Мои мероприятия</h1>
-        <Button asChild><Link to="/organizer/events/create"><Plus className="h-4 w-4 mr-1" />Создать</Link></Button>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Мои мероприятия</h1>
+          <p className="mt-1 text-muted-foreground">Создавайте, редактируйте и отслеживайте события</p>
+        </div>
+        <Button asChild>
+          <Link to="/organizer/events/create" className="gap-1.5">
+            <Plus className="h-4 w-4" />
+            Создать
+          </Link>
+        </Button>
       </div>
 
       {events.length === 0 ? (
-        <EmptyState icon={<Calendar className="h-12 w-12 text-muted-foreground" />} title="Нет мероприятий" description="Создайте своё первое мероприятие"
-          action={<Button asChild><Link to="/organizer/events/create">Создать мероприятие</Link></Button>} />
+        <div className="space-y-4">
+          <EmptyState icon={Calendar} title="Нет мероприятий" description="Создайте своё первое мероприятие" />
+          <div className="text-center">
+            <Button asChild>
+              <Link to="/organizer/events/create">Создать мероприятие</Link>
+            </Button>
+          </div>
+        </div>
       ) : (
         <div className="space-y-3">
-          {events.map(event => {
-            const st = statusMap[event.status];
+          {events.map((event) => {
+            const status = statusMap[event.status];
             return (
-              <div key={event.id} className="p-4 rounded-xl border border-border bg-card flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div
+                key={event.id}
+                className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-soft md:flex-row md:items-center md:justify-between"
+              >
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-medium truncate">{event.title}</h3>
-                    <Badge className={`${st.cls} border-0 text-xs`}>{st.label}</Badge>
+                  <div className="mb-1 flex items-center gap-2">
+                    <h3 className="truncate font-medium text-foreground">{event.title}</h3>
+                    <Badge className={`${status.cls} border-0 text-xs`}>{status.label}</Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground">{event.category?.name} · {event.city?.name} · {event.sessionsCount || 0} сеансов · {event.registrationsCount || 0} записей</p>
+                  <p className="text-xs text-muted-foreground">
+                    {event.category?.name || 'Категория не указана'} · {event.city?.name || 'Город не указан'} ·{' '}
+                    {event.sessionsCount || 0} сеансов · {event.registrationsCount || 0} записей
+                  </p>
                 </div>
+
                 <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" asChild><Link to={`/events/${event.id}`}><Eye className="h-4 w-4" /></Link></Button>
-                  <Button variant="ghost" size="icon" asChild><Link to={`/organizer/events/${event.id}/edit`}><Edit className="h-4 w-4" /></Link></Button>
-                  <Button variant="ghost" size="icon" asChild><Link to={`/organizer/events/${event.id}/stats`}><BarChart3 className="h-4 w-4" /></Link></Button>
-                  <Button variant="ghost" size="icon" onClick={() => del(event.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" asChild>
+                    <Link to={`/events/${event.id}`}>
+                      <Eye className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button variant="ghost" size="icon" asChild>
+                    <Link to={`/organizer/events/${event.id}/edit`}>
+                      <Edit className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button variant="ghost" size="icon" asChild>
+                    <Link to={`/organizer/events/${event.id}/stats`}>
+                      <BarChart3 className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => del(event.id)} className="text-destructive">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             );
