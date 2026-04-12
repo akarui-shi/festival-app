@@ -22,5 +22,8 @@ export const fileUploadService = {
   uploadEventImage(file: File): Promise<FileUploadResponse> {
     return uploadFile('/files/event-image', file);
   },
-};
 
+  uploadPublicationImage(file: File): Promise<FileUploadResponse> {
+    return uploadFile('/files/publication-image', file);
+  },
+};

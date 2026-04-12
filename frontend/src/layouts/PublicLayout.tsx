@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 export function PublicLayout({ children }: { children: ReactNode }) {
-  const { user, isAuthenticated, isOrganizer, isAdmin, logout } = useAuth();
+  const { user, isAuthenticated, isResident, isOrganizer, isAdmin, logout } = useAuth();
   const { cities, selectedCity, loading: cityLoading, setSelectedCityById } = useCity();
   const location = useLocation();
   const navigate = useNavigate();
@@ -245,16 +245,18 @@ export function PublicLayout({ children }: { children: ReactNode }) {
                     <Heart className="h-5 w-5" />
                   </Button>
                 </Link>
-                <Link to="/registrations">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground hover:text-primary"
-                    aria-label="Открыть мои записи"
-                  >
-                    <Calendar className="h-5 w-5" />
-                  </Button>
-                </Link>
+                {isResident && (
+                  <Link to="/registrations">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-primary"
+                      aria-label="Открыть мои записи"
+                    >
+                      <Calendar className="h-5 w-5" />
+                    </Button>
+                  </Link>
+                )}
                 <Link to="/profile" className="flex h-9 items-center gap-2 rounded-full bg-primary/10 px-3">
                   <User className="h-4 w-4 text-primary" />
                   <span className="max-w-28 truncate text-sm font-semibold text-primary">
@@ -317,13 +319,15 @@ export function PublicLayout({ children }: { children: ReactNode }) {
 
               {isAuthenticated && (
                 <>
-                  <Link
-                    to="/registrations"
-                    onClick={() => setMobileOpen(false)}
-                    className="rounded-lg px-3 py-2.5 text-sm font-body text-muted-foreground hover:bg-muted"
-                  >
-                    Мои записи
-                  </Link>
+                  {isResident && (
+                    <Link
+                      to="/registrations"
+                      onClick={() => setMobileOpen(false)}
+                      className="rounded-lg px-3 py-2.5 text-sm font-body text-muted-foreground hover:bg-muted"
+                    >
+                      Мои записи
+                    </Link>
+                  )}
                   {dashboardLinks.map((link) => (
                     <Link
                       key={link.to}

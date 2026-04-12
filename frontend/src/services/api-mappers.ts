@@ -205,6 +205,7 @@ export interface BackendPublicationShort {
   organizationName?: string | null;
   eventId?: number | null;
   eventTitle?: string | null;
+  eventImageUrl?: string | null;
 }
 
 export interface BackendPublicationDetails {
@@ -220,6 +221,7 @@ export interface BackendPublicationDetails {
   organizationName?: string | null;
   eventId?: number | null;
   eventTitle?: string | null;
+  eventImageUrl?: string | null;
 }
 
 export interface BackendOrganizerAnalyticsOverview {
@@ -743,6 +745,7 @@ export function mapPublicationShort(dto: BackendPublicationShort): Publication {
     organization,
     eventId: toId(dto.eventId),
     eventTitle: dto.eventTitle || undefined,
+    eventImageUrl: dto.eventImageUrl || undefined,
     status: mapPublicationStatus(dto.status),
     publishedAt: dto.status === 'PUBLISHED' ? dto.createdAt || undefined : undefined,
     createdAt: dto.createdAt || '',
@@ -780,6 +783,7 @@ export function mapPublicationDetails(dto: BackendPublicationDetails): Publicati
     organization,
     eventId: toId(dto.eventId),
     eventTitle: dto.eventTitle || undefined,
+    eventImageUrl: dto.eventImageUrl || undefined,
     status: mapPublicationStatus(dto.status),
     publishedAt: dto.status === 'PUBLISHED' ? dto.createdAt || undefined : undefined,
     createdAt: dto.createdAt || '',

@@ -22,4 +22,5 @@ public class PublicationDetailsResponse {
     private String organizationName;
     private Long eventId;
     private String eventTitle;
+    private String eventImageUrl;
 }
