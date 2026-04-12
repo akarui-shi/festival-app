@@ -160,6 +160,7 @@ export interface Publication {
   organization?: Organization;
   eventId?: string;
   eventTitle?: string;
+  eventImageUrl?: string;
   status: PublicationStatus;
   publishedAt?: string;
   createdAt: string;

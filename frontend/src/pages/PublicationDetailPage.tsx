@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Building2, Calendar, User } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar, Link2, User } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { LoadingState, ErrorState } from '@/components/StateDisplays';
@@ -44,6 +44,8 @@ export default function PublicationDetailPage() {
   if (loading) return <PublicLayout><LoadingState /></PublicLayout>;
   if (error || !pub) return <PublicLayout><ErrorState message={error || 'Не найдено'} /></PublicLayout>;
   const organizationLink = pub.organizationId ? `/organizations/${pub.organizationId}` : null;
+  const eventLink = pub.eventId ? `/events/${pub.eventId}` : null;
+  const eventImage = pub.eventImageUrl || pub.imageUrl || '/placeholder.svg';
 
   return (
     <PublicLayout>
@@ -57,7 +59,15 @@ export default function PublicationDetailPage() {
         </Link>
 
         <div className="surface-panel">
-          <div className="flex flex-wrap gap-2">
+          <div className="overflow-hidden rounded-xl border border-border bg-muted">
+            <img
+              src={eventImage}
+              alt={pub.eventTitle || pub.title}
+              className="aspect-[16/9] w-full object-cover"
+            />
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
             {pub.tags.map((tag) => (
               <Badge key={tag} variant="secondary">
                 {tag}
@@ -76,12 +86,6 @@ export default function PublicationDetailPage() {
                 <Calendar className="h-4 w-4 text-primary" />
                 {formatPublishedDate(pub.publishedAt)}
               </span>
-              {pub.author && (
-                <span className="inline-flex items-center gap-1.5">
-                  <User className="h-4 w-4 text-primary" />
-                  {pub.author.firstName} {pub.author.lastName}
-                </span>
-              )}
               {pub.organization && (
                 <span className="inline-flex items-center gap-1.5">
                   <Building2 className="h-4 w-4 text-primary" />
@@ -91,6 +95,18 @@ export default function PublicationDetailPage() {
                     </Link>
                   ) : (
                     <span>{pub.organization.name}</span>
+                  )}
+                </span>
+              )}
+              {(pub.eventTitle || pub.eventId) && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Link2 className="h-4 w-4 text-primary" />
+                  {eventLink ? (
+                    <Link to={eventLink} className="hover:text-primary hover:underline">
+                      {pub.eventTitle || 'Перейти к мероприятию'}
+                    </Link>
+                  ) : (
+                    <span>{pub.eventTitle}</span>
                   )}
                 </span>
               )}

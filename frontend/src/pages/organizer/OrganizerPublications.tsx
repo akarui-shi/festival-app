@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react';
-import { FileText, Plus, Send, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { FileText, ImagePlus, Loader2, Plus, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmActionDialog } from '@/components/ConfirmActionDialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { eventService } from '@/services/event-service';
+import { fileUploadService } from '@/services/file-upload-service';
 import { publicationService } from '@/services/publication-service';
 import { LoadingState } from '@/components/StateDisplays';
 import { EmptyState } from '@/components/EmptyState';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import type { Publication } from '@/types';
+import type { Event, Publication } from '@/types';
 
 const statusMap: Record<string, { label: string; cls: string }> = {
   DRAFT: { label: 'Черновик', cls: 'bg-muted text-muted-foreground' },
@@ -22,34 +26,68 @@ const statusMap: Record<string, { label: string; cls: string }> = {
 export default function OrganizerPublications() {
   const { user } = useAuth();
   const [pubs, setPubs] = useState<Publication[]>([]);
+  const [organizerEvents, setOrganizerEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: '', excerpt: '', content: '', tags: '' });
+  const [form, setForm] = useState({ title: '', excerpt: '', content: '', tags: '', eventId: '', imageUrl: '' });
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [publicationToDelete, setPublicationToDelete] = useState<Publication | null>(null);
 
   useEffect(() => {
-    publicationService.getAllPublications().then((response) => {
-      setPubs(response);
-      setLoading(false);
-    });
+    setLoading(true);
+    Promise.all([
+      publicationService.getAllPublications(),
+      eventService.getOrganizerEvents(user?.id || ''),
+    ])
+      .then(([publications, events]) => {
+        setPubs(publications);
+        setOrganizerEvents(events);
+        setForm((prev) => ({
+          ...prev,
+          eventId: prev.eventId || events[0]?.id || '',
+        }));
+      })
+      .finally(() => setLoading(false));
   }, [user]);
 
   const create = async () => {
-    if (!form.title || !form.content) { toast.error('Заполните название и содержание'); return; }
+    if (!form.title || !form.content || !form.eventId) {
+      toast.error('Заполните название, содержание и выберите мероприятие');
+      return;
+    }
+
     setSaving(true);
     try {
       const pub = await publicationService.createPublication({
         ...form,
         authorId: user!.id,
+        eventId: form.eventId,
         tags: form.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
       });
       setPubs((prev) => [pub, ...prev]);
       setShowForm(false);
-      setForm({ title: '', excerpt: '', content: '', tags: '' });
+      setForm((prev) => ({ title: '', excerpt: '', content: '', tags: '', eventId: prev.eventId, imageUrl: '' }));
       toast.success('Публикация создана');
     } catch { toast.error('Ошибка'); }
     setSaving(false);
+  };
+
+  const onUploadPublicationImage: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const uploaded = await fileUploadService.uploadPublicationImage(file);
+      setForm((prev) => ({ ...prev, imageUrl: uploaded.url }));
+      toast.success('Изображение публикации загружено');
+    } catch (error: any) {
+      toast.error(error?.message || 'Не удалось загрузить изображение');
+    } finally {
+      setUploadingImage(false);
+      event.target.value = '';
+    }
   };
 
   const sendToModeration = async (id: string) => {
@@ -74,11 +112,16 @@ export default function OrganizerPublications() {
           <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Мои публикации</h1>
           <p className="mt-1 text-muted-foreground">Публикуйте новости и материалы для аудитории</p>
         </div>
-        <Button onClick={() => setShowForm((prev) => !prev)} className="gap-1.5">
+        <Button onClick={() => setShowForm((prev) => !prev)} className="gap-1.5" disabled={organizerEvents.length === 0}>
           <Plus className="h-4 w-4" />
           Создать
         </Button>
       </div>
+      {organizerEvents.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          Чтобы создать публикацию, сначала создайте хотя бы одно мероприятие.
+        </p>
+      )}
 
       <ConfirmActionDialog
         open={Boolean(publicationToDelete)}
@@ -99,6 +142,18 @@ export default function OrganizerPublications() {
 
       {showForm && (
         <div className="surface-panel space-y-4">
+          <Select value={form.eventId} onValueChange={(value) => setForm((prev) => ({ ...prev, eventId: value }))}>
+            <SelectTrigger className="bg-background">
+              <SelectValue placeholder="Выберите мероприятие" />
+            </SelectTrigger>
+            <SelectContent>
+              {organizerEvents.map((eventItem) => (
+                <SelectItem key={eventItem.id} value={eventItem.id}>
+                  {eventItem.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Input
             className="text-lg"
             placeholder="Заголовок"
@@ -116,6 +171,38 @@ export default function OrganizerPublications() {
             value={form.content}
             onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
           />
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" size="sm" className="gap-1.5" asChild>
+                <label>
+                  {uploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+                  {uploadingImage ? 'Загрузка…' : 'Загрузить изображение'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={onUploadPublicationImage}
+                    disabled={uploadingImage}
+                  />
+                </label>
+              </Button>
+              {form.imageUrl && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setForm((prev) => ({ ...prev, imageUrl: '' }))}
+                >
+                  Убрать
+                </Button>
+              )}
+            </div>
+            {form.imageUrl && (
+              <div className="overflow-hidden rounded-lg border border-border bg-muted">
+                <img src={form.imageUrl} alt="Изображение публикации" className="h-44 w-full object-cover" />
+              </div>
+            )}
+          </div>
           <Input
             placeholder="Теги через запятую"
             value={form.tags}
@@ -148,6 +235,14 @@ export default function OrganizerPublications() {
                     <span className="font-medium text-foreground">{pub.title}</span>
                     <Badge className={`${status.cls} border-0 text-xs`}>{status.label}</Badge>
                   </div>
+                  {pub.eventId && pub.eventTitle && (
+                    <p className="mb-1 text-xs text-muted-foreground">
+                      Мероприятие:{' '}
+                      <Link to={`/events/${pub.eventId}`} className="text-primary hover:underline">
+                        {pub.eventTitle}
+                      </Link>
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">{pub.excerpt}</p>
                 </div>
                 <div className="flex items-center gap-1">

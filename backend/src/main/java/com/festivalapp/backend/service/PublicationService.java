@@ -318,6 +318,7 @@ public class PublicationService {
             .organizationName(organization != null ? organization.getName() : null)
             .eventId(publication.getEvent() != null ? publication.getEvent().getId() : null)
             .eventTitle(publication.getEvent() != null ? publication.getEvent().getTitle() : null)
+            .eventImageUrl(resolvePublicationEventImageUrl(publication))
             .build();
     }
 
@@ -336,7 +337,16 @@ public class PublicationService {
             .organizationName(organization != null ? organization.getName() : null)
             .eventId(publication.getEvent() != null ? publication.getEvent().getId() : null)
             .eventTitle(publication.getEvent() != null ? publication.getEvent().getTitle() : null)
+            .eventImageUrl(resolvePublicationEventImageUrl(publication))
             .build();
+    }
+
+    private String resolvePublicationEventImageUrl(Publication publication) {
+        if (publication == null || publication.getEvent() == null) {
+            return null;
+        }
+        String coverUrl = publication.getEvent().getCoverUrl();
+        return StringUtils.hasText(coverUrl) ? coverUrl.trim() : null;
     }
 
     private Organization resolvePublicationOrganization(Publication publication) {

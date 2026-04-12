@@ -61,8 +61,12 @@ export default function PublicationsPage() {
                 to={`/publications/${publication.id}`}
                 className="group overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-hover"
               >
-                <div className="flex aspect-[3/2] items-center justify-center bg-gradient-to-br from-primary/10 via-golden-light/20 to-muted">
-                  <FileText className="h-10 w-10 text-primary/60" />
+                <div className="aspect-[3/2] overflow-hidden bg-muted">
+                  <img
+                    src={publication.eventImageUrl || publication.imageUrl || '/placeholder.svg'}
+                    alt={publication.eventTitle || publication.title}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
                 </div>
                 <div className="p-4">
                   <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">

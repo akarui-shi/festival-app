@@ -21,4 +21,5 @@ public class PublicationShortResponse {
     private String organizationName;
     private Long eventId;
     private String eventTitle;
+    private String eventImageUrl;
 }
