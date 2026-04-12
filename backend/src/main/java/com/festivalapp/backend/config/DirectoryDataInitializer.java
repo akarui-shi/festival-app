@@ -20,9 +20,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 @Component
@@ -70,13 +72,28 @@ public class DirectoryDataInitializer implements CommandLineRunner {
     }
 
     private void importRussianCitiesFromResourceIfNeeded() {
-        if (cityRepository.count() >= CITIES_IMPORT_THRESHOLD) {
-            return;
-        }
-
         ClassPathResource resource = new ClassPathResource("data/russian-cities.json");
         if (!resource.exists()) {
             log.warn("Russian cities resource file is missing: data/russian-cities.json");
+            return;
+        }
+
+        JsonNode root;
+        try (InputStream inputStream = resource.getInputStream()) {
+            root = objectMapper.readTree(inputStream);
+        } catch (IOException ex) {
+            throw new IllegalStateException("Failed to import russian cities from resource", ex);
+        }
+
+        if (root == null || !root.isArray()) {
+            log.warn("Russian cities resource has invalid format");
+            return;
+        }
+
+        Map<String, String> regionFullNameByShortName = buildRegionFullNameDictionary(root);
+        normalizeExistingRussianCitiesRegions(regionFullNameByShortName);
+
+        if (cityRepository.count() >= CITIES_IMPORT_THRESHOLD) {
             return;
         }
 
@@ -86,44 +103,110 @@ public class DirectoryDataInitializer implements CommandLineRunner {
         }
 
         List<City> citiesToInsert = new ArrayList<>();
-        try (InputStream inputStream = resource.getInputStream()) {
-            JsonNode root = objectMapper.readTree(inputStream);
-            if (root == null || !root.isArray()) {
-                log.warn("Russian cities resource has invalid format");
-                return;
+        for (JsonNode node : root) {
+            String contentType = node.path("contentType").asText("");
+            if (!"city".equalsIgnoreCase(contentType)) {
+                continue;
             }
 
-            for (JsonNode node : root) {
-                String contentType = node.path("contentType").asText("");
-                if (!"city".equalsIgnoreCase(contentType)) {
-                    continue;
-                }
-
-                String name = normalize(node.path("name").asText());
-                if (!StringUtils.hasText(name)) {
-                    continue;
-                }
-
-                String region = normalize(node.path("region").path("name").asText());
-                String key = buildCityKey(name, region, RUSSIA);
-                if (!existingKeys.add(key)) {
-                    continue;
-                }
-
-                citiesToInsert.add(City.builder()
-                    .name(name)
-                    .region(StringUtils.hasText(region) ? region : null)
-                    .country(RUSSIA)
-                    .build());
+            String name = normalize(node.path("name").asText());
+            if (!StringUtils.hasText(name)) {
+                continue;
             }
-        } catch (IOException ex) {
-            throw new IllegalStateException("Failed to import russian cities from resource", ex);
+
+            String region = resolveRegionFullName(node.path("region"));
+            String key = buildCityKey(name, region, RUSSIA);
+            if (!existingKeys.add(key)) {
+                continue;
+            }
+
+            citiesToInsert.add(City.builder()
+                .name(name)
+                .region(StringUtils.hasText(region) ? region : null)
+                .country(RUSSIA)
+                .build());
         }
 
         if (!citiesToInsert.isEmpty()) {
             cityRepository.saveAll(citiesToInsert);
             log.info("Imported {} Russian cities into cities table", citiesToInsert.size());
         }
+    }
+
+    private Map<String, String> buildRegionFullNameDictionary(JsonNode root) {
+        Map<String, String> dictionary = new HashMap<>();
+
+        for (JsonNode node : root) {
+            JsonNode regionNode = node.path("region");
+            String shortName = normalize(regionNode.path("name").asText());
+            if (!StringUtils.hasText(shortName)) {
+                continue;
+            }
+
+            String fullName = resolveRegionFullName(regionNode);
+            if (!StringUtils.hasText(fullName)) {
+                continue;
+            }
+
+            dictionary.putIfAbsent(shortName.toLowerCase(Locale.ROOT), fullName);
+            dictionary.putIfAbsent(fullName.toLowerCase(Locale.ROOT), fullName);
+        }
+
+        return dictionary;
+    }
+
+    private void normalizeExistingRussianCitiesRegions(Map<String, String> regionFullNameByShortName) {
+        if (regionFullNameByShortName.isEmpty()) {
+            return;
+        }
+
+        List<City> changedCities = new ArrayList<>();
+        for (City city : cityRepository.findAllByOrderByNameAsc()) {
+            if (!RUSSIA.equalsIgnoreCase(normalize(city.getCountry()))) {
+                continue;
+            }
+
+            String currentRegion = normalize(city.getRegion());
+            if (!StringUtils.hasText(currentRegion)) {
+                continue;
+            }
+
+            String fullRegion = regionFullNameByShortName.get(currentRegion.toLowerCase(Locale.ROOT));
+            if (!StringUtils.hasText(fullRegion) || fullRegion.equals(currentRegion)) {
+                continue;
+            }
+
+            city.setRegion(fullRegion);
+            changedCities.add(city);
+        }
+
+        if (!changedCities.isEmpty()) {
+            cityRepository.saveAll(changedCities);
+            log.info("Normalized regions for {} existing Russian cities to full names", changedCities.size());
+        }
+    }
+
+    private String resolveRegionFullName(JsonNode regionNode) {
+        String fullName = normalize(regionNode.path("fullname").asText());
+        if (StringUtils.hasText(fullName)) {
+            return fullName;
+        }
+
+        String nominative = normalize(regionNode.path("namecase").path("nominative").asText());
+        if (StringUtils.hasText(nominative)) {
+            return nominative;
+        }
+
+        String name = normalize(regionNode.path("name").asText());
+        String type = normalize(regionNode.path("type").asText());
+        if (StringUtils.hasText(type) && StringUtils.hasText(name)) {
+            if (name.toLowerCase(Locale.ROOT).startsWith(type.toLowerCase(Locale.ROOT))) {
+                return name;
+            }
+            return type + " " + name;
+        }
+
+        return name;
     }
 
     private City ensureKolomnaCity() {
