@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { LoadingState, ErrorState } from '@/components/StateDisplays';
 import { StarRating } from '@/components/StarRating';
+import { EventLocationMap } from '@/components/EventLocationMap';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -475,19 +476,20 @@ export default function EventDetailPage() {
                       <p className="text-sm font-semibold text-foreground">
                         {toShortAddress(event.venue?.address) || event.venue?.name || 'Адрес уточняется'}
                       </p>
+                      {event.venue?.name && event.venue?.address && (
+                        <p className="mt-1 text-xs text-muted-foreground">{event.venue.name}</p>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-2xl border border-border">
-                <div className="flex aspect-square items-center justify-center bg-muted">
-                  <div className="text-center">
-                    <MapPin className="mx-auto h-8 w-8 text-muted-foreground/40" />
-                    <p className="mt-2 text-xs text-muted-foreground">Карта</p>
-                  </div>
-                </div>
-              </div>
+              <EventLocationMap
+                title={event.venue?.name || event.title}
+                address={event.venue?.address}
+                latitude={event.venue?.latitude}
+                longitude={event.venue?.longitude}
+              />
             </div>
           </div>
         </div>
