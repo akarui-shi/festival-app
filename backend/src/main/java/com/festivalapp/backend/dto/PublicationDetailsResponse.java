@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Builder
@@ -14,8 +15,11 @@ public class PublicationDetailsResponse {
     private String title;
     private String content;
     private String imageUrl;
+    private List<String> imageUrls;
     private LocalDateTime createdAt;
+    private LocalDateTime publishedAt;
     private PublicationStatus status;
+    private String moderationStatus;
     private String authorName;
     private Long authorId;
     private Long organizationId;
