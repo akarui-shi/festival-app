@@ -12,6 +12,15 @@ type SessionMutationInput = Partial<Session> & {
   endTime?: string;
   maxParticipants?: number;
   eventId?: Id | null;
+  venueId?: Id | null;
+  manualAddress?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  participationType?: 'free' | 'paid' | string;
+  price?: number | null;
+  currency?: string | null;
+  salesStartAt?: string | null;
+  salesEndAt?: string | null;
 };
 
 function buildSessionPayload(data: SessionMutationInput) {
@@ -20,9 +29,19 @@ function buildSessionPayload(data: SessionMutationInput) {
 
   return {
     eventId: data.eventId != null ? Number(data.eventId) : undefined,
+    venueId: data.venueId != null ? Number(data.venueId) : undefined,
+    sessionTitle: data.sessionTitle,
     startAt,
     endAt,
     capacity: data.maxParticipants ?? data.totalCapacity,
+    manualAddress: data.manualAddress,
+    latitude: data.latitude,
+    longitude: data.longitude,
+    participationType: data.participationType,
+    price: data.price,
+    currency: data.currency,
+    salesStartAt: data.salesStartAt,
+    salesEndAt: data.salesEndAt,
   };
 }
 

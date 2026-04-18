@@ -21,6 +21,8 @@ export interface EventUpsertPayload extends Partial<Event> {
   venueCapacity?: number;
   coverUrl?: string;
   eventImages?: EventImagePayload[];
+  artistIds?: Array<number | string>;
+  newArtistNames?: string[];
 }
 
 function toNumber(value: unknown): number | undefined {
@@ -35,6 +37,12 @@ function buildEventPayload(data: EventUpsertPayload) {
   const categoryIds = (data.categoryIds && data.categoryIds.length > 0
     ? data.categoryIds
     : data.categories?.length ? data.categories.map((category) => category.id) : [])
+    .map(toNumber)
+    .filter((value): value is number => value !== undefined);
+
+  const artistIds = (data.artistIds && data.artistIds.length > 0
+    ? data.artistIds
+    : data.artists?.length ? data.artists.map((artist) => artist.id) : [])
     .map(toNumber)
     .filter((value): value is number => value !== undefined);
 
@@ -56,6 +64,8 @@ function buildEventPayload(data: EventUpsertPayload) {
     coverUrl: data.coverUrl || undefined,
     eventImages: data.eventImages?.length ? data.eventImages : undefined,
     categoryIds: categoryIds.length ? categoryIds : undefined,
+    artistIds: artistIds.length ? artistIds : undefined,
+    newArtistNames: data.newArtistNames?.length ? data.newArtistNames : undefined,
   };
 }
 
@@ -63,10 +73,15 @@ export const eventService = {
   async getEvents(filters?: EventFilters): Promise<PaginatedResponse<Event>> {
     const response = await apiGet<Event[]>('/events', {
       title: filters?.search,
+      q: filters?.search,
       categoryId: filters?.categoryId,
       cityId: filters?.cityId,
       dateFrom: filters?.startDate,
       dateTo: filters?.endDate,
+      participationType: filters?.participationType,
+      priceFrom: filters?.priceFrom,
+      priceTo: filters?.priceTo,
+      registrationOpen: filters?.registrationOpen,
       status: filters?.status,
     });
 

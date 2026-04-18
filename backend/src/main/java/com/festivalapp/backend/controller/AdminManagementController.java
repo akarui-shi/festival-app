@@ -2,6 +2,7 @@ package com.festivalapp.backend.controller;
 
 import com.festivalapp.backend.dto.AdminCategoryUpsertRequest;
 import com.festivalapp.backend.dto.AdminCityUpsertRequest;
+import com.festivalapp.backend.dto.AdminActionResponse;
 import com.festivalapp.backend.dto.AdminUserActiveUpdateRequest;
 import com.festivalapp.backend.dto.AdminUserResponse;
 import com.festivalapp.backend.dto.AdminUserRolesUpdateRequest;
@@ -9,6 +10,7 @@ import com.festivalapp.backend.dto.AdminVenueUpsertRequest;
 import com.festivalapp.backend.dto.CategoryResponse;
 import com.festivalapp.backend.dto.CityResponse;
 import com.festivalapp.backend.dto.VenueResponse;
+import com.festivalapp.backend.service.AdminAuditService;
 import com.festivalapp.backend.service.AdminManagementService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,7 @@ import java.util.Map;
 public class AdminManagementController {
 
     private final AdminManagementService adminManagementService;
+    private final AdminAuditService adminAuditService;
 
     @GetMapping("/users")
     public ResponseEntity<List<AdminUserResponse>> getUsers() {
@@ -98,5 +101,9 @@ public class AdminManagementController {
     public ResponseEntity<Map<String, Object>> deleteVenue(@PathVariable Long id) {
         return ResponseEntity.ok(adminManagementService.deleteVenue(id));
     }
-}
 
+    @GetMapping("/actions")
+    public ResponseEntity<List<AdminActionResponse>> getActions() {
+        return ResponseEntity.ok(adminAuditService.getRecentActions());
+    }
+}

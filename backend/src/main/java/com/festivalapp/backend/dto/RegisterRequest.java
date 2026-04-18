@@ -28,6 +28,10 @@ public class RegisterRequest {
 
     private String companyName;
 
+    private Long organizationId;
+
+    private String joinRequestMessage;
+
     private String firstName;
 
     private String lastName;

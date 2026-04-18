@@ -11,4 +11,9 @@ public class OrganizationPublicResponse {
     private String name;
     private String description;
     private String contacts;
+    private String contactEmail;
+    private String contactPhone;
+    private String website;
+    private String socialLinks;
+    private String logoUrl;
 }

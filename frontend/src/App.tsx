@@ -11,8 +11,11 @@ import HomePage from "./pages/HomePage";
 import EventsCatalogPage from "./pages/EventsCatalogPage";
 import EventDetailPage from "./pages/EventDetailPage";
 import OrganizationPage from "./pages/OrganizationPage";
+import ArtistPage from "./pages/ArtistPage";
 import PublicationsPage from "./pages/PublicationsPage";
 import PublicationDetailPage from "./pages/PublicationDetailPage";
+import PaymentCheckoutPage from "./pages/PaymentCheckoutPage";
+import PaymentResultPage from "./pages/PaymentResultPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -52,8 +55,11 @@ const App = () => (
               <Route path="/events" element={<EventsCatalogPage />} />
               <Route path="/events/:id" element={<EventDetailPage />} />
               <Route path="/organizations/:id" element={<OrganizationPage />} />
+              <Route path="/artists/:id" element={<ArtistPage />} />
               <Route path="/publications" element={<PublicationsPage />} />
               <Route path="/publications/:id" element={<PublicationDetailPage />} />
+              <Route path="/payment/checkout" element={<PaymentCheckoutPage />} />
+              <Route path="/payment/result" element={<PaymentResultPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
 

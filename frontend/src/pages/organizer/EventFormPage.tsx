@@ -32,6 +32,10 @@ interface SessionDraft {
   startTime: string;
   endTime: string;
   capacity: string;
+  participationType: 'free' | 'paid';
+  price: string;
+  salesStartAt: string;
+  salesEndAt: string;
 }
 
 interface AddressSuggestion {
@@ -53,6 +57,7 @@ interface EventFormState {
   title: string;
   shortDescription: string;
   description: string;
+  artistNames: string;
   categoryIds: string[];
   venueId: string;
   venueName: string;
@@ -71,6 +76,7 @@ const EMPTY_FORM: EventFormState = {
   title: '',
   shortDescription: '',
   description: '',
+  artistNames: '',
   categoryIds: [],
   venueId: '',
   venueName: '',
@@ -93,6 +99,10 @@ function createSessionDraft(partial?: Partial<SessionDraft>): SessionDraft {
     startTime: partial?.startTime || '',
     endTime: partial?.endTime || '',
     capacity: partial?.capacity || '',
+    participationType: partial?.participationType || 'free',
+    price: partial?.price || '',
+    salesStartAt: partial?.salesStartAt || '',
+    salesEndAt: partial?.salesEndAt || '',
   };
 }
 
@@ -134,6 +144,12 @@ function normalizeSessionDrafts(items: SessionDraft[]): { ok: true; value: Sessi
     }
     if (!Number.isFinite(capacity) || capacity < 1) {
       return { ok: false, error: 'Вместимость сеанса должна быть больше 0' };
+    }
+    if (item.participationType === 'paid') {
+      const price = Number(item.price);
+      if (!Number.isFinite(price) || price < 0) {
+        return { ok: false, error: 'Для платного сеанса укажите корректную цену' };
+      }
     }
   }
 
@@ -219,6 +235,7 @@ export default function EventFormPage() {
             title: eventResponse.title || '',
             shortDescription: eventResponse.shortDescription || '',
             description: eventResponse.description || '',
+            artistNames: (eventResponse.artists || []).map((artist) => artist.name).join(', '),
             categoryIds: eventCategoryIds.length > 0
               ? eventCategoryIds
               : (eventResponse.categoryId ? [String(eventResponse.categoryId)] : []),
@@ -239,10 +256,14 @@ export default function EventFormPage() {
         if (sessionsResponse.length > 0) {
           const drafts = sessionsResponse.map((session) => createSessionDraft({
             id: session.id,
-            date: session.date,
-            startTime: session.startTime,
-            endTime: session.endTime,
-            capacity: String(session.maxParticipants || ''),
+            date: (session.startAt || '').slice(0, 10),
+            startTime: (session.startAt || '').slice(11, 16),
+            endTime: (session.endAt || '').slice(11, 16),
+            capacity: String(session.totalCapacity || session.maxParticipants || ''),
+            participationType: (session.participationType as 'free' | 'paid') || 'free',
+            price: session.price != null ? String(session.price) : '',
+            salesStartAt: session.salesStartAt ? session.salesStartAt.slice(0, 16) : '',
+            salesEndAt: session.salesEndAt ? session.salesEndAt.slice(0, 16) : '',
           }));
           setSessions(drafts);
           setInitialSessionIds(drafts.map((session) => session.id || '').filter(Boolean));
@@ -584,6 +605,11 @@ export default function EventFormPage() {
         startTime: session.startTime,
         endTime: session.endTime,
         maxParticipants: Number(session.capacity),
+        participationType: session.participationType,
+        price: session.participationType === 'paid' ? Number(session.price) : 0,
+        currency: 'RUB',
+        salesStartAt: session.salesStartAt ? `${session.salesStartAt}:00` : undefined,
+        salesEndAt: session.salesEndAt ? `${session.salesEndAt}:00` : undefined,
       };
 
       if (session.id) {
@@ -633,6 +659,7 @@ export default function EventFormPage() {
         title: form.title.trim(),
         shortDescription: form.shortDescription.trim() || undefined,
         description: form.description.trim() || undefined,
+        newArtistNames: form.artistNames.split(',').map((name) => name.trim()).filter(Boolean),
         categoryIds: form.categoryIds,
         venueId: form.venueId || undefined,
         venueName: form.venueName.trim() || undefined,
@@ -770,6 +797,15 @@ export default function EventFormPage() {
                 value={form.description}
                 onChange={(event) => updateForm('description', event.target.value)}
                 placeholder="Расскажите подробно о мероприятии"
+              />
+            </div>
+
+            <div>
+              <Label>Артисты</Label>
+              <Input
+                value={form.artistNames}
+                onChange={(event) => updateForm('artistNames', event.target.value)}
+                placeholder="Например: Группа А, DJ B"
               />
             </div>
           </div>
@@ -979,6 +1015,46 @@ export default function EventFormPage() {
                         min={1}
                         value={session.capacity}
                         onChange={(event) => updateSession(session.localId, 'capacity', event.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-4">
+                    <div>
+                      <Label>Тип участия</Label>
+                      <select
+                        value={session.participationType}
+                        onChange={(event) => updateSession(session.localId, 'participationType', event.target.value)}
+                        className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      >
+                        <option value="free">Бесплатно</option>
+                        <option value="paid">Платно</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label>Цена</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={session.price}
+                        disabled={session.participationType !== 'paid'}
+                        onChange={(event) => updateSession(session.localId, 'price', event.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label>Продажи с</Label>
+                      <Input
+                        type="datetime-local"
+                        value={session.salesStartAt}
+                        onChange={(event) => updateSession(session.localId, 'salesStartAt', event.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label>Продажи до</Label>
+                      <Input
+                        type="datetime-local"
+                        value={session.salesEndAt}
+                        onChange={(event) => updateSession(session.localId, 'salesEndAt', event.target.value)}
                       />
                     </div>
                   </div>

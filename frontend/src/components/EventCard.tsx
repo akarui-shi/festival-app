@@ -43,8 +43,15 @@ function resolveTime(event: Event): string {
 }
 
 function resolvePrice(event: Event): string {
-  if (event.isFree) {
+  if (event.free || event.isFree) {
     return 'Бесплатно';
+  }
+
+  if (typeof event.minPrice === 'number' && typeof event.maxPrice === 'number') {
+    if (event.minPrice === event.maxPrice) {
+      return `${event.minPrice.toLocaleString('ru-RU')} ₽`;
+    }
+    return `${event.minPrice.toLocaleString('ru-RU')} - ${event.maxPrice.toLocaleString('ru-RU')} ₽`;
   }
 
   if (typeof event.price === 'number') {
@@ -106,7 +113,7 @@ export function EventCard({ event, onFavoriteToggle, isFavorite }: EventCardProp
           </Badge>
         </div>
 
-        {event.isFree && (
+        {(event.free || event.isFree) && (
           <Badge className="absolute right-3 top-3 bg-primary text-primary-foreground">
             Бесплатно
           </Badge>

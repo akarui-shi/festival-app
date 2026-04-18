@@ -19,5 +19,9 @@ public class OrderResponse {
     private String currency;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private boolean requiresPayment;
+    private String paymentStatus;
+    private String paymentProvider;
+    private String paymentUrl;
     private List<OrderItemResponse> items;
 }

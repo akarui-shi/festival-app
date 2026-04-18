@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.time.LocalDate;
@@ -37,6 +38,7 @@ public class EventController {
 
     @GetMapping
     public ResponseEntity<List<EventShortResponse>> getAll(@RequestParam(required = false) String title,
+                                                           @RequestParam(required = false) String q,
                                                            @RequestParam(required = false) Long categoryId,
                                                            @RequestParam(required = false) Long venueId,
                                                            @RequestParam(required = false) Long cityId,
@@ -47,11 +49,16 @@ public class EventController {
                                                            LocalDate dateFrom,
                                                            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
                                                            LocalDate dateTo,
+                                                           @RequestParam(required = false) String participationType,
+                                                           @RequestParam(required = false) BigDecimal priceFrom,
+                                                           @RequestParam(required = false) BigDecimal priceTo,
+                                                           @RequestParam(required = false) Boolean registrationOpen,
                                                            @RequestParam(required = false) String status,
                                                            @RequestParam(required = false) String sortBy,
                                                            @RequestParam(required = false) String sortDir) {
         return ResponseEntity.ok(eventService.getAll(
             title,
+            q,
             categoryId,
             venueId,
             cityId,
@@ -59,6 +66,10 @@ public class EventController {
             date,
             dateFrom,
             dateTo,
+            participationType,
+            priceFrom,
+            priceTo,
+            registrationOpen,
             status,
             sortBy,
             sortDir

@@ -15,6 +15,12 @@ public class SessionDetailsResponse {
     private LocalDateTime endAt;
     private Integer availableSeats;
     private Integer totalCapacity;
+    private String participationType;
+    private BigDecimal price;
+    private String currency;
+    private Boolean registrationOpen;
+    private LocalDateTime salesStartAt;
+    private LocalDateTime salesEndAt;
     private EventInfo event;
     private VenueInfo venue;
 

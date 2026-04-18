@@ -62,8 +62,15 @@ function formatTime(value?: string): string {
 }
 
 function formatPrice(event: Event): string {
-  if (event.isFree) {
+  if (event.free || event.isFree) {
     return 'Бесплатно';
+  }
+
+  if (typeof event.minPrice === 'number' && typeof event.maxPrice === 'number') {
+    if (event.minPrice === event.maxPrice) {
+      return `${event.minPrice.toLocaleString('ru-RU')} ₽`;
+    }
+    return `${event.minPrice.toLocaleString('ru-RU')} - ${event.maxPrice.toLocaleString('ru-RU')} ₽`;
   }
 
   if (typeof event.price === 'number') {
@@ -140,7 +147,10 @@ export default function EventDetailPage() {
     registrationService.getMyRegistrations(user.id).then((registrations) => {
       setRegisteredSessionIds(
         registrations
-          .filter((registration) => String(registration.eventId) === String(id) && registration.status !== 'CANCELLED')
+          .filter((registration) =>
+            String(registration.eventId) === String(id)
+            && !['CANCELLED', 'cancelled', 'возвращён', 'RETURNED', 'returned'].includes(String(registration.status || '')),
+          )
           .map((registration) => registration.sessionId)
           .filter((sessionId): sessionId is Id => sessionId !== null && sessionId !== undefined)
           .map((sessionId) => String(sessionId)),
@@ -170,7 +180,12 @@ export default function EventDetailPage() {
     }
 
     try {
-      await registrationService.createRegistration(sessionId, user.id);
+      const order = await registrationService.createRegistration(sessionId, user.id);
+      if (order.requiresPayment && order.paymentUrl) {
+        toast.info('Перенаправляем в платёжный шлюз...');
+        window.location.assign(order.paymentUrl);
+        return;
+      }
       setRegisteredSessionIds((prev) => [...prev, String(sessionId)]);
       toast.success('Вы записаны на сеанс');
     } catch (registrationError: any) {
@@ -224,19 +239,17 @@ export default function EventDetailPage() {
     );
   }
 
-  const firstAvailableSession = sessions.find(
-    (session) => {
-      const maxParticipants = session.maxParticipants ?? session.totalCapacity ?? 0;
-      const currentParticipants = session.currentParticipants
-        ?? (session.totalCapacity != null && session.availableSeats != null
-          ? session.totalCapacity - session.availableSeats
-          : 0);
-      return currentParticipants < maxParticipants && !registeredSessionIds.includes(String(session.id));
-    },
-  );
-  const organizationLink = event.organization?.id ? `/organizations/${event.organization.id}` : null;
+  const firstAvailableSession = sessions.find((session) => {
+    const seatsAvailable = session.availableSeats == null || session.availableSeats > 0;
+    const open = session.registrationOpen ?? true;
+    return seatsAvailable && open && !registeredSessionIds.includes(String(session.id));
+  });
+  const organizationId = event.organization?.id ?? event.organizationId;
+  const organizationName = event.organization?.name ?? event.organizationName;
+  const organizationLink = organizationId ? `/organizations/${organizationId}` : null;
   const canRegisterForEvent = isAuthenticated && isResident;
   const canLeaveReview = isAuthenticated && isResident;
+  const primarySession = sessions[0];
 
   return (
     <PublicLayout>
@@ -253,7 +266,7 @@ export default function EventDetailPage() {
           <div className="lg:col-span-2">
             <div className="overflow-hidden rounded-2xl">
               <img
-                src={event.imageUrl || '/placeholder.svg'}
+                src={event.coverUrl || event.imageUrl || '/placeholder.svg'}
                 alt={event.title}
                 className="aspect-video w-full object-cover"
               />
@@ -261,10 +274,12 @@ export default function EventDetailPage() {
 
             <div className="mt-6">
               <div className="flex flex-wrap gap-2">
-                {event.category?.name && <Badge variant="secondary">{event.category.name}</Badge>}
+                {(event.categories || []).map((category) => (
+                  <Badge key={category.id} variant="secondary">{category.name}</Badge>
+                ))}
                 <Badge variant="outline">6+</Badge>
-                {event.isFree && <Badge className="bg-primary text-primary-foreground">Бесплатно</Badge>}
-                {!event.isFree && event.price != null && (
+                {(event.free || event.isFree) && <Badge className="bg-primary text-primary-foreground">Бесплатно</Badge>}
+                {!event.free && !event.isFree && (
                   <Badge className="bg-primary text-primary-foreground">{formatPrice(event)}</Badge>
                 )}
               </div>
@@ -289,10 +304,10 @@ export default function EventDetailPage() {
                 <p className="text-xs text-muted-foreground">Организация</p>
                 {organizationLink ? (
                   <Link to={organizationLink} className="font-semibold text-foreground hover:text-primary hover:underline">
-                    {event.organization?.name || 'Организация мероприятия'}
+                    {organizationName || 'Организация мероприятия'}
                   </Link>
                 ) : (
-                  <p className="font-semibold text-foreground">{event.organization?.name || 'Организация мероприятия'}</p>
+                  <p className="font-semibold text-foreground">{organizationName || 'Организация мероприятия'}</p>
                 )}
               </div>
             </div>
@@ -300,9 +315,26 @@ export default function EventDetailPage() {
             <div className="mt-8">
               <h2 className="font-heading text-xl text-foreground">Описание</h2>
               <p className="mt-3 whitespace-pre-line leading-relaxed text-muted-foreground">
-                {event.description || event.shortDescription || 'Описание скоро появится'}
+                {event.fullDescription || event.description || event.shortDescription || 'Описание скоро появится'}
               </p>
             </div>
+
+            {(event.artists || []).length > 0 && (
+              <div className="mt-8">
+                <h2 className="font-heading text-xl text-foreground">Артисты</h2>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(event.artists || []).map((artist) => (
+                    <Link
+                      key={artist.id}
+                      to={`/artists/${artist.id}`}
+                      className="rounded-full border border-border px-3 py-1 text-sm text-foreground hover:border-primary/40 hover:text-primary"
+                    >
+                      {artist.stageName || artist.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div id="sessions" className="mt-8">
               <h2 className="font-heading text-xl text-foreground">Сеансы</h2>
@@ -314,13 +346,13 @@ export default function EventDetailPage() {
                 )}
 
                 {sessions.map((session) => {
-                  const maxParticipants = session.maxParticipants ?? session.totalCapacity ?? 0;
-                  const currentParticipants = session.currentParticipants
-                    ?? (session.totalCapacity != null && session.availableSeats != null
-                      ? session.totalCapacity - session.availableSeats
-                      : 0);
+                  const maxParticipants = session.totalCapacity ?? session.maxParticipants ?? 0;
+                  const currentParticipants = session.totalCapacity != null && session.availableSeats != null
+                    ? session.totalCapacity - session.availableSeats
+                    : 0;
                   const isRegistered = registeredSessionIds.includes(String(session.id));
-                  const isFull = currentParticipants >= maxParticipants;
+                  const isFull = session.availableSeats != null ? session.availableSeats <= 0 : currentParticipants >= maxParticipants;
+                  const isOpen = session.registrationOpen ?? true;
 
                   return (
                     <div
@@ -332,9 +364,14 @@ export default function EventDetailPage() {
                           <CalendarDays className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                          <p className="font-semibold text-foreground">{formatDate(session.date || session.startAt)}</p>
+                          <p className="font-semibold text-foreground">{formatDate(session.startAt)}</p>
                           <p className="text-sm text-muted-foreground">
-                            {session.startTime || formatTime(session.startAt)} - {session.endTime || formatTime(session.endAt)}
+                            {formatTime(session.startAt)} - {formatTime(session.endAt)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {session.participationType === 'paid'
+                              ? `${Number(session.price || 0).toLocaleString('ru-RU')} ${session.currency || 'RUB'}`
+                              : 'Бесплатно'}
                           </p>
                         </div>
                       </div>
@@ -349,8 +386,8 @@ export default function EventDetailPage() {
                           isRegistered ? (
                             <Badge className="bg-primary/10 text-primary">Вы записаны</Badge>
                           ) : (
-                            <Button size="sm" onClick={() => registerForSession(session.id)} disabled={isFull}>
-                              {isFull ? 'Мест нет' : 'Записаться'}
+                            <Button size="sm" onClick={() => registerForSession(session.id)} disabled={isFull || !isOpen}>
+                              {!isOpen ? 'Регистрация закрыта' : isFull ? 'Мест нет' : 'Записаться'}
                             </Button>
                           )
                         ) : isAuthenticated ? (
@@ -478,14 +515,14 @@ export default function EventDetailPage() {
                   <div className="flex items-start gap-3">
                     <CalendarDays className="mt-0.5 h-4 w-4 text-primary" />
                     <div>
-                      <p className="text-sm font-semibold text-foreground">{formatDate(event.startDate)}</p>
-                      <p className="text-xs text-muted-foreground">до {formatDate(event.endDate)}</p>
+                      <p className="text-sm font-semibold text-foreground">{formatDate(primarySession?.startAt)}</p>
+                      <p className="text-xs text-muted-foreground">до {formatDate(primarySession?.endAt)}</p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-3">
                     <Clock className="mt-0.5 h-4 w-4 text-primary" />
-                    <p className="text-sm text-foreground">Начало в {formatTime(event.startDate)}</p>
+                    <p className="text-sm text-foreground">Начало в {formatTime(primarySession?.startAt)}</p>
                   </div>
 
                   <div className="flex items-start gap-3">

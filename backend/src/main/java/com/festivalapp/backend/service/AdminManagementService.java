@@ -46,6 +46,7 @@ public class AdminManagementService {
     private final CategoryRepository categoryRepository;
     private final CityRepository cityRepository;
     private final VenueRepository venueRepository;
+    private final AdminAuditService adminAuditService;
 
     @Transactional(readOnly = true)
     public List<AdminUserResponse> getUsers() {
@@ -83,6 +84,8 @@ public class AdminManagementService {
             user.getUserRoles().add(userRole);
         }
 
+        adminAuditService.log(null, "USER_ROLES_UPDATED", "User", user.getId(), roleNames.toString());
+
         return toAdminUserResponse(userRepository.findByIdWithRoles(user.getId()).orElse(user));
     }
 
@@ -93,6 +96,7 @@ public class AdminManagementService {
 
         user.setStatus(active ? UserStatus.ACTIVE : UserStatus.BLOCKED);
         user.setUpdatedAt(OffsetDateTime.now());
+        adminAuditService.log(null, active ? "USER_UNBLOCKED" : "USER_BLOCKED", "User", user.getId(), user.getEmail());
         return toAdminUserResponse(userRepository.save(user));
     }
 
@@ -107,6 +111,7 @@ public class AdminManagementService {
             .name(name)
             .description(normalizeOptional(request.getDescription()))
             .build());
+        adminAuditService.log(null, "CATEGORY_CREATED", "Category", category.getId(), category.getName());
 
         return toCategoryResponse(category);
     }
@@ -125,7 +130,9 @@ public class AdminManagementService {
 
         category.setName(name);
         category.setDescription(normalizeOptional(request.getDescription()));
-        return toCategoryResponse(categoryRepository.save(category));
+        Category saved = categoryRepository.save(category);
+        adminAuditService.log(null, "CATEGORY_UPDATED", "Category", saved.getId(), saved.getName());
+        return toCategoryResponse(saved);
     }
 
     @Transactional
@@ -137,6 +144,7 @@ public class AdminManagementService {
         } catch (DataIntegrityViolationException ex) {
             throw new BadRequestException("Категория используется и не может быть удалена");
         }
+        adminAuditService.log(null, "CATEGORY_DELETED", "Category", category.getId(), category.getName());
         return Map.of("success", true);
     }
 
@@ -157,6 +165,7 @@ public class AdminManagementService {
             .createdAt(OffsetDateTime.now())
             .country(normalizeOptional(request.getCountry()))
             .build());
+        adminAuditService.log(null, "CITY_CREATED", "City", city.getId(), city.getName());
 
         return toCityResponse(city, request.getCountry());
     }
@@ -169,6 +178,7 @@ public class AdminManagementService {
         city.setName(normalizeRequired(request.getName(), "City name is required"));
         city.setRegion(normalizeOptional(request.getRegion()));
         City saved = cityRepository.save(city);
+        adminAuditService.log(null, "CITY_UPDATED", "City", saved.getId(), saved.getName());
         return toCityResponse(saved, request.getCountry());
     }
 
@@ -181,6 +191,7 @@ public class AdminManagementService {
         } catch (DataIntegrityViolationException ex) {
             throw new BadRequestException("Город используется и не может быть удалён");
         }
+        adminAuditService.log(null, "CITY_DELETED", "City", city.getId(), city.getName());
         return Map.of("success", true);
     }
 
@@ -202,6 +213,7 @@ public class AdminManagementService {
             .updatedAt(OffsetDateTime.now())
             .contacts(normalizeOptional(request.getContacts()))
             .build());
+        adminAuditService.log(null, "VENUE_CREATED", "Venue", venue.getId(), venue.getName());
 
         return toVenueResponse(venue, request.getContacts());
     }
@@ -225,7 +237,9 @@ public class AdminManagementService {
         venue.setUpdatedAt(OffsetDateTime.now());
         venue.setContacts(normalizeOptional(request.getContacts()));
 
-        return toVenueResponse(venueRepository.save(venue), request.getContacts());
+        Venue saved = venueRepository.save(venue);
+        adminAuditService.log(null, "VENUE_UPDATED", "Venue", saved.getId(), saved.getName());
+        return toVenueResponse(saved, request.getContacts());
     }
 
     @Transactional
@@ -237,6 +251,7 @@ public class AdminManagementService {
         } catch (DataIntegrityViolationException ex) {
             throw new BadRequestException("Площадка используется и не может быть удалена");
         }
+        adminAuditService.log(null, "VENUE_DELETED", "Venue", venue.getId(), venue.getName());
         return Map.of("success", true);
     }
 

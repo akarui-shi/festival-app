@@ -41,6 +41,8 @@ export interface RegisterRequest {
   lastName: string;
   role?: UserRole;
   companyName?: string;
+  organizationId?: Id;
+  joinRequestMessage?: string;
 }
 
 export interface Category {
@@ -63,6 +65,20 @@ export interface Organization {
   name: string;
   description?: string | null;
   contacts?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  website?: string | null;
+  socialLinks?: string | null;
+  logoUrl?: string | null;
+}
+
+export interface Artist {
+  id: Id;
+  name: string;
+  stageName?: string | null;
+  description?: string | null;
+  genre?: string | null;
+  events?: Event[] | null;
 }
 
 export interface Venue {
@@ -104,6 +120,12 @@ export interface Event {
   nextSessionAt?: string | null;
   sessionDates?: string[] | null;
   coverUrl?: string | null;
+  free?: boolean | null;
+  minPrice?: number | null;
+  maxPrice?: number | null;
+  registrationOpen?: boolean | null;
+  artists?: Artist[] | null;
+  sessions?: Session[] | null;
   eventImages?: EventImage[] | null;
   organization?: Organization | null;
   venue?: Venue | null;
@@ -133,6 +155,12 @@ export interface Session {
   endAt: string;
   availableSeats?: number | null;
   totalCapacity?: number | null;
+  participationType?: 'free' | 'paid' | string | null;
+  price?: number | null;
+  currency?: string | null;
+  registrationOpen?: boolean | null;
+  salesStartAt?: string | null;
+  salesEndAt?: string | null;
   eventId?: Id | null;
   eventTitle?: string | null;
   venueId?: Id | null;
@@ -231,6 +259,10 @@ export interface Order {
   currency?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+  requiresPayment?: boolean;
+  paymentStatus?: string | null;
+  paymentProvider?: string | null;
+  paymentUrl?: string | null;
   items?: OrderItem[] | null;
 }
 
@@ -245,6 +277,9 @@ export interface Ticket {
   qrToken?: string | null;
   issuedAt?: string | null;
   usedAt?: string | null;
+  requiresPayment?: boolean | null;
+  paymentStatus?: string | null;
+  paymentUrl?: string | null;
 }
 
 export interface Registration {
@@ -385,6 +420,10 @@ export interface EventFilters {
   startDate?: string;
   endDate?: string;
   search?: string;
+  participationType?: 'free' | 'paid' | string;
+  priceFrom?: number;
+  priceTo?: number;
+  registrationOpen?: boolean;
   status?: string;
   page?: number;
   size?: number;

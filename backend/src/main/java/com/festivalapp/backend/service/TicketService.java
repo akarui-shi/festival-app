@@ -1,11 +1,15 @@
 package com.festivalapp.backend.service;
 
 import com.festivalapp.backend.dto.TicketResponse;
+import com.festivalapp.backend.entity.Order;
+import com.festivalapp.backend.entity.Payment;
 import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.Ticket;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
+import com.festivalapp.backend.repository.OrderRepository;
+import com.festivalapp.backend.repository.PaymentRepository;
 import com.festivalapp.backend.repository.TicketRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -21,13 +26,39 @@ public class TicketService {
 
     private final TicketRepository ticketRepository;
     private final UserRepository userRepository;
+    private final OrderRepository orderRepository;
+    private final PaymentRepository paymentRepository;
 
     @Transactional(readOnly = true)
     public List<TicketResponse> getMyTickets(String actorIdentifier) {
         User actor = resolveActor(actorIdentifier);
-        return ticketRepository.findAllByUserIdOrderByIssuedAtDesc(actor.getId()).stream()
+        List<TicketResponse> responses = new ArrayList<>(ticketRepository.findAllByUserIdOrderByIssuedAtDesc(actor.getId()).stream()
             .map(this::toResponse)
-            .toList();
+            .toList());
+
+        List<Order> pendingOrders = orderRepository.findAllByUserIdAndStatusOrderByCreatedAtDesc(actor.getId(), "ожидает_оплаты");
+        for (Order order : pendingOrders) {
+            Payment payment = paymentRepository.findFirstByOrderIdOrderByCreatedAtDesc(order.getId()).orElse(null);
+            responses.add(TicketResponse.builder()
+                .ticketId(-order.getId())
+                .orderId(order.getId())
+                .eventId(order.getEvent() == null ? null : order.getEvent().getId())
+                .eventTitle(order.getEvent() == null ? null : order.getEvent().getTitle())
+                .sessionId(null)
+                .sessionTitle("Ожидает оплаты")
+                .status("ожидает_оплаты")
+                .qrToken(null)
+                .issuedAt(order.getCreatedAt() == null ? null : order.getCreatedAt().toLocalDateTime())
+                .usedAt(null)
+                .requiresPayment(true)
+                .paymentStatus(payment == null ? "pending" : payment.getStatus())
+                .paymentUrl(payment != null && payment.getPayloadJson() != null && payment.getPayloadJson().has("paymentUrl")
+                    ? payment.getPayloadJson().get("paymentUrl").asText(null)
+                    : null)
+                .build());
+        }
+
+        return responses;
     }
 
     @Transactional
@@ -61,6 +92,9 @@ public class TicketService {
             .qrToken(ticket.getQrToken())
             .issuedAt(ticket.getIssuedAt() == null ? null : ticket.getIssuedAt().toLocalDateTime())
             .usedAt(ticket.getUsedAt() == null ? null : ticket.getUsedAt().toLocalDateTime())
+            .requiresPayment(false)
+            .paymentStatus("succeeded")
+            .paymentUrl(null)
             .build();
     }
 

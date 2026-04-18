@@ -41,6 +41,11 @@ app:
   upload:
     dir: uploads
     max-file-size-bytes: 5242880
+  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+  notifications:
+    telegram-bot-token: ${TELEGRAM_BOT_TOKEN:}
+    telegram-chat-id: ${TELEGRAM_CHAT_ID:}
+    email-from: ${NOTIFICATIONS_EMAIL_FROM:noreply@festival.local}
 
 yandex:
   metrika:
