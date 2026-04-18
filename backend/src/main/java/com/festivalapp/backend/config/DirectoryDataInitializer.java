@@ -10,6 +10,7 @@ import com.festivalapp.backend.repository.CityRepository;
 import com.festivalapp.backend.repository.VenueRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ClassPathResource;
@@ -31,6 +32,7 @@ import java.util.Set;
 @Order(2)
 @RequiredArgsConstructor
 @Slf4j
+@ConditionalOnProperty(name = "app.seed.legacy-enabled", havingValue = "true")
 public class DirectoryDataInitializer implements CommandLineRunner {
 
     private static final String RUSSIA = "Россия";

@@ -5,7 +5,7 @@
 ## Технологии
 - Backend: Java 17, Spring Boot, Spring Security, Spring Data JPA
 - Frontend: React, Vite, React Router
-- Database: PostgreSQL
+- Database: PostgreSQL, Flyway
 
 ## Роли
 - Житель
@@ -40,3 +40,8 @@ yandex:
 ```
 
 Если Метрика не настроена, кабинет организатора продолжает работать на внутренней аналитике и показывает понятный статус внешних метрик.
+
+## Схема БД v2
+- Бэкенд переведён на миграции Flyway.
+- Финальная схема по новой ER-модели: `backend/src/main/resources/db/migration/V1__new_er_schema.sql`.
+- Legacy-сидеры (`RoleDataInitializer`, `DirectoryDataInitializer`, `DemoDataInitializer`) отключены по умолчанию и включаются только при `APP_SEED_LEGACY_ENABLED=true`.

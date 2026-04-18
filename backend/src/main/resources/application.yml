@@ -10,12 +10,18 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
     show-sql: true
     properties:
       hibernate:
         format_sql: true
     open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
 
   servlet:
     multipart:
@@ -35,6 +41,8 @@ app:
   upload:
     dir: uploads
     max-file-size-bytes: 5242880
+  seed:
+    legacy-enabled: ${APP_SEED_LEGACY_ENABLED:false}
 
 yandex:
   metrika:
