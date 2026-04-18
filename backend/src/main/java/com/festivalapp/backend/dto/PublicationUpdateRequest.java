@@ -4,6 +4,8 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 public class PublicationUpdateRequest {
@@ -14,6 +16,7 @@ public class PublicationUpdateRequest {
     private String content;
 
     private String imageUrl;
+    private List<String> imageUrls;
 
     private Long eventId;
 }

@@ -7,11 +7,11 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class ReviewUpdateRequest {
+public class CommentUpdateRequest {
+
+    private String text;
 
     @Min(value = 1, message = "Rating must be between 1 and 5")
     @Max(value = 5, message = "Rating must be between 1 and 5")
     private Integer rating;
-
-    private String text;
 }

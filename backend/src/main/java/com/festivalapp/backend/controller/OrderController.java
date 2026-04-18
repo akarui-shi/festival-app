@@ -1,10 +1,9 @@
 package com.festivalapp.backend.controller;
 
-import com.festivalapp.backend.dto.ReviewCreateRequest;
-import com.festivalapp.backend.dto.ReviewResponse;
-import com.festivalapp.backend.dto.ReviewUpdateRequest;
+import com.festivalapp.backend.dto.OrderCreateRequest;
+import com.festivalapp.backend.dto.OrderResponse;
 import com.festivalapp.backend.exception.UnauthorizedException;
-import com.festivalapp.backend.service.ReviewService;
+import com.festivalapp.backend.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,7 +14,6 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,40 +22,34 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/reviews")
+@RequestMapping("/api/orders")
 @RequiredArgsConstructor
-public class ReviewController {
+public class OrderController {
 
-    private final ReviewService reviewService;
+    private final OrderService orderService;
 
     @PostMapping
-    public ResponseEntity<ReviewResponse> create(@Valid @RequestBody ReviewCreateRequest request,
-                                                 @AuthenticationPrincipal UserDetails principal) {
+    public ResponseEntity<OrderResponse> create(@Valid @RequestBody OrderCreateRequest request,
+                                                @AuthenticationPrincipal UserDetails principal) {
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(reviewService.create(request, extractUsername(principal)));
+            .body(orderService.createOrder(request, extractUsername(principal)));
     }
 
-    @GetMapping("/event/{eventId}")
-    public ResponseEntity<List<ReviewResponse>> getByEvent(@PathVariable Long eventId) {
-        return ResponseEntity.ok(reviewService.getByEvent(eventId));
+    @GetMapping("/my")
+    public ResponseEntity<List<OrderResponse>> getMine(@AuthenticationPrincipal UserDetails principal) {
+        return ResponseEntity.ok(orderService.getMyOrders(extractUsername(principal)));
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<ReviewResponse> update(@PathVariable Long id,
-                                                 @Valid @RequestBody ReviewUpdateRequest request,
+    @GetMapping("/{id}")
+    public ResponseEntity<OrderResponse> getById(@PathVariable Long id,
                                                  @AuthenticationPrincipal UserDetails principal) {
-        return ResponseEntity.ok(reviewService.update(
-            id,
-            request.getRating(),
-            request.getText(),
-            extractUsername(principal)
-        ));
+        return ResponseEntity.ok(orderService.getMyOrderById(id, extractUsername(principal)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> delete(@PathVariable Long id,
+    public ResponseEntity<Map<String, Object>> cancel(@PathVariable Long id,
                                                       @AuthenticationPrincipal UserDetails principal) {
-        return ResponseEntity.ok(reviewService.delete(id, extractUsername(principal)));
+        return ResponseEntity.ok(orderService.cancelOrder(id, extractUsername(principal)));
     }
 
     private String extractUsername(UserDetails principal) {

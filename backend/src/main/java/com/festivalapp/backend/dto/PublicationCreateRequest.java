@@ -6,6 +6,8 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 public class PublicationCreateRequest {
@@ -18,6 +20,7 @@ public class PublicationCreateRequest {
     private String content;
 
     private String imageUrl;
+    private List<String> imageUrls;
 
     @NotNull(message = "Event is required")
     private Long eventId;

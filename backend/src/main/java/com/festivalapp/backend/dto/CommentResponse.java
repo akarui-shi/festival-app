@@ -7,13 +7,15 @@ import java.time.LocalDateTime;
 
 @Getter
 @Builder
-public class ReviewResponse {
+public class CommentResponse {
 
-    private Long reviewId;
+    private Long commentId;
+    private Long eventId;
     private Long userId;
     private String userDisplayName;
-    private Integer rating;
     private String text;
+    private Integer rating;
+    private String moderationStatus;
     private LocalDateTime createdAt;
-    private Long eventId;
+    private LocalDateTime updatedAt;
 }

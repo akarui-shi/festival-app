@@ -28,9 +28,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -64,7 +67,7 @@ public class PublicationService {
             .updatedAt(now)
             .build());
 
-        replacePublicationImage(publication, request.getImageUrl());
+        replacePublicationImages(publication, normalizeImageUrls(request.getImageUrls(), request.getImageUrl()));
         return toDetails(publicationRepository.findById(publication.getId()).orElse(publication));
     }
 
@@ -135,8 +138,8 @@ public class PublicationService {
         publication.setUpdatedAt(OffsetDateTime.now());
 
         Publication saved = publicationRepository.save(publication);
-        if (request.getImageUrl() != null) {
-            replacePublicationImage(saved, request.getImageUrl());
+        if (request.getImageUrl() != null || request.getImageUrls() != null) {
+            replacePublicationImages(saved, normalizeImageUrls(request.getImageUrls(), request.getImageUrl()));
         }
 
         return toDetails(saved);
@@ -179,13 +182,17 @@ public class PublicationService {
     }
 
     private PublicationDetailsResponse toDetails(Publication publication) {
+        List<String> imageUrls = getPublicationImageUrls(publication.getId());
         return PublicationDetailsResponse.builder()
             .publicationId(publication.getId())
             .title(publication.getTitle())
             .content(publication.getContent())
-            .imageUrl(getPublicationImageUrl(publication.getId()))
+            .imageUrl(imageUrls.stream().findFirst().orElse(null))
+            .imageUrls(imageUrls)
             .createdAt(publication.getCreatedAt() == null ? null : publication.getCreatedAt().toLocalDateTime())
+            .publishedAt(publication.getPublishedAt() == null ? null : publication.getPublishedAt().toLocalDateTime())
             .status(DomainStatusMapper.toPublicationStatus(publication.getStatus()))
+            .moderationStatus(publication.getModerationStatus())
             .authorName(fullName(publication.getCreatedByUser()))
             .authorId(publication.getCreatedByUser() == null ? null : publication.getCreatedByUser().getId())
             .organizationId(publication.getOrganization() == null ? null : publication.getOrganization().getId())
@@ -199,15 +206,19 @@ public class PublicationService {
     private PublicationShortResponse toShort(Publication publication) {
         String content = publication.getContent() == null ? "" : publication.getContent();
         String preview = content.length() > 140 ? content.substring(0, 140) + "..." : content;
+        List<String> imageUrls = getPublicationImageUrls(publication.getId());
 
         return PublicationShortResponse.builder()
             .publicationId(publication.getId())
             .title(publication.getTitle())
             .preview(preview)
             .createdAt(publication.getCreatedAt() == null ? null : publication.getCreatedAt().toLocalDateTime())
+            .publishedAt(publication.getPublishedAt() == null ? null : publication.getPublishedAt().toLocalDateTime())
             .status(DomainStatusMapper.toPublicationStatus(publication.getStatus()))
+            .moderationStatus(publication.getModerationStatus())
             .authorName(fullName(publication.getCreatedByUser()))
-            .imageUrl(getPublicationImageUrl(publication.getId()))
+            .imageUrl(imageUrls.stream().findFirst().orElse(null))
+            .imageUrls(imageUrls)
             .organizationId(publication.getOrganization() == null ? null : publication.getOrganization().getId())
             .organizationName(publication.getOrganization() == null ? null : publication.getOrganization().getName())
             .eventId(publication.getEvent() == null ? null : publication.getEvent().getId())
@@ -216,33 +227,54 @@ public class PublicationService {
             .build();
     }
 
-    private void replacePublicationImage(Publication publication, String imageUrl) {
+    private void replacePublicationImages(Publication publication, List<String> imageUrls) {
         publicationImageRepository.deleteByPublicationId(publication.getId());
-        if (!StringUtils.hasText(imageUrl)) {
+        if (imageUrls == null || imageUrls.isEmpty()) {
             return;
         }
 
-        Image image = imageRepository.save(Image.builder()
-            .fileName(fileNameFromUrl(imageUrl))
-            .mimeType("image/*")
-            .fileSize(0L)
-            .fileUrl(imageUrl.trim())
-            .uploadedAt(OffsetDateTime.now())
-            .build());
+        int sortOrder = 0;
+        for (String imageUrl : imageUrls) {
+            if (!StringUtils.hasText(imageUrl)) {
+                continue;
+            }
 
-        publicationImageRepository.save(PublicationImage.builder()
-            .publication(publication)
-            .image(image)
-            .sortOrder(0)
-            .build());
+            Image image = imageRepository.save(Image.builder()
+                .fileName(fileNameFromUrl(imageUrl))
+                .mimeType("image/*")
+                .fileSize(0L)
+                .fileUrl(imageUrl.trim())
+                .uploadedAt(OffsetDateTime.now())
+                .build());
+
+            publicationImageRepository.save(PublicationImage.builder()
+                .publication(publication)
+                .image(image)
+                .sortOrder(sortOrder++)
+                .build());
+        }
     }
 
-    private String getPublicationImageUrl(Long publicationId) {
+    private List<String> getPublicationImageUrls(Long publicationId) {
         return publicationImageRepository.findAllByPublicationIdOrderBySortOrderAscIdAsc(publicationId).stream()
-            .findFirst()
             .map(PublicationImage::getImage)
             .map(Image::getFileUrl)
-            .orElse(null);
+            .toList();
+    }
+
+    private List<String> normalizeImageUrls(List<String> imageUrls, String imageUrl) {
+        Set<String> unique = new LinkedHashSet<>();
+        if (imageUrls != null) {
+            for (String candidate : imageUrls) {
+                if (StringUtils.hasText(candidate)) {
+                    unique.add(candidate.trim());
+                }
+            }
+        }
+        if (StringUtils.hasText(imageUrl)) {
+            unique.add(imageUrl.trim());
+        }
+        return new ArrayList<>(unique);
     }
 
     private String getEventCover(Long eventId) {
