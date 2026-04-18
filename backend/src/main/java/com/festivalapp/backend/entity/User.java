@@ -3,22 +3,22 @@ package com.festivalapp.backend.entity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -47,42 +47,46 @@ public class User {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    @Column(name = "first_name")
+    @Column(name = "first_name", nullable = false)
     private String firstName;
 
-    @Column(name = "last_name")
+    @Column(name = "last_name", nullable = false)
     private String lastName;
 
-    @Column(name = "avatar_url")
-    private String avatarUrl;
+    @Column(name = "registered_at", nullable = false)
+    private OffsetDateTime registeredAt;
+
+    @Column(name = "last_login_at")
+    private OffsetDateTime lastLoginAt;
+
+    @Column(name = "is_active", nullable = false)
+    private boolean active;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "city_id")
+    private City city;
 
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private UserStatus status;
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
+
+    @Column(name = "deleted_at")
+    private OffsetDateTime deletedAt;
+
+    @Transient
+    private String avatarUrl;
 
     @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserRole> userRoles = new HashSet<>();
 
-    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
-    private Organizer organizer;
+    public UserStatus getStatus() {
+        return active ? UserStatus.ACTIVE : UserStatus.BLOCKED;
+    }
 
-    @Builder.Default
-    @OneToMany(mappedBy = "user")
-    private Set<Registration> registrations = new HashSet<>();
-
-    @Builder.Default
-    @OneToMany(mappedBy = "user")
-    private Set<Review> reviews = new HashSet<>();
-
-    @Builder.Default
-    @OneToMany(mappedBy = "user")
-    private Set<Favorite> favorites = new HashSet<>();
-
-    @Builder.Default
-    @OneToMany(mappedBy = "author")
-    private Set<Publication> publications = new HashSet<>();
+    public void setStatus(UserStatus status) {
+        this.active = status == UserStatus.ACTIVE;
+    }
 }

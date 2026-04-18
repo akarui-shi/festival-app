@@ -1,121 +1,116 @@
 package com.festivalapp.backend.service;
 
-import com.festivalapp.backend.entity.StoredFile;
+import com.festivalapp.backend.entity.Image;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
-import com.festivalapp.backend.repository.StoredFileRepository;
+import com.festivalapp.backend.repository.ImageRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.Locale;
-import java.util.Set;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class FileStorageService {
 
-    private static final Set<String> ALLOWED_IMAGE_CONTENT_TYPES = Set.of(
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/gif"
-    );
+    private final ImageRepository imageRepository;
 
-    @Value("${app.upload.max-file-size-bytes:5242880}")
-    private long maxFileSizeBytes;
+    @Value("${app.upload.dir:uploads}")
+    private String uploadDir;
 
-    private final StoredFileRepository storedFileRepository;
-
-    public StoredFile storeEventCover(MultipartFile file) {
-        return storeImage(file, "EVENT_COVER");
+    @Transactional
+    public Image storeEventCover(MultipartFile file) {
+        return store(file, "event-cover");
     }
 
-    public StoredFile storeEventImage(MultipartFile file) {
-        return storeImage(file, "EVENT_IMAGE");
+    @Transactional
+    public Image storeEventImage(MultipartFile file) {
+        return store(file, "event-image");
     }
 
-    public StoredFile storePublicationImage(MultipartFile file) {
-        return storeImage(file, "PUBLICATION_IMAGE");
+    @Transactional
+    public Image storePublicationImage(MultipartFile file) {
+        return store(file, "publication-image");
     }
 
-    public StoredFile storeAvatar(MultipartFile file) {
-        return storeImage(file, "AVATAR");
+    @Transactional
+    public Image storeAvatar(MultipartFile file) {
+        return store(file, "avatar");
     }
 
-    public StoredFile loadById(Long id) {
-        return storedFileRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Файл не найден"));
-    }
+    @Transactional(readOnly = true)
+    public StoredImageContent loadById(Long id) {
+        Image image = imageRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("File not found"));
 
-    private StoredFile storeImage(MultipartFile file, String purpose) {
-        validateImage(file);
-
-        String contentType = normalizeContentType(file.getContentType());
-        String extension = resolveExtension(file.getOriginalFilename(), contentType);
-        String storedFileName = UUID.randomUUID() + extension;
-
-        byte[] fileBytes;
+        Path path = resolveStoragePath(image.getFileName());
+        byte[] bytes;
         try {
-            fileBytes = file.getBytes();
+            bytes = Files.readAllBytes(path);
         } catch (IOException ex) {
-            throw new IllegalStateException("Failed to read uploaded file", ex);
+            throw new ResourceNotFoundException("File bytes are missing");
         }
 
-        StoredFile storedFile = StoredFile.builder()
-            .fileName(storedFileName)
-            .contentType(contentType)
-            .size(file.getSize())
-            .purpose(purpose)
-            .fileData(fileBytes)
-            .build();
-        return storedFileRepository.save(storedFile);
+        return new StoredImageContent(image, bytes);
     }
 
-    private void validateImage(MultipartFile file) {
+    private Image store(MultipartFile file, String prefix) {
         if (file == null || file.isEmpty()) {
-            throw new BadRequestException("File is required");
+            throw new BadRequestException("Файл пустой");
         }
 
-        if (file.getSize() > maxFileSizeBytes) {
-            throw new BadRequestException("File size is too large");
+        String originalName = StringUtils.hasText(file.getOriginalFilename())
+            ? file.getOriginalFilename().trim()
+            : "file.bin";
+
+        String storedName = prefix + "-" + UUID.randomUUID() + extensionOf(originalName);
+        Path target = resolveStoragePath(storedName);
+
+        try {
+            Files.createDirectories(target.getParent());
+            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException ex) {
+            throw new IllegalStateException("Не удалось сохранить файл", ex);
         }
 
-        String contentType = file.getContentType();
-        if (contentType == null || !ALLOWED_IMAGE_CONTENT_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
-            throw new BadRequestException("Only image files are allowed");
-        }
+        Image image = Image.builder()
+            .fileName(storedName)
+            .mimeType(file.getContentType() == null ? "application/octet-stream" : file.getContentType())
+            .fileSize(file.getSize())
+            .fileUrl("/api/files/" + storedName)
+            .uploadedAt(OffsetDateTime.now())
+            .build();
+
+        return imageRepository.save(image);
     }
 
-    private String normalizeContentType(String contentType) {
-        return contentType == null ? "application/octet-stream" : contentType.toLowerCase(Locale.ROOT);
+    private Path resolveStoragePath(String fileName) {
+        Path base = Paths.get(uploadDir);
+        if (!base.isAbsolute()) {
+            base = Paths.get(System.getProperty("user.dir")).resolve(base);
+        }
+        return base.resolve(fileName).normalize();
     }
 
-    private String resolveExtension(String originalFileName, String contentType) {
-        if (originalFileName != null) {
-            int dotIndex = originalFileName.lastIndexOf('.');
-            if (dotIndex >= 0 && dotIndex < originalFileName.length() - 1) {
-                String rawExtension = originalFileName.substring(dotIndex + 1);
-                String normalized = rawExtension.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
-                if (!normalized.isBlank()) {
-                    return "." + normalized;
-                }
-            }
+    private String extensionOf(String fileName) {
+        int dotIndex = fileName.lastIndexOf('.');
+        if (dotIndex < 0 || dotIndex == fileName.length() - 1) {
+            return "";
         }
+        String ext = fileName.substring(dotIndex);
+        return ext.length() > 12 ? "" : ext;
+    }
 
-        if (contentType == null) {
-            return ".img";
-        }
-
-        return switch (contentType.toLowerCase(Locale.ROOT)) {
-            case "image/jpeg" -> ".jpg";
-            case "image/png" -> ".png";
-            case "image/webp" -> ".webp";
-            case "image/gif" -> ".gif";
-            default -> ".img";
-        };
+    public record StoredImageContent(Image image, byte[] bytes) {
     }
 }

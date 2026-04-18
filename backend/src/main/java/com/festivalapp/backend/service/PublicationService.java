@@ -5,397 +5,302 @@ import com.festivalapp.backend.dto.PublicationDetailsResponse;
 import com.festivalapp.backend.dto.PublicationShortResponse;
 import com.festivalapp.backend.dto.PublicationUpdateRequest;
 import com.festivalapp.backend.entity.Event;
+import com.festivalapp.backend.entity.EventImage;
+import com.festivalapp.backend.entity.Image;
 import com.festivalapp.backend.entity.Organization;
-import com.festivalapp.backend.entity.Organizer;
+import com.festivalapp.backend.entity.OrganizationMember;
 import com.festivalapp.backend.entity.Publication;
+import com.festivalapp.backend.entity.PublicationImage;
 import com.festivalapp.backend.entity.PublicationStatus;
-import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
+import com.festivalapp.backend.repository.EventImageRepository;
 import com.festivalapp.backend.repository.EventRepository;
-import com.festivalapp.backend.repository.OrganizerRepository;
+import com.festivalapp.backend.repository.ImageRepository;
+import com.festivalapp.backend.repository.OrganizationMemberRepository;
+import com.festivalapp.backend.repository.PublicationImageRepository;
 import com.festivalapp.backend.repository.PublicationRepository;
 import com.festivalapp.backend.repository.UserRepository;
-import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.EnumSet;
+import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class PublicationService {
 
-    private static final int PREVIEW_MAX_LENGTH = 160;
-
     private final PublicationRepository publicationRepository;
+    private final PublicationImageRepository publicationImageRepository;
+    private final ImageRepository imageRepository;
+    private final EventImageRepository eventImageRepository;
     private final EventRepository eventRepository;
-    private final OrganizerRepository organizerRepository;
     private final UserRepository userRepository;
+    private final OrganizationMemberRepository organizationMemberRepository;
 
     @Transactional
     public PublicationDetailsResponse create(PublicationCreateRequest request, String actorIdentifier) {
-        User actor = loadActor(actorIdentifier);
-        Event event = resolveEventOrNull(request.getEventId());
-        validateCreateAccess(actor, event);
+        User actor = resolveActor(actorIdentifier);
+        Event event = eventRepository.findByIdAndDeletedAtIsNull(request.getEventId())
+            .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
+        assertCanPublish(actor, event.getOrganization());
 
-        Publication publication = Publication.builder()
-            .title(request.getTitle())
-            .content(request.getContent())
-            .imageUrl(normalizeOptional(request.getImageUrl()))
-            // Organization publications are created via moderation flow.
-            .status(PublicationStatus.PENDING)
-            .createdAt(LocalDateTime.now())
-            .author(actor)
+        OffsetDateTime now = OffsetDateTime.now();
+        Publication publication = publicationRepository.save(Publication.builder()
             .event(event)
-            .build();
+            .organization(event.getOrganization())
+            .createdByUser(actor)
+            .title(normalizeRequired(request.getTitle(), "Title is required"))
+            .content(normalizeRequired(request.getContent(), "Content is required"))
+            .status(PublicationStatus.PENDING.name())
+            .moderationStatus("на_рассмотрении")
+            .createdAt(now)
+            .updatedAt(now)
+            .build());
 
-        Publication saved = publicationRepository.save(publication);
-        return toDetailsResponse(saved);
+        replacePublicationImage(publication, request.getImageUrl());
+        return toDetails(publicationRepository.findById(publication.getId()).orElse(publication));
     }
 
     @Transactional(readOnly = true)
     public List<PublicationShortResponse> getMine(String actorIdentifier) {
-        User actor = loadActor(actorIdentifier);
-
-        return publicationRepository.findAllByAuthorIdOrderByCreatedAtDesc(actor.getId()).stream()
-            .map(this::toShortResponse)
+        User actor = resolveActor(actorIdentifier);
+        return publicationRepository.findAllByCreatedByUserIdOrderByCreatedAtDesc(actor.getId()).stream()
+            .map(this::toShort)
             .toList();
     }
 
     @Transactional(readOnly = true)
     public List<PublicationShortResponse> getPublicList(Long eventId, String title) {
-        Specification<Publication> specification = buildPublicSpecification(eventId, title);
-        List<Publication> publications = publicationRepository.findAll(
-            specification,
-            Sort.by(Sort.Direction.DESC, "createdAt")
-        );
+        List<Publication> list = eventId == null
+            ? publicationRepository.findAllByOrderByCreatedAtDesc()
+            : publicationRepository.findAllByEventIdOrderByCreatedAtDesc(eventId);
 
-        return publications.stream()
-            .map(this::toShortResponse)
+        return list.stream()
+            .filter(publication -> DomainStatusMapper.toPublicationStatus(publication.getStatus()) == PublicationStatus.PUBLISHED)
+            .filter(publication -> {
+                if (!StringUtils.hasText(title)) {
+                    return true;
+                }
+                return publication.getTitle() != null
+                    && publication.getTitle().toLowerCase().contains(title.trim().toLowerCase());
+            })
+            .map(this::toShort)
             .toList();
     }
 
     @Transactional(readOnly = true)
     public PublicationDetailsResponse getPublicById(Long id) {
-        Publication publication = publicationRepository.findWithAuthorAndEventById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Publication not found: " + id));
+        Publication publication = publicationRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Publication not found"));
 
-        if (publication.getStatus() != PublicationStatus.PUBLISHED) {
-            throw new ResourceNotFoundException("Publication not found: " + id);
+        PublicationStatus status = DomainStatusMapper.toPublicationStatus(publication.getStatus());
+        if (status != PublicationStatus.PUBLISHED) {
+            throw new ResourceNotFoundException("Publication not found");
         }
 
-        return toDetailsResponse(publication);
+        return toDetails(publication);
     }
 
     @Transactional
     public PublicationDetailsResponse update(Long id, PublicationUpdateRequest request, String actorIdentifier) {
-        User actor = loadActor(actorIdentifier);
-        Publication publication = publicationRepository.findWithAuthorAndEventById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Publication not found: " + id));
+        User actor = resolveActor(actorIdentifier);
+        Publication publication = publicationRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Publication not found"));
 
-        validateAuthorOrAdmin(actor, publication.getAuthor().getId());
+        assertCanEdit(actor, publication);
 
-        if (publication.getStatus() == PublicationStatus.DELETED) {
-            throw new BadRequestException("Cannot edit deleted publication");
-        }
-
-        if (request.getTitle() != null) {
-            publication.setTitle(request.getTitle());
+        if (StringUtils.hasText(request.getTitle())) {
+            publication.setTitle(request.getTitle().trim());
         }
         if (request.getContent() != null) {
-            publication.setContent(request.getContent());
+            publication.setContent(request.getContent().trim());
         }
-        if (request.getImageUrl() != null) {
-            publication.setImageUrl(normalizeOptional(request.getImageUrl()));
-        }
-        if (request.getEventId() != null) {
-            Event event = resolveEventOrNull(request.getEventId());
-            if (!hasRole(actor, RoleName.ROLE_ADMIN)) {
-                validateCreateAccess(actor, event);
-            }
-            publication.setEvent(event);
+        if (request.getEventId() != null && !Objects.equals(request.getEventId(), publication.getEvent().getId())) {
+            Event newEvent = eventRepository.findByIdAndDeletedAtIsNull(request.getEventId())
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
+            assertCanPublish(actor, newEvent.getOrganization());
+            publication.setEvent(newEvent);
+            publication.setOrganization(newEvent.getOrganization());
         }
 
-        // After organizer edits publication returns to moderation.
-        if (hasRole(actor, RoleName.ROLE_ADMIN)) {
-            if (publication.getStatus() == PublicationStatus.REJECTED || publication.getStatus() == PublicationStatus.PENDING) {
-                publication.setStatus(PublicationStatus.PUBLISHED);
-            }
-        } else {
-            publication.setStatus(PublicationStatus.PENDING);
-        }
+        publication.setStatus(PublicationStatus.PENDING.name());
+        publication.setModerationStatus("на_рассмотрении");
+        publication.setUpdatedAt(OffsetDateTime.now());
 
         Publication saved = publicationRepository.save(publication);
-        return toDetailsResponse(saved);
+        if (request.getImageUrl() != null) {
+            replacePublicationImage(saved, request.getImageUrl());
+        }
+
+        return toDetails(saved);
     }
 
     @Transactional
     public Map<String, Object> delete(Long id, String actorIdentifier) {
-        User actor = loadActor(actorIdentifier);
-        Publication publication = publicationRepository.findWithAuthorAndEventById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Publication not found: " + id));
+        User actor = resolveActor(actorIdentifier);
+        Publication publication = publicationRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Publication not found"));
 
-        validateAuthorOrAdmin(actor, publication.getAuthor().getId());
-
-        publication.setStatus(PublicationStatus.DELETED);
+        assertCanEdit(actor, publication);
+        publication.setStatus(PublicationStatus.DELETED.name());
+        publication.setUpdatedAt(OffsetDateTime.now());
         publicationRepository.save(publication);
-
-        return Map.of(
-            "message", "Publication deleted successfully",
-            "publicationId", id,
-            "status", publication.getStatus()
-        );
+        return Map.of("success", true);
     }
 
     @Transactional
     public PublicationDetailsResponse updateStatus(Long id, PublicationStatus status) {
-        if (status == null) {
-            throw new BadRequestException("Status is required");
-        }
-        Publication publication = publicationRepository.findWithAuthorAndEventById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Publication not found: " + id));
+        Publication publication = publicationRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Publication not found"));
 
-        PublicationStatus currentStatus = publication.getStatus();
-        if (currentStatus == null) {
-            throw new BadRequestException("У публикации не установлен текущий статус");
+        publication.setStatus(DomainStatusMapper.toPublicationDbStatus(status));
+        publication.setModerationStatus(status == PublicationStatus.REJECTED ? "отклонено" : "одобрено");
+        if (status == PublicationStatus.PUBLISHED) {
+            publication.setPublishedAt(OffsetDateTime.now());
         }
-        if (currentStatus == status) {
-            throw new BadRequestException("Статус публикации уже установлен: " + status.name());
-        }
+        publication.setUpdatedAt(OffsetDateTime.now());
 
-        Set<PublicationStatus> allowedTargets = getAllowedAdminTransitions(currentStatus);
-        if (!allowedTargets.contains(status)) {
-            String allowedStatuses = allowedTargets.stream()
-                .map(Enum::name)
-                .sorted()
-                .collect(Collectors.joining(", "));
-            throw new BadRequestException(
-                "Недопустимый переход статуса публикации: " + currentStatus.name() + " -> " + status.name()
-                    + ". Допустимые статусы: " + allowedStatuses
-            );
-        }
-
-        publication.setStatus(status);
-        Publication saved = publicationRepository.save(publication);
-        return toDetailsResponse(saved);
+        return toDetails(publicationRepository.save(publication));
     }
 
     @Transactional(readOnly = true)
     public List<PublicationShortResponse> getAllForAdmin(PublicationStatus status) {
-        List<Publication> publications = status == null
-            ? publicationRepository.findAll(
-                (root, query, cb) -> cb.conjunction(),
-                Sort.by(Sort.Direction.DESC, "createdAt")
-            )
-            : publicationRepository.findAll(
-                (root, query, cb) -> cb.equal(root.get("status"), status),
-                Sort.by(Sort.Direction.DESC, "createdAt")
-            );
-
-        return publications.stream()
-            .map(this::toShortResponse)
+        return publicationRepository.findAllByOrderByCreatedAtDesc().stream()
+            .filter(publication -> status == null || DomainStatusMapper.toPublicationStatus(publication.getStatus()) == status)
+            .map(this::toShort)
             .toList();
     }
 
-    private Specification<Publication> buildPublicSpecification(Long eventId, String title) {
-        return (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            if (query != null) {
-                query.distinct(true);
-            }
-
-            predicates.add(cb.equal(root.get("status"), PublicationStatus.PUBLISHED));
-
-            if (eventId != null) {
-                predicates.add(cb.equal(root.get("event").get("id"), eventId));
-            }
-            if (StringUtils.hasText(title)) {
-                predicates.add(cb.like(
-                    cb.lower(root.get("title")),
-                    "%" + title.trim().toLowerCase(Locale.ROOT) + "%"
-                ));
-            }
-
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-    }
-
-    private Set<PublicationStatus> getAllowedAdminTransitions(PublicationStatus currentStatus) {
-        return switch (currentStatus) {
-            case PENDING -> EnumSet.of(PublicationStatus.PUBLISHED, PublicationStatus.REJECTED, PublicationStatus.DELETED);
-            case PUBLISHED -> EnumSet.of(PublicationStatus.REJECTED, PublicationStatus.DELETED);
-            case REJECTED -> EnumSet.of(PublicationStatus.PUBLISHED, PublicationStatus.DELETED);
-            case DELETED -> EnumSet.noneOf(PublicationStatus.class);
-        };
-    }
-
-    private User loadActor(String actorIdentifier) {
-        return userRepository.findByLoginOrEmailWithRoles(actorIdentifier)
-            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-    }
-
-    private Event resolveEventOrNull(Long eventId) {
-        if (eventId == null) {
-            return null;
-        }
-        return eventRepository.findById(eventId)
-            .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + eventId));
-    }
-
-    private void validateAuthorOrAdmin(User actor, Long ownerId) {
-        if (Objects.equals(actor.getId(), ownerId) || hasRole(actor, RoleName.ROLE_ADMIN)) {
-            return;
-        }
-        throw new AccessDeniedException("Access denied");
-    }
-
-    private void validateCreateAccess(User actor, Event event) {
-        if (hasRole(actor, RoleName.ROLE_ADMIN)) {
-            throw new AccessDeniedException("Администратор не может создавать публикации");
-        }
-
-        if (!hasRole(actor, RoleName.ROLE_ORGANIZER)) {
-            throw new AccessDeniedException("Только организатор может создавать публикации");
-        }
-
-        if (event == null) {
-            throw new BadRequestException("Event ID is required for organizer publication");
-        }
-
-        Organization actorOrganization = resolveActorOrganization(actor);
-        if (actorOrganization == null) {
-            throw new BadRequestException("Организатор не привязан к организации. Обратитесь к администратору.");
-        }
-
-        if (event.getOrganization() == null || !Objects.equals(event.getOrganization().getId(), actorOrganization.getId())) {
-            throw new AccessDeniedException("Organization can create publications only for own events");
-        }
-    }
-
-    private boolean hasRole(User user, RoleName roleName) {
-        return user.getUserRoles().stream()
-            .anyMatch(userRole -> userRole.getRole().getName() == roleName);
-    }
-
-    private Organization resolveActorOrganization(User actor) {
-        Organizer organizer = actor.getOrganizer();
-        if (organizer != null && organizer.getOrganization() != null) {
-            return organizer.getOrganization();
-        }
-        Organizer persistedOrganizer = organizerRepository.findByUserId(actor.getId()).orElse(null);
-        if (persistedOrganizer != null && persistedOrganizer.getOrganization() != null) {
-            return persistedOrganizer.getOrganization();
-        }
-        return null;
-    }
-
-    private PublicationShortResponse toShortResponse(Publication publication) {
-        Organization organization = resolvePublicationOrganization(publication);
-        return PublicationShortResponse.builder()
-            .publicationId(publication.getId())
-            .title(publication.getTitle())
-            .preview(buildPreview(publication.getContent()))
-            .createdAt(publication.getCreatedAt())
-            .status(publication.getStatus())
-            .authorName(resolveAuthorName(publication.getAuthor()))
-            .imageUrl(publication.getImageUrl())
-            .organizationId(organization != null ? organization.getId() : null)
-            .organizationName(organization != null ? organization.getName() : null)
-            .eventId(publication.getEvent() != null ? publication.getEvent().getId() : null)
-            .eventTitle(publication.getEvent() != null ? publication.getEvent().getTitle() : null)
-            .eventImageUrl(resolvePublicationEventImageUrl(publication))
-            .build();
-    }
-
-    private PublicationDetailsResponse toDetailsResponse(Publication publication) {
-        Organization organization = resolvePublicationOrganization(publication);
+    private PublicationDetailsResponse toDetails(Publication publication) {
         return PublicationDetailsResponse.builder()
             .publicationId(publication.getId())
             .title(publication.getTitle())
             .content(publication.getContent())
-            .imageUrl(publication.getImageUrl())
-            .createdAt(publication.getCreatedAt())
-            .status(publication.getStatus())
-            .authorName(resolveAuthorName(publication.getAuthor()))
-            .authorId(publication.getAuthor() != null ? publication.getAuthor().getId() : null)
-            .organizationId(organization != null ? organization.getId() : null)
-            .organizationName(organization != null ? organization.getName() : null)
-            .eventId(publication.getEvent() != null ? publication.getEvent().getId() : null)
-            .eventTitle(publication.getEvent() != null ? publication.getEvent().getTitle() : null)
-            .eventImageUrl(resolvePublicationEventImageUrl(publication))
+            .imageUrl(getPublicationImageUrl(publication.getId()))
+            .createdAt(publication.getCreatedAt() == null ? null : publication.getCreatedAt().toLocalDateTime())
+            .status(DomainStatusMapper.toPublicationStatus(publication.getStatus()))
+            .authorName(fullName(publication.getCreatedByUser()))
+            .authorId(publication.getCreatedByUser() == null ? null : publication.getCreatedByUser().getId())
+            .organizationId(publication.getOrganization() == null ? null : publication.getOrganization().getId())
+            .organizationName(publication.getOrganization() == null ? null : publication.getOrganization().getName())
+            .eventId(publication.getEvent() == null ? null : publication.getEvent().getId())
+            .eventTitle(publication.getEvent() == null ? null : publication.getEvent().getTitle())
+            .eventImageUrl(getEventCover(publication.getEvent() == null ? null : publication.getEvent().getId()))
             .build();
     }
 
-    private String resolvePublicationEventImageUrl(Publication publication) {
-        if (publication == null || publication.getEvent() == null) {
-            return null;
-        }
-        String coverUrl = publication.getEvent().getCoverUrl();
-        return StringUtils.hasText(coverUrl) ? coverUrl.trim() : null;
+    private PublicationShortResponse toShort(Publication publication) {
+        String content = publication.getContent() == null ? "" : publication.getContent();
+        String preview = content.length() > 140 ? content.substring(0, 140) + "..." : content;
+
+        return PublicationShortResponse.builder()
+            .publicationId(publication.getId())
+            .title(publication.getTitle())
+            .preview(preview)
+            .createdAt(publication.getCreatedAt() == null ? null : publication.getCreatedAt().toLocalDateTime())
+            .status(DomainStatusMapper.toPublicationStatus(publication.getStatus()))
+            .authorName(fullName(publication.getCreatedByUser()))
+            .imageUrl(getPublicationImageUrl(publication.getId()))
+            .organizationId(publication.getOrganization() == null ? null : publication.getOrganization().getId())
+            .organizationName(publication.getOrganization() == null ? null : publication.getOrganization().getName())
+            .eventId(publication.getEvent() == null ? null : publication.getEvent().getId())
+            .eventTitle(publication.getEvent() == null ? null : publication.getEvent().getTitle())
+            .eventImageUrl(getEventCover(publication.getEvent() == null ? null : publication.getEvent().getId()))
+            .build();
     }
 
-    private Organization resolvePublicationOrganization(Publication publication) {
-        if (publication == null) {
-            return null;
-        }
-        if (publication.getEvent() != null && publication.getEvent().getOrganization() != null) {
-            return publication.getEvent().getOrganization();
+    private void replacePublicationImage(Publication publication, String imageUrl) {
+        publicationImageRepository.deleteByPublicationId(publication.getId());
+        if (!StringUtils.hasText(imageUrl)) {
+            return;
         }
 
-        User author = publication.getAuthor();
-        if (author == null) {
-            return null;
-        }
-        if (author.getOrganizer() != null && author.getOrganizer().getOrganization() != null) {
-            return author.getOrganizer().getOrganization();
-        }
+        Image image = imageRepository.save(Image.builder()
+            .fileName(fileNameFromUrl(imageUrl))
+            .mimeType("image/*")
+            .fileSize(0L)
+            .fileUrl(imageUrl.trim())
+            .uploadedAt(OffsetDateTime.now())
+            .build());
 
-        Organizer organizer = organizerRepository.findByUserId(author.getId()).orElse(null);
-        if (organizer != null && organizer.getOrganization() != null) {
-            return organizer.getOrganization();
-        }
-        return null;
+        publicationImageRepository.save(PublicationImage.builder()
+            .publication(publication)
+            .image(image)
+            .sortOrder(0)
+            .build());
     }
 
-    private String normalizeOptional(String value) {
+    private String getPublicationImageUrl(Long publicationId) {
+        return publicationImageRepository.findAllByPublicationIdOrderBySortOrderAscIdAsc(publicationId).stream()
+            .findFirst()
+            .map(PublicationImage::getImage)
+            .map(Image::getFileUrl)
+            .orElse(null);
+    }
+
+    private String getEventCover(Long eventId) {
+        if (eventId == null) {
+            return null;
+        }
+        return eventImageRepository.findFirstByEventIdAndPrimaryIsTrueOrderBySortOrderAscIdAsc(eventId)
+            .map(EventImage::getImage)
+            .map(Image::getFileUrl)
+            .orElse(null);
+    }
+
+    private void assertCanPublish(User actor, Organization organization) {
+        if (organization == null) {
+            throw new BadRequestException("Organization is required");
+        }
+        boolean member = organizationMemberRepository.existsByUserIdAndOrganizationIdAndLeftAtIsNull(actor.getId(), organization.getId());
+        if (!member) {
+            throw new BadRequestException("Недостаточно прав для публикации");
+        }
+    }
+
+    private void assertCanEdit(User actor, Publication publication) {
+        if (publication.getCreatedByUser() != null && Objects.equals(publication.getCreatedByUser().getId(), actor.getId())) {
+            return;
+        }
+        boolean member = publication.getOrganization() != null
+            && organizationMemberRepository.existsByUserIdAndOrganizationIdAndLeftAtIsNull(actor.getId(), publication.getOrganization().getId());
+        if (!member) {
+            throw new BadRequestException("Недостаточно прав");
+        }
+    }
+
+    private User resolveActor(String actorIdentifier) {
+        return userRepository.findByLoginOrEmailWithRoles(actorIdentifier)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    }
+
+    private String fullName(User user) {
+        if (user == null) {
+            return null;
+        }
+        return (user.getFirstName() + " " + user.getLastName()).trim();
+    }
+
+    private String normalizeRequired(String value, String message) {
         if (!StringUtils.hasText(value)) {
-            return null;
+            throw new BadRequestException(message);
         }
         return value.trim();
     }
 
-    private String resolveAuthorName(User user) {
-        if (user == null) {
-            return null;
+    private String fileNameFromUrl(String url) {
+        String trimmed = url.trim();
+        int slash = trimmed.lastIndexOf('/');
+        if (slash < 0 || slash == trimmed.length() - 1) {
+            return "image-" + System.nanoTime();
         }
-        String displayName = ((user.getFirstName() == null ? "" : user.getFirstName()) + " "
-            + (user.getLastName() == null ? "" : user.getLastName())).trim();
-        return displayName.isEmpty() ? user.getLogin() : displayName;
-    }
-
-    private String buildPreview(String content) {
-        if (content == null) {
-            return "";
-        }
-        String normalized = content.trim();
-        if (normalized.length() <= PREVIEW_MAX_LENGTH) {
-            return normalized;
-        }
-        return normalized.substring(0, PREVIEW_MAX_LENGTH) + "...";
+        return trimmed.substring(slash + 1);
     }
 }

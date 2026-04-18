@@ -44,4 +44,4 @@ yandex:
 ## Схема БД v2
 - Бэкенд переведён на миграции Flyway.
 - Финальная схема по новой ER-модели: `backend/src/main/resources/db/migration/V1__new_er_schema.sql`.
-- Legacy-сидеры (`RoleDataInitializer`, `DirectoryDataInitializer`, `DemoDataInitializer`) отключены по умолчанию и включаются только при `APP_SEED_LEGACY_ENABLED=true`.
+- Слой `entity/repository/service` полностью переведён на новую модель данных (legacy-классы удалены).

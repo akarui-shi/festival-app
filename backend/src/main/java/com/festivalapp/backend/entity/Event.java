@@ -3,26 +3,23 @@ package com.festivalapp.backend.entity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -41,64 +38,67 @@ public class Event {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organization_id", nullable = false)
+    private Organization organization;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_user_id", nullable = false)
+    private User createdByUser;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "city_id", nullable = false)
+    private City city;
+
     @Column(nullable = false)
     private String title;
 
     @Column(name = "short_description")
     private String shortDescription;
 
-    @Column(name = "full_description", columnDefinition = "TEXT")
+    @Column(name = "full_description")
     private String fullDescription;
 
-    @Column(name = "age_rating")
-    private Integer ageRating;
+    @Column(name = "age_restriction")
+    private String ageRestriction;
 
-    @Column(name = "cover_url")
-    private String coverUrl;
+    @Column(name = "is_free", nullable = false)
+    private boolean free;
+
+    @Column(name = "starts_at", nullable = false)
+    private OffsetDateTime startsAt;
+
+    @Column(name = "ends_at")
+    private OffsetDateTime endsAt;
+
+    @Column(nullable = false)
+    private String status;
+
+    @Column(name = "moderation_status", nullable = false)
+    private String moderationStatus;
 
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private EventStatus status;
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "organization_id", nullable = false)
-    private Organization organization;
+    @Column(name = "deleted_at")
+    private OffsetDateTime deletedAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "venue_id")
-    private Venue venue;
+    @Transient
+    private Integer ageRating;
+
+    @Transient
+    private String coverUrl;
 
     @Builder.Default
     @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<EventCategory> eventCategories = new HashSet<>();
 
     @Builder.Default
-    @ManyToMany
-    @JoinTable(
-        name = "event_categories",
-        joinColumns = @JoinColumn(name = "event_id"),
-        inverseJoinColumns = @JoinColumn(name = "category_id")
-    )
-    private Set<Category> categories = new HashSet<>();
-
-    @Builder.Default
-    @OneToMany(mappedBy = "event")
+    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Session> sessions = new HashSet<>();
-
-    @Builder.Default
-    @OneToMany(mappedBy = "event")
-    private Set<Review> reviews = new HashSet<>();
-
-    @Builder.Default
-    @OneToMany(mappedBy = "event")
-    private Set<Favorite> favorites = new HashSet<>();
-
-    @Builder.Default
-    @OneToMany(mappedBy = "event")
-    private Set<Publication> publications = new HashSet<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)

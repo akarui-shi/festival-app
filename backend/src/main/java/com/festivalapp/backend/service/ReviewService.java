@@ -2,153 +2,118 @@ package com.festivalapp.backend.service;
 
 import com.festivalapp.backend.dto.ReviewCreateRequest;
 import com.festivalapp.backend.dto.ReviewResponse;
-import com.festivalapp.backend.entity.EventStatus;
+import com.festivalapp.backend.entity.Comment;
 import com.festivalapp.backend.entity.Event;
-import com.festivalapp.backend.entity.Review;
-import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.User;
-import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
+import com.festivalapp.backend.repository.CommentRepository;
 import com.festivalapp.backend.repository.EventRepository;
-import com.festivalapp.backend.repository.ReviewRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
 public class ReviewService {
 
-    private final ReviewRepository reviewRepository;
-    private final EventRepository eventRepository;
+    private final CommentRepository commentRepository;
     private final UserRepository userRepository;
+    private final EventRepository eventRepository;
 
     @Transactional
     public ReviewResponse create(ReviewCreateRequest request, String actorIdentifier) {
-        User user = loadActor(actorIdentifier);
-        if (hasRole(user, RoleName.ROLE_ADMIN) || hasRole(user, RoleName.ROLE_ORGANIZER)) {
-            throw new AccessDeniedException("Только жители могут оставлять отзывы");
-        }
+        User actor = resolveActor(actorIdentifier);
+        Event event = eventRepository.findByIdAndDeletedAtIsNull(request.getEventId())
+            .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
 
-        Event event = eventRepository.findById(request.getEventId())
-            .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + request.getEventId()));
-        ensureEventIsPublished(event);
-
-        if (reviewRepository.existsByUserIdAndEventId(user.getId(), event.getId())) {
-            throw new BadRequestException("Duplicate review: user already has review for this event");
-        }
-
-        Review review = Review.builder()
-            .user(user)
+        OffsetDateTime now = OffsetDateTime.now();
+        Comment comment = commentRepository.save(Comment.builder()
+            .user(actor)
             .event(event)
             .rating(request.getRating())
-            .text(request.getText())
-            .createdAt(LocalDateTime.now())
-            .build();
+            .content(request.getText())
+            .moderationStatus("на_рассмотрении")
+            .createdAt(now)
+            .updatedAt(now)
+            .build());
 
-        Review saved = reviewRepository.save(review);
-        return toResponse(saved);
+        return toResponse(comment);
     }
 
     @Transactional(readOnly = true)
     public List<ReviewResponse> getByEvent(Long eventId) {
-        Event event = eventRepository.findById(eventId)
-            .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + eventId));
-        ensureEventIsPublished(event);
-
-        return reviewRepository.findByEventIdOrderByCreatedAtDesc(eventId)
-            .stream()
+        return commentRepository.findAllByEventIdOrderByCreatedAtDesc(eventId).stream()
             .map(this::toResponse)
             .toList();
     }
 
     @Transactional(readOnly = true)
     public List<ReviewResponse> getAllForAdmin() {
-        return reviewRepository.findAllByOrderByCreatedAtDesc().stream()
+        return commentRepository.findAllByOrderByCreatedAtDesc().stream()
             .map(this::toResponse)
             .toList();
     }
 
     @Transactional
     public ReviewResponse update(Long reviewId, Integer rating, String text, String actorIdentifier) {
-        User actor = loadActor(actorIdentifier);
-        Review review = reviewRepository.findWithUserAndEventById(reviewId)
-            .orElseThrow(() -> new ResourceNotFoundException("Review not found: " + reviewId));
+        User actor = resolveActor(actorIdentifier);
+        Comment comment = commentRepository.findById(reviewId)
+            .orElseThrow(() -> new ResourceNotFoundException("Review not found"));
 
-        validateAuthorOrAdmin(actor, review.getUser().getId());
+        boolean owner = comment.getUser() != null && comment.getUser().getId().equals(actor.getId());
+        if (!owner) {
+            throw new ResourceNotFoundException("Review not found");
+        }
 
         if (rating != null) {
-            review.setRating(rating);
+            comment.setRating(rating);
         }
         if (text != null) {
-            review.setText(text);
+            comment.setContent(text);
         }
+        comment.setUpdatedAt(OffsetDateTime.now());
 
-        Review saved = reviewRepository.save(review);
-        return toResponse(saved);
+        return toResponse(commentRepository.save(comment));
     }
 
     @Transactional
     public Map<String, Object> delete(Long reviewId, String actorIdentifier) {
-        User actor = loadActor(actorIdentifier);
-        Review review = reviewRepository.findWithUserAndEventById(reviewId)
-            .orElseThrow(() -> new ResourceNotFoundException("Review not found: " + reviewId));
+        User actor = resolveActor(actorIdentifier);
+        Comment comment = commentRepository.findById(reviewId)
+            .orElseThrow(() -> new ResourceNotFoundException("Review not found"));
 
-        validateAuthorOrAdmin(actor, review.getUser().getId());
-        reviewRepository.delete(review);
-
-        return Map.of(
-            "message", "Review deleted successfully",
-            "reviewId", reviewId
-        );
-    }
-
-    private void ensureEventIsPublished(Event event) {
-        if (event == null || event.getStatus() != EventStatus.PUBLISHED) {
-            throw new ResourceNotFoundException("Event not found");
+        boolean owner = comment.getUser() != null && comment.getUser().getId().equals(actor.getId());
+        if (!owner) {
+            throw new ResourceNotFoundException("Review not found");
         }
+
+        commentRepository.delete(comment);
+        return Map.of("success", true);
     }
 
-    private User loadActor(String actorIdentifier) {
-        return userRepository.findByLoginOrEmailWithRoles(actorIdentifier)
-            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-    }
-
-    private void validateAuthorOrAdmin(User actor, Long ownerId) {
-        if (Objects.equals(actor.getId(), ownerId) || hasRole(actor, RoleName.ROLE_ADMIN)) {
-            return;
-        }
-        throw new AccessDeniedException("Access denied");
-    }
-
-    private boolean hasRole(User user, RoleName roleName) {
-        return user.getUserRoles().stream()
-            .anyMatch(userRole -> userRole.getRole().getName() == roleName);
-    }
-
-    private ReviewResponse toResponse(Review review) {
-        User user = review.getUser();
-        String displayName = ((user.getFirstName() == null ? "" : user.getFirstName()) + " "
-            + (user.getLastName() == null ? "" : user.getLastName())).trim();
-        if (displayName.isEmpty()) {
-            displayName = user.getLogin();
-        }
+    private ReviewResponse toResponse(Comment comment) {
+        String displayName = comment.getUser() == null
+            ? null
+            : (comment.getUser().getFirstName() + " " + comment.getUser().getLastName()).trim();
 
         return ReviewResponse.builder()
-            .reviewId(review.getId())
-            .userId(user.getId())
+            .reviewId(comment.getId())
+            .userId(comment.getUser() == null ? null : comment.getUser().getId())
             .userDisplayName(displayName)
-            .rating(review.getRating())
-            .text(review.getText())
-            .createdAt(review.getCreatedAt())
-            .eventId(review.getEvent() != null ? review.getEvent().getId() : null)
+            .rating(comment.getRating())
+            .text(comment.getContent())
+            .createdAt(comment.getCreatedAt() == null ? null : comment.getCreatedAt().toLocalDateTime())
+            .eventId(comment.getEvent() == null ? null : comment.getEvent().getId())
             .build();
+    }
+
+    private User resolveActor(String actorIdentifier) {
+        return userRepository.findByLoginOrEmailWithRoles(actorIdentifier)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 }

@@ -23,21 +23,38 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "user_roles")
-public class UserRole {
+@Table(name = "images")
+public class Image {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "file_name", nullable = false)
+    private String fileName;
+
+    @Column(name = "mime_type", nullable = false)
+    private String mimeType;
+
+    @Column(name = "file_size", nullable = false)
+    private Long fileSize;
+
+    @Column(name = "file_url", nullable = false)
+    private String fileUrl;
+
+    @Column(name = "alt_text")
+    private String altText;
+
+    @Column
+    private Integer width;
+
+    @Column
+    private Integer height;
+
+    @Column(name = "uploaded_at", nullable = false)
+    private OffsetDateTime uploadedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "role_id", nullable = false)
-    private Role role;
-
-    @Column(name = "assigned_at", nullable = false)
-    private OffsetDateTime assignedAt;
+    @JoinColumn(name = "uploaded_by_user_id")
+    private User uploadedByUser;
 }
