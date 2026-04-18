@@ -1,16 +1,27 @@
 export type UserRole = 'RESIDENT' | 'ORGANIZER' | 'ADMIN';
+export type Id = string | number;
+export type EventStatus = 'PENDING_APPROVAL' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED' | 'DRAFT' | 'PENDING' | 'CANCELLED';
+
+export interface CurrentUserOrganization {
+  id: number;
+  name: string;
+  description?: string | null;
+  contacts?: string | null;
+}
 
 export interface User {
-  id: string;
+  id: Id;
+  login: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  role: UserRole;
-  avatarUrl?: string;
-  phone?: string;
-  organization?: Organization;
-  active: boolean;
-  createdAt: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  roles?: string[] | null;
+  role?: UserRole;
+  organization?: CurrentUserOrganization | null;
+  active?: boolean;
+  createdAt?: string;
 }
 
 export interface AuthResponse {
@@ -28,73 +39,88 @@ export interface RegisterRequest {
   password: string;
   firstName: string;
   lastName: string;
-  role?: 'RESIDENT' | 'ORGANIZER';
+  role?: UserRole;
   companyName?: string;
 }
 
 export interface Category {
-  id: string;
+  id: Id;
   name: string;
-  slug: string;
+  description?: string | null;
+  slug?: string;
   icon?: string;
 }
 
 export interface City {
-  id: string;
+  id: Id;
   name: string;
-  region?: string;
-  country?: string;
+  region?: string | null;
+  country?: string | null;
 }
 
 export interface Organization {
-  id: string;
+  id: Id;
   name: string;
-  description?: string;
-  contacts?: string;
+  description?: string | null;
+  contacts?: string | null;
 }
 
 export interface Venue {
-  id: string;
+  id: Id;
   name: string;
   address: string;
-  cityId: string;
+  contacts?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  capacity?: number | null;
+  cityId?: Id | null;
+  cityName?: string | null;
   city?: City;
-  capacity?: number;
   description?: string;
-  latitude?: number;
-  longitude?: number;
 }
 
-export type EventStatus = 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'CANCELLED';
-export type EventFormat = 'OFFLINE' | 'ONLINE' | 'HYBRID';
+export interface EventImage {
+  imageUrl?: string | null;
+  isCover?: boolean | null;
+  sortOrder?: number | null;
+}
 
 export interface Event {
-  id: string;
+  id: Id;
   title: string;
-  description: string;
-  shortDescription: string;
-  imageUrl: string;
+  shortDescription?: string | null;
+  fullDescription?: string | null;
+  ageRating?: number | null;
+  createdAt?: string | null;
+  status?: string | null;
+  organizationId?: Id | null;
+  organizationName?: string | null;
+  venueId?: Id | null;
+  venueName?: string | null;
+  venueAddress?: string | null;
+  cityId?: Id | null;
+  cityName?: string | null;
+  categories?: Category[] | null;
+  nextSessionAt?: string | null;
+  sessionDates?: string[] | null;
+  coverUrl?: string | null;
+  eventImages?: EventImage[] | null;
+  organization?: Organization | null;
+  venue?: Venue | null;
+  imageUrl?: string;
   imageUrls?: string[];
-  categoryId: string;
+  categoryId?: Id;
   category?: Category;
-  categories?: Category[];
-  venueId: string;
-  venue?: Venue;
-  cityId: string;
   city?: City;
-  organizationId: string;
-  organization?: Organization;
-  organizerId: string;
-  organizer?: User;
-  format: EventFormat;
-  status: EventStatus;
-  startDate: string;
-  endDate: string;
+  organizerId?: Id;
+  format?: 'OFFLINE' | 'ONLINE' | 'HYBRID';
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+  isFree?: boolean;
   price?: number;
-  isFree: boolean;
-  tags: string[];
-  createdAt: string;
-  updatedAt: string;
+  tags?: string[];
+  updatedAt?: string;
   sessionsCount?: number;
   registrationsCount?: number;
   averageRating?: number;
@@ -102,81 +128,217 @@ export interface Event {
 }
 
 export interface Session {
-  id: string;
-  eventId: string;
-  event?: Event;
-  date: string;
-  startTime: string;
-  endTime: string;
-  maxParticipants: number;
-  currentParticipants: number;
+  id: Id;
+  startAt: string;
+  endAt: string;
+  availableSeats?: number | null;
+  totalCapacity?: number | null;
+  eventId?: Id | null;
+  eventTitle?: string | null;
+  venueId?: Id | null;
+  venueName?: string | null;
+  venueAddress?: string | null;
+  cityName?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  event?: {
+    id: number;
+    title: string;
+    organizationId?: number | null;
+    organizationName?: string | null;
+  } | null;
+  venue?: {
+    id?: number | null;
+    name?: string | null;
+    address?: string | null;
+    cityName?: string | null;
+    capacity?: number | null;
+    latitude?: number | null;
+    longitude?: number | null;
+  } | null;
+  date?: string;
+  startTime?: string;
+  endTime?: string;
+  maxParticipants?: number;
+  currentParticipants?: number;
   location?: string;
 }
 
-export interface Registration {
-  id: string;
-  userId: string;
-  user?: User;
-  sessionId: string;
-  session?: Session;
-  eventId: string;
-  event?: Event;
-  status: 'CONFIRMED' | 'CANCELLED' | 'ATTENDED';
-  createdAt: string;
+export interface SessionRegistration {
+  registrationId: Id;
+  userId?: Id | null;
+  userFullName?: string | null;
+  quantity?: number | null;
+  status?: string | null;
+  qrToken?: string | null;
+  createdAt?: string | null;
 }
 
 export interface Favorite {
-  id: string;
-  userId: string;
-  eventId: string;
+  id?: Id;
+  userId?: Id;
+  eventId: Id;
+  title: string;
+  shortDescription?: string | null;
+  coverUrl?: string | null;
+  ageRating?: number | null;
+  status?: string | null;
   event?: Event;
-  createdAt: string;
+  createdAt?: string;
 }
 
 export interface Review {
-  id: string;
-  userId: string;
+  commentId: Id;
+  eventId?: Id | null;
+  userId?: Id | null;
+  userDisplayName?: string | null;
+  text?: string | null;
+  rating?: number | null;
+  moderationStatus?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  id?: Id;
   user?: User;
-  eventId: string;
-  event?: Event;
-  rating: number;
-  comment: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  createdAt: string;
-  updatedAt: string;
+  comment?: string;
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED' | string;
 }
 
-export type PublicationStatus = 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED';
+export interface OrderTicket {
+  ticketId: Id;
+  sessionId?: Id | null;
+  status?: string | null;
+  qrToken?: string | null;
+  issuedAt?: string | null;
+  usedAt?: string | null;
+}
+
+export interface OrderItem {
+  itemId: Id;
+  ticketTypeId?: Id | null;
+  ticketTypeName?: string | null;
+  quantity?: number | null;
+  unitPrice?: number | null;
+  lineTotal?: number | null;
+  tickets?: OrderTicket[] | null;
+}
+
+export interface Order {
+  orderId: Id;
+  eventId?: Id | null;
+  eventTitle?: string | null;
+  status?: string | null;
+  totalAmount?: number | null;
+  currency?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  items?: OrderItem[] | null;
+}
+
+export interface Ticket {
+  ticketId: Id;
+  orderId?: Id | null;
+  eventId?: Id | null;
+  eventTitle?: string | null;
+  sessionId?: Id | null;
+  sessionTitle?: string | null;
+  status?: string | null;
+  qrToken?: string | null;
+  issuedAt?: string | null;
+  usedAt?: string | null;
+}
+
+export interface Registration {
+  id?: Id;
+  registrationId?: Id;
+  userId?: Id;
+  user?: User;
+  userFullName?: string | null;
+  sessionId?: Id;
+  session?: Session;
+  eventId?: Id;
+  event?: Event;
+  status?: string;
+  createdAt?: string | null;
+  ticketId?: Id;
+  orderId?: Id;
+  eventTitle?: string | null;
+  sessionTitle?: string | null;
+  qrToken?: string | null;
+  issuedAt?: string | null;
+}
+
+export type PublicationStatus = 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'DELETED';
 
 export interface Publication {
-  id: string;
+  publicationId: Id;
   title: string;
-  content: string;
-  excerpt: string;
-  imageUrl: string;
-  authorId: string;
+  preview?: string | null;
+  content?: string | null;
+  imageUrl?: string | null;
+  imageUrls?: string[] | null;
+  createdAt?: string | null;
+  publishedAt?: string | null;
+  status?: PublicationStatus | string | null;
+  moderationStatus?: string | null;
+  authorName?: string | null;
+  authorId?: Id | null;
+  organizationId?: Id | null;
+  organizationName?: string | null;
+  eventId?: Id | null;
+  eventTitle?: string | null;
+  eventImageUrl?: string | null;
+  id?: Id;
+  excerpt?: string;
   author?: User;
-  organizationId?: string;
   organization?: Organization;
-  eventId?: string;
-  eventTitle?: string;
-  eventImageUrl?: string;
-  status: PublicationStatus;
-  publishedAt?: string;
-  createdAt: string;
-  updatedAt: string;
-  tags: string[];
+  tags?: string[];
+  createdAtRaw?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface OrganizerAnalyticsOverview {
+  fromDate?: string | null;
+  toDate?: string | null;
+  kpi?: {
+    pageViews?: number | null;
+    uniqueVisitors?: number | null;
+    registrations?: number | null;
+    activeParticipants?: number | null;
+    favorites?: number | null;
+    averageRating?: number | null;
+  } | null;
+}
+
+export interface OrganizerEventEngagement {
+  eventId: Id;
+  eventTitle: string;
+  eventPath?: string | null;
+  registrationsCount?: number | null;
+  cancellationsCount?: number | null;
+  activeRegistrations?: number | null;
+  activeParticipants?: number | null;
+  sessionsCount?: number | null;
+  averageSessionOccupancyPercent?: number | null;
+  favoritesCount?: number | null;
+  reviewsCount?: number | null;
+  averageRating?: number | null;
 }
 
 export interface OrganizerEventStats {
-  eventId: string;
-  eventTitle: string;
-  totalRegistrations: number;
-  totalAttended: number;
-  totalCancelled: number;
-  averageRating: number;
-  reviewsCount: number;
-  sessionsCount: number;
+  eventId: Id;
+  registrationsCount?: number | null;
+  cancellationsCount?: number | null;
+  occupiedSeats?: number | null;
+  totalCapacity?: number | null;
+  occupancyPercent?: number | null;
+  sessions?: Array<{
+    sessionId: Id;
+    startAt?: string | null;
+    endAt?: string | null;
+    capacity?: number | null;
+    occupiedSeats?: number | null;
+    occupancyPercent?: number | null;
+  }> | null;
 }
 
 export interface OrganizerOverview {
@@ -184,8 +346,28 @@ export interface OrganizerOverview {
   totalRegistrations: number;
   averageRating: number;
   upcomingEvents: number;
-  recentRegistrations: Registration[];
-  topEvents: OrganizerEventStats[];
+  recentRegistrations: Array<SessionRegistration | Ticket>;
+  topEvents: Array<{
+    eventId: Id;
+    eventTitle: string;
+    totalRegistrations: number;
+    totalAttended: number;
+    totalCancelled: number;
+    averageRating: number;
+    reviewsCount: number;
+    sessionsCount: number;
+  }>;
+}
+
+export interface OrganizerOverviewBundle {
+  events: Event[];
+  overview: OrganizerAnalyticsOverview;
+  engagements: OrganizerEventEngagement[];
+}
+
+export interface OrganizerEventStatsBundle {
+  stats: OrganizerEventStats;
+  engagement: OrganizerEventEngagement;
 }
 
 export interface PaginatedResponse<T> {
@@ -197,13 +379,13 @@ export interface PaginatedResponse<T> {
 }
 
 export interface EventFilters {
-  categoryId?: string;
-  cityId?: string;
-  format?: EventFormat;
+  categoryId?: Id;
+  cityId?: Id;
+  format?: 'OFFLINE' | 'ONLINE' | 'HYBRID';
   startDate?: string;
   endDate?: string;
   search?: string;
-  status?: EventStatus;
+  status?: string;
   page?: number;
   size?: number;
 }

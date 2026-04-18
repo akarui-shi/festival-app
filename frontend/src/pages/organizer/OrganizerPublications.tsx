@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import type { Event, Publication } from '@/types';
+import type { Event, Id, Publication } from '@/types';
 
 const statusMap: Record<string, { label: string; cls: string }> = {
   DRAFT: { label: 'Черновик', cls: 'bg-muted text-muted-foreground' },
@@ -45,7 +45,7 @@ export default function OrganizerPublications() {
         setOrganizerEvents(events);
         setForm((prev) => ({
           ...prev,
-          eventId: prev.eventId || events[0]?.id || '',
+          eventId: prev.eventId || (events[0]?.id != null ? String(events[0].id) : ''),
         }));
       })
       .finally(() => setLoading(false));
@@ -62,7 +62,7 @@ export default function OrganizerPublications() {
       const pub = await publicationService.createPublication({
         ...form,
         authorId: user!.id,
-        eventId: form.eventId,
+        eventId: Number(form.eventId),
         tags: form.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
       });
       setPubs((prev) => [pub, ...prev]);
@@ -90,15 +90,17 @@ export default function OrganizerPublications() {
     }
   };
 
-  const sendToModeration = async (id: string) => {
-    await publicationService.updateStatus(id, 'PENDING');
-    setPubs((prev) => prev.map((publication) => (publication.id === id ? { ...publication, status: 'PENDING' as const } : publication)));
+  const sendToModeration = async (id: Id) => {
+    const updated = await publicationService.submitForModeration(id);
+    setPubs((prev) => prev.map((publication) => (
+      String(publication.publicationId ?? publication.id) === String(id) ? updated : publication
+    )));
     toast.success('Отправлено на модерацию');
   };
 
-  const del = async (id: string) => {
+  const del = async (id: Id) => {
     await publicationService.deletePublication(id);
-    setPubs((prev) => prev.filter((publication) => publication.id !== id));
+    setPubs((prev) => prev.filter((publication) => String(publication.publicationId ?? publication.id) !== String(id)));
     toast.success('Удалено');
     setPublicationToDelete(null);
   };
@@ -135,7 +137,10 @@ export default function OrganizerPublications() {
         confirmLabel="Удалить"
         onConfirm={() => {
           if (publicationToDelete) {
-            return del(publicationToDelete.id);
+            const publicationId = publicationToDelete.publicationId ?? publicationToDelete.id;
+            if (publicationId != null) {
+              return del(publicationId);
+            }
           }
         }}
       />
@@ -148,7 +153,7 @@ export default function OrganizerPublications() {
             </SelectTrigger>
             <SelectContent>
               {organizerEvents.map((eventItem) => (
-                <SelectItem key={eventItem.id} value={eventItem.id}>
+                <SelectItem key={eventItem.id} value={String(eventItem.id)}>
                   {eventItem.title}
                 </SelectItem>
               ))}
@@ -224,10 +229,11 @@ export default function OrganizerPublications() {
       ) : (
         <div className="space-y-3">
           {pubs.map((pub) => {
-            const status = statusMap[pub.status];
+            const publicationId = pub.publicationId ?? pub.id;
+            const status = statusMap[pub.status || ''] || { label: pub.status || 'Статус не указан', cls: 'bg-muted text-muted-foreground' };
             return (
               <div
-                key={pub.id}
+                key={publicationId}
                 className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
@@ -246,8 +252,8 @@ export default function OrganizerPublications() {
                   <p className="text-xs text-muted-foreground">{pub.excerpt}</p>
                 </div>
                 <div className="flex items-center gap-1">
-                  {pub.status === 'DRAFT' && (
-                    <Button variant="ghost" size="sm" onClick={() => sendToModeration(pub.id)} className="gap-1.5">
+                  {pub.status === 'DRAFT' && publicationId != null && (
+                    <Button variant="ghost" size="sm" onClick={() => sendToModeration(publicationId)} className="gap-1.5">
                       <Send className="h-3.5 w-3.5" />
                       На модерацию
                     </Button>

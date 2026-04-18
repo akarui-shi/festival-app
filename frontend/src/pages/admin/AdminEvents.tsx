@@ -11,9 +11,11 @@ import type { Event, EventStatus } from '@/types';
 const statusMap: Record<string, { label: string; cls: string }> = {
   DRAFT: { label: 'Черновик', cls: 'bg-muted text-muted-foreground' },
   PENDING: { label: 'На модерации', cls: 'bg-warning/10 text-warning' },
+  PENDING_APPROVAL: { label: 'На модерации', cls: 'bg-warning/10 text-warning' },
   PUBLISHED: { label: 'Опубликовано', cls: 'bg-success/10 text-success' },
   REJECTED: { label: 'Отклонено', cls: 'bg-destructive/10 text-destructive' },
   CANCELLED: { label: 'Отменено', cls: 'bg-muted text-muted-foreground' },
+  ARCHIVED: { label: 'Отменено', cls: 'bg-muted text-muted-foreground' },
 };
 
 export default function AdminEvents() {
@@ -29,7 +31,7 @@ export default function AdminEvents() {
 
   const changeStatus = async (id: string, status: EventStatus) => {
     await eventService.updateEvent(id, { status });
-    setEvents((prev) => prev.map((event) => (event.id === id ? { ...event, status } : event)));
+    setEvents((prev) => prev.map((event) => (String(event.id) === String(id) ? { ...event, status } : event)));
     toast.success('Статус обновлён');
   };
 
@@ -48,7 +50,7 @@ export default function AdminEvents() {
 
       <div className="space-y-3">
         {events.map((event) => {
-          const status = statusMap[event.status];
+          const status = statusMap[event.status || 'PENDING'];
           return (
             <div
               key={event.id}
@@ -60,23 +62,23 @@ export default function AdminEvents() {
                   <Badge className={`${status.cls} border-0 text-xs`}>{status.label}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {event.category?.name || 'Категория не указана'} · {event.city?.name || 'Город не указан'}
+                  {event.categories?.[0]?.name || 'Категория не указана'} · {event.cityName || 'Город не указан'}
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
-                {event.status === 'PENDING' && (
+                {(event.status === 'PENDING' || event.status === 'PENDING_APPROVAL') && (
                   <>
-                    <Button size="sm" onClick={() => changeStatus(event.id, 'PUBLISHED')}>
+                    <Button size="sm" onClick={() => changeStatus(String(event.id), 'PUBLISHED')}>
                       Опубликовать
                     </Button>
-                    <Button size="sm" variant="destructive" onClick={() => changeStatus(event.id, 'REJECTED')}>
+                    <Button size="sm" variant="destructive" onClick={() => changeStatus(String(event.id), 'REJECTED')}>
                       Отклонить
                     </Button>
                   </>
                 )}
                 {event.status === 'PUBLISHED' && (
-                  <Button size="sm" variant="outline" onClick={() => changeStatus(event.id, 'CANCELLED')}>
+                  <Button size="sm" variant="outline" onClick={() => changeStatus(String(event.id), 'ARCHIVED')}>
                     Отменить
                   </Button>
                 )}

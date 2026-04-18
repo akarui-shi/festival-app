@@ -1,65 +1,69 @@
-import type { Publication, PublicationStatus } from '@/types';
+import type { Id, Publication, PublicationStatus } from '@/types';
 import { ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut } from './api-client';
-import type { BackendPublicationDetails, BackendPublicationShort } from './api-mappers';
-import { mapPublicationDetails, mapPublicationShort, toBackendPublicationStatus } from './api-mappers';
 
 export const publicationService = {
   async getPublications(): Promise<Publication[]> {
-    const response = await apiGet<BackendPublicationShort[]>('/publications');
-    return response.map(mapPublicationShort);
+    return apiGet<Publication[]>('/publications');
   },
 
-  async getPublicationById(id: string): Promise<Publication> {
-    const response = await apiGet<BackendPublicationDetails>(`/publications/${id}`);
-    return mapPublicationDetails(response);
+  async getPublicationById(id: Id): Promise<Publication> {
+    return apiGet<Publication>(`/publications/${id}`);
   },
 
   async createPublication(data: Partial<Publication>): Promise<Publication> {
-    const response = await apiPost<BackendPublicationDetails>('/publications', {
+    return apiPost<Publication>('/publications', {
       title: data.title,
       content: data.content,
       imageUrl: data.imageUrl,
-      eventId: data.eventId ? Number(data.eventId) : undefined,
+      imageUrls: data.imageUrls,
+      eventId: data.eventId,
     });
-    return mapPublicationDetails(response);
   },
 
-  async updatePublication(id: string, data: Partial<Publication>): Promise<Publication> {
-    const response = await apiPut<BackendPublicationDetails>(`/publications/${id}`, {
+  async updatePublication(id: Id, data: Partial<Publication>): Promise<Publication> {
+    return apiPut<Publication>(`/publications/${id}`, {
       title: data.title,
       content: data.content,
       imageUrl: data.imageUrl,
-      eventId: data.eventId ? Number(data.eventId) : undefined,
+      imageUrls: data.imageUrls,
+      eventId: data.eventId,
     });
-    return mapPublicationDetails(response);
   },
 
-  async deletePublication(id: string): Promise<void> {
+  async deletePublication(id: Id): Promise<void> {
     await apiDelete(`/publications/${id}`);
   },
 
-  async updateStatus(id: string, status: PublicationStatus): Promise<Publication> {
-    const response = await apiPatch<BackendPublicationDetails>(`/publications/${id}/status`, {
-      status: toBackendPublicationStatus(status),
+  async updateStatus(id: Id, status: PublicationStatus): Promise<Publication> {
+    return apiPatch<Publication>(`/publications/${id}/status`, {
+      status,
     });
-    return mapPublicationDetails(response);
   },
 
   async getAllPublications(): Promise<Publication[]> {
     try {
-      const response = await apiGet<BackendPublicationShort[]>('/admin/publications');
+      const response = await apiGet<Publication[]>('/admin/publications');
       return response
         .filter((publication) => publication.status !== 'DELETED')
-        .map(mapPublicationShort);
     } catch (error) {
       if (!(error instanceof ApiError) || (error.status !== 401 && error.status !== 403)) {
         throw error;
       }
 
-      const response = await apiGet<BackendPublicationShort[]>('/publications/mine');
+      const response = await apiGet<Publication[]>('/publications/mine');
       return response
         .filter((publication) => publication.status !== 'DELETED')
-        .map(mapPublicationShort);
     }
+  },
+
+  async submitForModeration(id: Id): Promise<Publication> {
+    const current = await this.getPublicationById(id);
+    return this.updatePublication(id, {
+      title: current.title,
+      content: current.content || '',
+      eventId: current.eventId,
+      imageUrl: current.imageUrl,
+      imageUrls: current.imageUrls,
+    });
   },
 };

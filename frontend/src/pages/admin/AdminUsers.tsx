@@ -9,6 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { User, UserRole } from '@/types';
 
+function primaryRole(user: User): UserRole {
+  const roles = (user.roles || []).map((role) => role.toUpperCase());
+  if (roles.includes('ADMIN') || roles.includes('ROLE_ADMIN')) return 'ADMIN';
+  if (roles.includes('ORGANIZER') || roles.includes('ROLE_ORGANIZER')) return 'ORGANIZER';
+  return 'RESIDENT';
+}
+
 export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,13 +29,13 @@ export default function AdminUsers() {
 
   const changeRole = async (userId: string, role: UserRole) => {
     const updated = await adminService.updateUserRole(userId, role);
-    setUsers((prev) => prev.map((user) => (user.id === userId ? updated : user)));
+    setUsers((prev) => prev.map((user) => (String(user.id) === String(userId) ? updated : user)));
     toast.success('Роль обновлена');
   };
 
   const toggleActive = async (userId: string) => {
     const updated = await adminService.toggleUserActive(userId);
-    setUsers((prev) => prev.map((user) => (user.id === userId ? updated : user)));
+    setUsers((prev) => prev.map((user) => (String(user.id) === String(userId) ? updated : user)));
     toast.success(updated.active ? 'Аккаунт активирован' : 'Аккаунт деактивирован');
   };
 
@@ -64,7 +71,7 @@ export default function AdminUsers() {
                 </td>
                 <td className="px-4 py-3.5 text-muted-foreground">{user.email}</td>
                 <td className="px-4 py-3.5">
-                  <Select value={user.role} onValueChange={(value) => changeRole(user.id, value as UserRole)}>
+                  <Select value={primaryRole(user)} onValueChange={(value) => changeRole(String(user.id), value as UserRole)}>
                     <SelectTrigger className="h-9 w-44 bg-background">
                       <SelectValue />
                     </SelectTrigger>
@@ -81,7 +88,7 @@ export default function AdminUsers() {
                   </Badge>
                 </td>
                 <td className="px-4 py-3.5">
-                  <Button variant="ghost" size="sm" onClick={() => toggleActive(user.id)}>
+                  <Button variant="ghost" size="sm" onClick={() => toggleActive(String(user.id))}>
                     {user.active ? 'Заблокировать' : 'Активировать'}
                   </Button>
                 </td>

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -59,7 +59,8 @@ const App = () => (
 
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
               <Route path="/favorites" element={<ProtectedRoute><FavoritesPage /></ProtectedRoute>} />
-              <Route path="/registrations" element={<ProtectedRoute><RegistrationsPage /></ProtectedRoute>} />
+              <Route path="/tickets" element={<ProtectedRoute><RegistrationsPage /></ProtectedRoute>} />
+              <Route path="/registrations" element={<Navigate to="/tickets" replace />} />
 
               <Route path="/organizer" element={<ProtectedRoute roles={['ORGANIZER']}><OrganizerLayout /></ProtectedRoute>}>
                 <Route index element={<OrganizerDashboard />} />
@@ -76,7 +77,8 @@ const App = () => (
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="events" element={<AdminEvents />} />
                 <Route path="publications" element={<AdminPublications />} />
-                <Route path="reviews" element={<AdminReviews />} />
+                <Route path="comments" element={<AdminReviews />} />
+                <Route path="reviews" element={<Navigate to="/admin/comments" replace />} />
                 <Route path="directories" element={<AdminDirectories />} />
               </Route>
 

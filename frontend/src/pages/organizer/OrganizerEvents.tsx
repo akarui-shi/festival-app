@@ -9,7 +9,7 @@ import { LoadingState } from '@/components/StateDisplays';
 import { EmptyState } from '@/components/EmptyState';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { Event } from '@/types';
+import type { Event, Id } from '@/types';
 
 const statusMap: Record<string, { label: string; cls: string }> = {
   DRAFT: { label: 'Черновик', cls: 'bg-muted text-muted-foreground' },
@@ -33,9 +33,9 @@ export default function OrganizerEvents() {
     });
   }, [user]);
 
-  const del = async (id: string) => {
+  const del = async (id: Id) => {
     await eventService.deleteEvent(id);
-    setEvents((prev) => prev.filter((event) => event.id !== id));
+    setEvents((prev) => prev.filter((event) => String(event.id) !== String(id)));
     toast.success('Мероприятие удалено');
     setEventToDelete(null);
   };
@@ -86,7 +86,7 @@ export default function OrganizerEvents() {
       ) : (
         <div className="space-y-3">
           {events.map((event) => {
-            const status = statusMap[event.status];
+            const status = statusMap[event.status || ''] || { label: event.status || 'Статус не указан', cls: 'bg-muted text-muted-foreground' };
             return (
               <div
                 key={event.id}

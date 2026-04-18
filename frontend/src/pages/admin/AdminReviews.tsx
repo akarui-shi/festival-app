@@ -22,49 +22,49 @@ export default function AdminReviews() {
 
   const del = async (id: string) => {
     await reviewService.deleteReview(id);
-    setReviews((prev) => prev.filter((review) => review.id !== id));
+    setReviews((prev) => prev.filter((review) => String(review.commentId) !== String(id)));
     toast.success('Удалено');
   };
 
   if (loading) return <LoadingState />;
 
   if (reviews.length === 0) {
-    return <EmptyState icon={MessageSquare} title="Нет отзывов" description="Список отзывов пока пуст" />;
+    return <EmptyState icon={MessageSquare} title="Нет комментариев" description="Список комментариев пока пуст" />;
   }
 
   return (
     <div className="space-y-6">
       <section>
-        <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Отзывы пользователей</h1>
+        <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Комментарии пользователей</h1>
         <p className="mt-1 text-muted-foreground">Контроль качества и модерация пользовательского контента</p>
       </section>
 
       <div className="space-y-3">
         {reviews.map((review) => (
-          <div key={review.id} className="rounded-xl border border-border bg-card p-4 shadow-soft">
+          <div key={review.commentId} className="rounded-xl border border-border bg-card p-4 shadow-soft">
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
               <div className="flex-1">
                 <div className="mb-2 flex items-center gap-2">
                   <span className="text-sm font-medium text-foreground">
-                    {review.user?.firstName} {review.user?.lastName}
+                    {review.userDisplayName || 'Пользователь'}
                   </span>
-                  <StarRating rating={review.rating} size="sm" />
+                  <StarRating rating={review.rating || 0} size="sm" />
                   <Badge
                     className={`border-0 text-xs ${
-                      review.status === 'APPROVED'
+                      review.moderationStatus === 'одобрено'
                         ? 'bg-success/10 text-success'
-                        : review.status === 'PENDING'
+                        : review.moderationStatus === 'на_рассмотрении'
                           ? 'bg-warning/10 text-warning'
                           : 'bg-destructive/10 text-destructive'
                     }`}
                   >
-                    {review.status === 'APPROVED' ? 'Одобрен' : review.status === 'PENDING' ? 'На модерации' : 'Отклонён'}
+                    {review.moderationStatus === 'одобрено' ? 'Одобрен' : review.moderationStatus === 'на_рассмотрении' ? 'На модерации' : 'Отклонён'}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">{review.comment}</p>
+                <p className="text-sm text-muted-foreground">{review.text}</p>
               </div>
 
-              <Button variant="ghost" size="sm" onClick={() => del(review.id)} className="text-destructive">
+              <Button variant="ghost" size="sm" onClick={() => del(String(review.commentId))} className="text-destructive">
                 Удалить
               </Button>
             </div>

@@ -21,7 +21,7 @@ const navItems = [
   { to: '/admin/users', label: 'Пользователи', icon: Users },
   { to: '/admin/events', label: 'Мероприятия', icon: Calendar },
   { to: '/admin/publications', label: 'Публикации', icon: FileText },
-  { to: '/admin/reviews', label: 'Отзывы', icon: MessageSquare },
+  { to: '/admin/comments', label: 'Комментарии', icon: MessageSquare },
   { to: '/admin/directories', label: 'Справочники', icon: BookOpen },
 ];
 

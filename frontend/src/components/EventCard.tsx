@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Building2, CalendarDays, Clock, Heart, MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import type { Event } from '@/types';
+import type { Event, Id } from '@/types';
 
 interface EventCardProps {
   event: Event;
-  onFavoriteToggle?: (eventId: string) => void;
+  onFavoriteToggle?: (eventId: Id) => void;
   isFavorite?: boolean;
   variant?: 'default' | 'compact' | 'featured';
 }
@@ -26,7 +26,7 @@ function formatDate(value?: string): string {
 }
 
 function resolveTime(event: Event): string {
-  const date = new Date(event.startDate);
+  const date = new Date(event.nextSessionAt || event.startDate || event.createdAt || '');
 
   if (Number.isNaN(date.getTime())) {
     return 'Время уточняется';
@@ -77,9 +77,12 @@ function toShortAddress(address?: string): string {
 }
 
 export function EventCard({ event, onFavoriteToggle, isFavorite }: EventCardProps) {
-  const image = event.imageUrl || '/placeholder.svg';
-  const categoryName = event.category?.name || 'Событие';
+  const image = event.coverUrl || event.imageUrl || '/placeholder.svg';
+  const categoryName = event.category?.name || event.categories?.[0]?.name || 'Событие';
   const ageRestriction = '6+';
+  const eventDate = event.nextSessionAt || event.startDate || event.createdAt || '';
+  const eventAddress = toShortAddress(event.venue?.address || event.venueAddress || '') || event.venue?.name || event.venueName || 'Площадка уточняется';
+  const organizationName = event.organization?.name || event.organizationName || 'Организация уточняется';
 
   return (
     <Link
@@ -138,17 +141,17 @@ export function EventCard({ event, onFavoriteToggle, isFavorite }: EventCardProp
           <div className="flex flex-col gap-1.5 text-xs text-muted-foreground">
             <div className="flex items-center gap-1.5">
               <CalendarDays className="h-3.5 w-3.5 text-primary/70" />
-              <span>{formatDate(event.startDate)}</span>
+              <span>{formatDate(eventDate)}</span>
               <Clock className="ml-2 h-3.5 w-3.5 text-primary/70" />
               <span>{resolveTime(event)}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5 text-primary/70" />
-              <span className="truncate">{toShortAddress(event.venue?.address) || event.venue?.name || 'Площадка уточняется'}</span>
+              <span className="truncate">{eventAddress}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <Building2 className="h-3.5 w-3.5 text-primary/70" />
-              <span className="truncate">{event.organization?.name || 'Организация уточняется'}</span>
+              <span className="truncate">{organizationName}</span>
             </div>
           </div>
 

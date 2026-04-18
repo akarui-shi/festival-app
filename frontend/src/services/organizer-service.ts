@@ -1,37 +1,37 @@
-import type { OrganizerEventStats, OrganizerOverview } from '@/types';
-import { apiGet } from './api-client';
 import type {
-  BackendEventShort,
-  BackendOrganizerAnalyticsOverview,
-  BackendOrganizerEventEngagement,
-  BackendOrganizerEventStats,
-} from './api-mappers';
-import { mapEventShort, mapOrganizerEventStats, mapOrganizerOverview } from './api-mappers';
+  Event,
+  Id,
+  OrganizerAnalyticsOverview,
+  OrganizerEventEngagement,
+  OrganizerEventStats,
+  OrganizerEventStatsBundle,
+  OrganizerOverviewBundle,
+} from '@/types';
+import { apiGet } from './api-client';
 
 export const organizerService = {
-  async getOverview(_organizerId: string): Promise<OrganizerOverview> {
-    const [eventsResponse, overviewResponse] = await Promise.all([
-      apiGet<BackendEventShort[]>('/organizer/events'),
-      apiGet<BackendOrganizerAnalyticsOverview>('/organizer/analytics/overview'),
+  async getOverview(_organizerId: Id): Promise<OrganizerOverviewBundle> {
+    const [events, overview] = await Promise.all([
+      apiGet<Event[]>('/organizer/events'),
+      apiGet<OrganizerAnalyticsOverview>('/organizer/analytics/overview'),
     ]);
 
-    const events = eventsResponse.map(mapEventShort);
     const topCandidates = events.slice(0, 3);
     const engagements = await Promise.all(
       topCandidates.map((event) =>
-        apiGet<BackendOrganizerEventEngagement>(`/organizer/analytics/events/${event.id}/engagement`),
+        apiGet<OrganizerEventEngagement>(`/organizer/analytics/events/${event.id}/engagement`),
       ),
     );
 
-    return mapOrganizerOverview(events, overviewResponse, engagements);
+    return { events, overview, engagements };
   },
 
-  async getEventStats(eventId: string): Promise<OrganizerEventStats> {
-    const [statsResponse, engagementResponse] = await Promise.all([
-      apiGet<BackendOrganizerEventStats>(`/organizer/events/${eventId}/stats`),
-      apiGet<BackendOrganizerEventEngagement>(`/organizer/analytics/events/${eventId}/engagement`),
+  async getEventStats(eventId: Id): Promise<OrganizerEventStatsBundle> {
+    const [stats, engagement] = await Promise.all([
+      apiGet<OrganizerEventStats>(`/organizer/events/${eventId}/stats`),
+      apiGet<OrganizerEventEngagement>(`/organizer/analytics/events/${eventId}/engagement`),
     ]);
 
-    return mapOrganizerEventStats(statsResponse, engagementResponse);
+    return { stats, engagement };
   },
 };

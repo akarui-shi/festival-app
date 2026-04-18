@@ -19,7 +19,13 @@ export function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
   }
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (roles && user && !roles.includes(user.role)) return <Navigate to="/" replace />;
+  if (roles && user) {
+    const granted = new Set((user.roles || []).map((role) => role.toUpperCase()));
+    const allowed = roles.some((role) => granted.has(role) || granted.has(`ROLE_${role}`));
+    if (!allowed) {
+      return <Navigate to="/" replace />;
+    }
+  }
 
   return <>{children}</>;
 }

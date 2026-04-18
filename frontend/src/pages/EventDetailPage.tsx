@@ -26,7 +26,7 @@ import { sessionService } from '@/services/session-service';
 import { reviewService } from '@/services/review-service';
 import { registrationService } from '@/services/registration-service';
 import { favoriteService } from '@/services/favorite-service';
-import type { Event, Review, Session } from '@/types';
+import type { Event, Id, Review, Session } from '@/types';
 
 function formatDate(value?: string): string {
   if (!value) return 'Дата уточняется';
@@ -140,8 +140,10 @@ export default function EventDetailPage() {
     registrationService.getMyRegistrations(user.id).then((registrations) => {
       setRegisteredSessionIds(
         registrations
-          .filter((registration) => registration.eventId === id)
-          .map((registration) => registration.sessionId),
+          .filter((registration) => String(registration.eventId) === String(id) && registration.status !== 'CANCELLED')
+          .map((registration) => registration.sessionId)
+          .filter((sessionId): sessionId is Id => sessionId !== null && sessionId !== undefined)
+          .map((sessionId) => String(sessionId)),
       );
     });
   }, [id, user, isResident]);
@@ -161,7 +163,7 @@ export default function EventDetailPage() {
     toast.success('Добавлено в избранное');
   };
 
-  const registerForSession = async (sessionId: string) => {
+  const registerForSession = async (sessionId: Id) => {
     if (!user || !isResident) {
       toast.error('Запись доступна только жителям');
       return;
@@ -169,7 +171,7 @@ export default function EventDetailPage() {
 
     try {
       await registrationService.createRegistration(sessionId, user.id);
-      setRegisteredSessionIds((prev) => [...prev, sessionId]);
+      setRegisteredSessionIds((prev) => [...prev, String(sessionId)]);
       toast.success('Вы записаны на сеанс');
     } catch (registrationError: any) {
       toast.error(registrationError?.message || 'Не удалось записаться');
@@ -178,6 +180,10 @@ export default function EventDetailPage() {
 
   const submitReview = async () => {
     if (!user || !id || !newRating) return;
+    if (!newComment.trim()) {
+      toast.error('Добавьте текст комментария');
+      return;
+    }
     if (!isResident) {
       toast.error('Отзывы могут оставлять только жители');
       return;
@@ -194,7 +200,7 @@ export default function EventDetailPage() {
       setReviews((prev) => [review, ...prev]);
       setNewRating(0);
       setNewComment('');
-      toast.success('Отзыв опубликован');
+      toast.success('Комментарий отправлен на модерацию');
     } catch (reviewError: any) {
       toast.error(reviewError?.message || 'Не удалось опубликовать отзыв');
     } finally {
@@ -219,7 +225,14 @@ export default function EventDetailPage() {
   }
 
   const firstAvailableSession = sessions.find(
-    (session) => session.currentParticipants < session.maxParticipants && !registeredSessionIds.includes(session.id),
+    (session) => {
+      const maxParticipants = session.maxParticipants ?? session.totalCapacity ?? 0;
+      const currentParticipants = session.currentParticipants
+        ?? (session.totalCapacity != null && session.availableSeats != null
+          ? session.totalCapacity - session.availableSeats
+          : 0);
+      return currentParticipants < maxParticipants && !registeredSessionIds.includes(String(session.id));
+    },
   );
   const organizationLink = event.organization?.id ? `/organizations/${event.organization.id}` : null;
   const canRegisterForEvent = isAuthenticated && isResident;
@@ -301,8 +314,13 @@ export default function EventDetailPage() {
                 )}
 
                 {sessions.map((session) => {
-                  const isRegistered = registeredSessionIds.includes(session.id);
-                  const isFull = session.currentParticipants >= session.maxParticipants;
+                  const maxParticipants = session.maxParticipants ?? session.totalCapacity ?? 0;
+                  const currentParticipants = session.currentParticipants
+                    ?? (session.totalCapacity != null && session.availableSeats != null
+                      ? session.totalCapacity - session.availableSeats
+                      : 0);
+                  const isRegistered = registeredSessionIds.includes(String(session.id));
+                  const isFull = currentParticipants >= maxParticipants;
 
                   return (
                     <div
@@ -314,9 +332,9 @@ export default function EventDetailPage() {
                           <CalendarDays className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                          <p className="font-semibold text-foreground">{formatDate(session.date)}</p>
+                          <p className="font-semibold text-foreground">{formatDate(session.date || session.startAt)}</p>
                           <p className="text-sm text-muted-foreground">
-                            {session.startTime} - {session.endTime}
+                            {session.startTime || formatTime(session.startAt)} - {session.endTime || formatTime(session.endAt)}
                           </p>
                         </div>
                       </div>
@@ -324,7 +342,7 @@ export default function EventDetailPage() {
                       <div className="flex items-center gap-3">
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Users className="h-3.5 w-3.5" />
-                          {Math.max(session.maxParticipants - session.currentParticipants, 0)} мест
+                          {Math.max(maxParticipants - currentParticipants, 0)} мест
                         </span>
 
                         {canRegisterForEvent ? (
@@ -363,7 +381,7 @@ export default function EventDetailPage() {
                     onChange={(event) => setNewComment(event.target.value)}
                     placeholder="Поделитесь впечатлениями"
                   />
-                  <Button className="mt-3" size="sm" onClick={submitReview} disabled={!newRating || submittingReview}>
+                  <Button className="mt-3" size="sm" onClick={submitReview} disabled={!newRating || !newComment.trim() || submittingReview}>
                     {submittingReview ? 'Отправка…' : 'Отправить отзыв'}
                   </Button>
                 </div>
@@ -383,14 +401,14 @@ export default function EventDetailPage() {
                 )}
 
                 {reviews.map((review) => (
-                  <div key={review.id} className="rounded-xl border border-border bg-card p-4">
+                  <div key={review.commentId || review.id} className="rounded-xl border border-border bg-card p-4">
                     <div className="mb-2 flex items-center justify-between gap-3">
                       <p className="text-sm font-semibold text-foreground">
-                        {review.user?.firstName} {review.user?.lastName}
+                        {review.userDisplayName || `${review.user?.firstName || ''} ${review.user?.lastName || ''}`.trim() || 'Пользователь'}
                       </p>
                       <StarRating rating={review.rating} size="sm" />
                     </div>
-                    <p className="text-sm text-muted-foreground">{review.comment}</p>
+                    <p className="text-sm text-muted-foreground">{review.text || review.comment}</p>
                   </div>
                 ))}
               </div>

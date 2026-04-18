@@ -168,7 +168,7 @@ export default function AdminDirectories() {
                 </SelectTrigger>
                 <SelectContent>
                   {cities.map((city) => (
-                    <SelectItem key={city.id} value={city.id}>
+                    <SelectItem key={city.id} value={String(city.id)}>
                       {city.name}
                     </SelectItem>
                   ))}
