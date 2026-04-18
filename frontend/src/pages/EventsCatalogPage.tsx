@@ -83,18 +83,21 @@ export default function EventsCatalogPage() {
         event.shortDescription,
         event.description,
         event.category?.name,
+        ...(event.categories || []).map((category) => category.name),
         event.city?.name,
-        ...event.tags,
+        ...(event.tags || []),
       ]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
 
       const matchesSearch = searchTerms.length === 0 || searchTerms.every((term) => searchableText.includes(term));
-      const matchesCategory = !categoryId || event.categoryId === categoryId;
+      const matchesCategory = !categoryId
+        || String(event.categoryId || '') === categoryId
+        || (event.categories || []).some((category) => String(category.id) === categoryId);
       const matchesCity = !selectedCity
-        || event.cityId === selectedCity.id
-        || (event.cityId === '' && event.city?.name?.toLowerCase() === selectedCity.name.toLowerCase());
+        || String(event.cityId || '') === String(selectedCity.id)
+        || (event.city?.name?.toLowerCase() === selectedCity.name.toLowerCase());
 
       return matchesSearch && matchesCategory && matchesCity;
     });
@@ -170,9 +173,9 @@ export default function EventsCatalogPage() {
               <button
                 type="button"
                 key={category.id}
-                onClick={() => setCategoryId(category.id)}
+                onClick={() => setCategoryId(String(category.id))}
                 className={`rounded-full border px-3.5 py-1.5 text-sm transition-all ${
-                  categoryId === category.id
+                  categoryId === String(category.id)
                     ? 'border-primary bg-primary text-primary-foreground'
                     : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
                 }`}

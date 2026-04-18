@@ -28,7 +28,7 @@ export default function AdminPublications() {
 
   const changeStatus = async (id: string, status: PublicationStatus) => {
     await publicationService.updateStatus(id, status);
-    setPubs((prev) => prev.map((publication) => (publication.id === id ? { ...publication, status } : publication)));
+    setPubs((prev) => prev.map((publication) => (String(publication.publicationId) === String(id) ? { ...publication, status } : publication)));
     toast.success('Статус обновлён');
   };
 
@@ -50,7 +50,7 @@ export default function AdminPublications() {
           const status = statusMap[pub.status];
           return (
             <div
-              key={pub.id}
+              key={pub.publicationId}
               className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
@@ -59,17 +59,17 @@ export default function AdminPublications() {
                   <Badge className={`${status.cls} border-0 text-xs`}>{status.label}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {pub.author?.firstName} {pub.author?.lastName}
+                  {pub.authorName || 'Автор'}
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
                 {pub.status === 'PENDING' && (
                   <>
-                    <Button size="sm" onClick={() => changeStatus(pub.id, 'PUBLISHED')}>
+                    <Button size="sm" onClick={() => changeStatus(String(pub.publicationId), 'PUBLISHED')}>
                       Опубликовать
                     </Button>
-                    <Button size="sm" variant="destructive" onClick={() => changeStatus(pub.id, 'REJECTED')}>
+                    <Button size="sm" variant="destructive" onClick={() => changeStatus(String(pub.publicationId), 'REJECTED')}>
                       Отклонить
                     </Button>
                   </>

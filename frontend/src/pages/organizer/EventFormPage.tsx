@@ -11,7 +11,7 @@ import { directoryService } from '@/services/directory-service';
 import { sessionService } from '@/services/session-service';
 import { fileUploadService } from '@/services/file-upload-service';
 import { yandexMapsService } from '@/services/yandex-maps-service';
-import type { Category, City, Session, Venue } from '@/types';
+import type { Category, City, Id, Session, Venue } from '@/types';
 import { LoadingState } from '@/components/StateDisplays';
 import { LocationPickerMap } from '@/components/LocationPickerMap';
 import { useCity } from '@/contexts/CityContext';
@@ -211,7 +211,9 @@ export default function EventFormPage() {
           const eventVenue = eventResponse.venue;
           const venueCity = eventVenue?.city;
           const galleryFromEvent = (eventResponse.imageUrls || []).filter((url) => url !== eventResponse.imageUrl);
-          const eventCategoryIds = eventResponse.categories?.map((category) => category.id).filter(Boolean) || [];
+          const eventCategoryIds = (eventResponse.categories || [])
+            .map((category) => String(category.id))
+            .filter(Boolean);
 
           setForm({
             title: eventResponse.title || '',
@@ -219,13 +221,13 @@ export default function EventFormPage() {
             description: eventResponse.description || '',
             categoryIds: eventCategoryIds.length > 0
               ? eventCategoryIds
-              : (eventResponse.categoryId ? [eventResponse.categoryId] : []),
-            venueId: eventVenue?.id || '',
+              : (eventResponse.categoryId ? [String(eventResponse.categoryId)] : []),
+            venueId: eventVenue?.id != null ? String(eventVenue.id) : '',
             venueName: eventVenue?.name || '',
             address: eventVenue?.address || '',
             latitude: eventVenue?.latitude != null ? String(eventVenue.latitude) : '',
             longitude: eventVenue?.longitude != null ? String(eventVenue.longitude) : '',
-            cityId: venueCity?.id || eventResponse.cityId || '',
+            cityId: venueCity?.id != null ? String(venueCity.id) : (eventResponse.cityId != null ? String(eventResponse.cityId) : ''),
             cityName: venueCity?.name || eventResponse.city?.name || '',
             region: venueCity?.region || eventResponse.city?.region || '',
             country: venueCity?.country || eventResponse.city?.country || '',
@@ -267,7 +269,7 @@ export default function EventFormPage() {
 
     setForm((prev) => ({
       ...prev,
-      cityId: prev.cityId || selectedCity.id,
+      cityId: prev.cityId || String(selectedCity.id),
       cityName: prev.cityName || selectedCity.name,
       region: prev.region || selectedCity.region || '',
       country: prev.country || selectedCity.country || '',
@@ -325,11 +327,11 @@ export default function EventFormPage() {
         address: venue.address,
         latitude: venue.latitude,
         longitude: venue.longitude,
-        cityId: venue.city?.id || venue.cityId,
+        cityId: venue.city?.id != null ? String(venue.city.id) : (venue.cityId != null ? String(venue.cityId) : undefined),
         cityName: venue.city?.name,
         region: venue.city?.region,
         country: venue.city?.country,
-        venueId: venue.id,
+        venueId: String(venue.id),
         venueName: venue.name,
       }));
   }, [form.address, venues]);
@@ -369,7 +371,7 @@ export default function EventFormPage() {
             address: item.address,
             latitude: item.latitude,
             longitude: item.longitude,
-            cityId: matchedCity?.id,
+            cityId: matchedCity?.id != null ? String(matchedCity.id) : undefined,
             cityName: matchedCity?.name || item.cityName || '',
             region: matchedCity?.region || item.region || '',
             country: matchedCity?.country || item.country || '',
@@ -437,7 +439,7 @@ export default function EventFormPage() {
       setForm((prev) => ({
         ...prev,
         address: payload.address || prev.address,
-        cityId: matchedCity?.id || prev.cityId,
+        cityId: matchedCity?.id != null ? String(matchedCity.id) : prev.cityId,
         cityName: matchedCity?.name || payload.cityName || prev.cityName,
         region: matchedCity?.region || payload.region || prev.region,
         country: matchedCity?.country || payload.country || prev.country,
@@ -546,7 +548,7 @@ export default function EventFormPage() {
 
     if (currentStep === 3) {
       const normalized = normalizeSessionDrafts(sessions);
-      if (!normalized.ok) return normalized.error;
+      if (normalized.ok === false) return normalized.error;
     }
 
     return null;
@@ -565,7 +567,7 @@ export default function EventFormPage() {
     setCurrentStep((prev) => Math.max(prev - 1, 0) as StepIndex);
   };
 
-  const syncSessions = async (eventId: string, normalizedDrafts: SessionDraft[]) => {
+  const syncSessions = async (eventId: Id, normalizedDrafts: SessionDraft[]) => {
     const draftIds = new Set(normalizedDrafts.map((item) => item.id).filter(Boolean) as string[]);
 
     if (isEdit) {
@@ -596,7 +598,7 @@ export default function EventFormPage() {
     submitEvent.preventDefault();
 
     const normalizedSessions = normalizeSessionDrafts(sessions);
-    if (!normalizedSessions.ok) {
+    if (normalizedSessions.ok === false) {
       toast.error(normalizedSessions.error);
       setCurrentStep(3);
       return;
@@ -637,7 +639,7 @@ export default function EventFormPage() {
         venueAddress: hasVenueId ? undefined : form.address.trim(),
         venueLatitude: hasVenueId ? undefined : parsedLatitude,
         venueLongitude: hasVenueId ? undefined : parsedLongitude,
-        venueCityId: form.cityId || undefined,
+        venueCityId: form.cityId ? Number(form.cityId) : undefined,
         venueCityName: form.cityName.trim() || undefined,
         venueRegion: form.region.trim() || undefined,
         venueCountry: form.country.trim() || undefined,
@@ -733,12 +735,12 @@ export default function EventFormPage() {
               <Label>Категории *</Label>
               <div className="mt-2 flex flex-wrap gap-2">
                 {categories.map((category) => {
-                  const selected = form.categoryIds.includes(category.id);
+                  const selected = form.categoryIds.includes(String(category.id));
                   return (
                     <button
                       key={category.id}
                       type="button"
-                      onClick={() => toggleCategory(category.id)}
+                      onClick={() => toggleCategory(String(category.id))}
                       className={`rounded-full border px-3.5 py-1.5 text-sm transition-all ${
                         selected
                           ? 'border-primary bg-primary text-primary-foreground'

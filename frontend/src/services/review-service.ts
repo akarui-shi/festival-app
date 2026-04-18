@@ -1,41 +1,40 @@
-import type { Review } from '@/types';
+import type { Id, Review } from '@/types';
 import { apiDelete, apiGet, apiPost, apiPut } from './api-client';
-import type { BackendReview } from './api-mappers';
-import { mapReview } from './api-mappers';
 
 export const reviewService = {
-  async getReviewsByEvent(eventId: string): Promise<Review[]> {
-    const response = await apiGet<BackendReview[]>(`/reviews/event/${eventId}`);
-    return response.map(mapReview);
+  async getReviewsByEvent(eventId: Id): Promise<Review[]> {
+    return apiGet<Review[]>(`/comments/event/${eventId}`);
   },
 
-  async createReview(data: { userId: string; eventId: string; rating: number; comment: string }): Promise<Review> {
-    const response = await apiPost<BackendReview>('/reviews', {
+  async createReview(data: { userId: Id; eventId: Id; rating: number; comment: string }): Promise<Review> {
+    return apiPost<Review>('/comments', {
       eventId: Number(data.eventId),
       rating: data.rating,
       text: data.comment,
     });
-    return mapReview(response);
   },
 
-  async updateReview(id: string, data: { rating: number; comment: string }): Promise<Review> {
-    const response = await apiPut<BackendReview>(`/reviews/${id}`, {
+  async updateReview(id: Id, data: { rating: number; comment: string }): Promise<Review> {
+    return apiPut<Review>(`/comments/${id}`, {
       rating: data.rating,
       text: data.comment,
     });
-    return mapReview(response);
   },
 
-  async deleteReview(id: string): Promise<void> {
-    await apiDelete(`/reviews/${id}`);
+  async deleteReview(id: Id): Promise<void> {
+    await apiDelete(`/comments/${id}`);
   },
 
   async getAllReviews(): Promise<Review[]> {
-    const response = await apiGet<BackendReview[]>('/admin/reviews');
-    return response.map(mapReview);
+    return apiGet<Review[]>('/admin/comments');
   },
 
-  async moderateReview(): Promise<Review> {
-    throw new Error('Модерация отзывов не поддерживается текущим API');
+  async moderateReview(id: Id, decision: 'APPROVED' | 'REJECTED', moderatorComment?: string): Promise<void> {
+    await apiPost('/admin/moderation/decisions', {
+      entityType: 'Комментарий',
+      entityId: Number(id),
+      decision: decision === 'APPROVED' ? 'одобрено' : 'отклонено',
+      moderatorComment,
+    });
   },
 };

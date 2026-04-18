@@ -3,11 +3,11 @@ import { BarChart3, Star, TrendingUp, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { organizerService } from '@/services/organizer-service';
 import { LoadingState } from '@/components/StateDisplays';
-import type { OrganizerOverview } from '@/types';
+import type { OrganizerOverviewBundle } from '@/types';
 
 export default function OrganizerAnalytics() {
   const { user } = useAuth();
-  const [overview, setOverview] = useState<OrganizerOverview | null>(null);
+  const [overview, setOverview] = useState<OrganizerOverviewBundle | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,6 +19,20 @@ export default function OrganizerAnalytics() {
   }, [user]);
 
   if (loading || !overview) return <LoadingState />;
+
+  const engagements = overview.engagements || [];
+  const kpi = overview.overview.kpi || {};
+  const totalRegistrations = kpi.registrations ?? engagements.reduce((sum, item) => sum + (item.registrationsCount || 0), 0);
+  const averageRating = kpi.averageRating ?? (
+    engagements.length > 0
+      ? engagements.reduce((sum, item) => sum + (item.averageRating || 0), 0) / engagements.length
+      : 0
+  );
+  const upcomingEvents = overview.events.filter((event) => {
+    if (!event.nextSessionAt) return false;
+    return new Date(event.nextSessionAt).getTime() > Date.now();
+  }).length;
+  const sortedEngagements = [...engagements].sort((a, b) => (b.registrationsCount || 0) - (a.registrationsCount || 0));
 
   return (
     <div className="space-y-6">
@@ -32,28 +46,28 @@ export default function OrganizerAnalytics() {
           <div className="metric-icon mx-auto">
             <BarChart3 className="h-5 w-5 text-primary" />
           </div>
-          <p className="text-2xl font-semibold text-foreground">{overview.totalEvents}</p>
+          <p className="text-2xl font-semibold text-foreground">{overview.events.length}</p>
           <p className="text-xs text-muted-foreground">Всего мероприятий</p>
         </div>
         <div className="metric-card text-center">
           <div className="metric-icon mx-auto">
             <Users className="h-5 w-5 text-info" />
           </div>
-          <p className="text-2xl font-semibold text-foreground">{overview.totalRegistrations}</p>
+          <p className="text-2xl font-semibold text-foreground">{totalRegistrations}</p>
           <p className="text-xs text-muted-foreground">Всего записей</p>
         </div>
         <div className="metric-card text-center">
           <div className="metric-icon mx-auto">
             <Star className="h-5 w-5 text-warning" />
           </div>
-          <p className="text-2xl font-semibold text-foreground">{overview.averageRating.toFixed(1)}</p>
+          <p className="text-2xl font-semibold text-foreground">{averageRating.toFixed(1)}</p>
           <p className="text-xs text-muted-foreground">Средний рейтинг</p>
         </div>
         <div className="metric-card text-center">
           <div className="metric-icon mx-auto">
             <TrendingUp className="h-5 w-5 text-success" />
           </div>
-          <p className="text-2xl font-semibold text-foreground">{overview.upcomingEvents}</p>
+          <p className="text-2xl font-semibold text-foreground">{upcomingEvents}</p>
           <p className="text-xs text-muted-foreground">Предстоящих</p>
         </div>
       </section>
@@ -74,13 +88,13 @@ export default function OrganizerAnalytics() {
               </tr>
             </thead>
             <tbody>
-              {overview.topEvents.map((event) => (
+              {sortedEngagements.map((event) => (
                 <tr key={event.eventId} className="border-t border-border/60">
                   <td className="px-6 py-3.5 font-medium text-foreground">{event.eventTitle}</td>
-                  <td className="px-6 py-3.5">{event.totalRegistrations}</td>
-                  <td className="px-6 py-3.5">{event.totalAttended}</td>
-                  <td className="px-6 py-3.5">{event.averageRating.toFixed(1)}</td>
-                  <td className="px-6 py-3.5">{event.reviewsCount}</td>
+                  <td className="px-6 py-3.5">{event.registrationsCount || 0}</td>
+                  <td className="px-6 py-3.5">{event.activeParticipants || 0}</td>
+                  <td className="px-6 py-3.5">{(event.averageRating || 0).toFixed(1)}</td>
+                  <td className="px-6 py-3.5">{event.reviewsCount || 0}</td>
                 </tr>
               ))}
             </tbody>

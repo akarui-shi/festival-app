@@ -1,25 +1,21 @@
-import type { Favorite } from '@/types';
+import type { Favorite, Id } from '@/types';
 import { apiDelete, apiGet, apiPost } from './api-client';
-import type { BackendFavorite } from './api-mappers';
-import { mapFavorite } from './api-mappers';
 
 export const favoriteService = {
-  async getMyFavorites(_userId: string): Promise<Favorite[]> {
-    const response = await apiGet<BackendFavorite[]>('/favorites/my');
-    return response.map(mapFavorite);
+  async getMyFavorites(_userId: Id): Promise<Favorite[]> {
+    return apiGet<Favorite[]>('/favorites/my');
   },
 
-  async addFavorite(_userId: string, eventId: string): Promise<Favorite> {
-    const response = await apiPost<BackendFavorite>('/favorites', { eventId: Number(eventId) });
-    return mapFavorite(response);
+  async addFavorite(_userId: Id, eventId: Id): Promise<Favorite> {
+    return apiPost<Favorite>('/favorites', { eventId: Number(eventId) });
   },
 
-  async removeFavorite(_userId: string, eventId: string): Promise<void> {
+  async removeFavorite(_userId: Id, eventId: Id): Promise<void> {
     await apiDelete(`/favorites/${eventId}`);
   },
 
-  async isFavorite(userId: string, eventId: string): Promise<boolean> {
+  async isFavorite(userId: Id, eventId: Id): Promise<boolean> {
     const favorites = await this.getMyFavorites(userId);
-    return favorites.some((favorite) => favorite.eventId === eventId);
+    return favorites.some((favorite) => String(favorite.eventId) === String(eventId));
   },
 };

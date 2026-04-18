@@ -1,13 +1,5 @@
-import type { Event, EventFilters, Organization, PaginatedResponse } from '@/types';
+import type { Event, EventFilters, Id, Organization, PaginatedResponse } from '@/types';
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut, getAuthToken } from './api-client';
-import type { BackendEventDetails, BackendEventShort, BackendOrganizationPublic, BackendSessionShort } from './api-mappers';
-import {
-  mapEventDetails,
-  mapEventShort,
-  mapOrganizationPublic,
-  mapSession,
-  toBackendEventStatus,
-} from './api-mappers';
 
 interface EventImagePayload {
   imageUrl: string;
@@ -16,11 +8,11 @@ interface EventImagePayload {
 }
 
 export interface EventUpsertPayload extends Partial<Event> {
-  categoryIds?: Array<string | number>;
+  categoryIds?: Array<number | string>;
   venueAddress?: string;
   venueLatitude?: number;
   venueLongitude?: number;
-  venueCityId?: string | number;
+  venueCityId?: number;
   venueCityName?: string;
   venueRegion?: string;
   venueCountry?: string;
@@ -42,7 +34,7 @@ function toNumber(value: unknown): number | undefined {
 function buildEventPayload(data: EventUpsertPayload) {
   const categoryIds = (data.categoryIds && data.categoryIds.length > 0
     ? data.categoryIds
-    : data.categoryId ? [data.categoryId] : [])
+    : data.categories?.length ? data.categories.map((category) => category.id) : [])
     .map(toNumber)
     .filter((value): value is number => value !== undefined);
 
@@ -69,19 +61,16 @@ function buildEventPayload(data: EventUpsertPayload) {
 
 export const eventService = {
   async getEvents(filters?: EventFilters): Promise<PaginatedResponse<Event>> {
-    const response = await apiGet<BackendEventShort[]>('/events', {
+    const response = await apiGet<Event[]>('/events', {
       title: filters?.search,
       categoryId: filters?.categoryId,
       cityId: filters?.cityId,
       dateFrom: filters?.startDate,
       dateTo: filters?.endDate,
-      status: filters?.status ? toBackendEventStatus(filters.status) : undefined,
+      status: filters?.status,
     });
 
-    let events = response.map(mapEventShort);
-    if (filters?.format) {
-      events = events.filter((event) => event.format === filters.format);
-    }
+    const events = response;
 
     const page = filters?.page || 0;
     const size = filters?.size || 12;
@@ -96,73 +85,53 @@ export const eventService = {
     };
   },
 
-  async getEventById(id: string): Promise<Event> {
-    const sessionsPromise = apiGet<BackendSessionShort[]>('/sessions', { eventId: id });
-
+  async getEventById(id: Id): Promise<Event> {
     try {
-      const [eventResponse, sessionsResponse] = await Promise.all([
-        apiGet<BackendEventDetails>(`/events/${id}`),
-        sessionsPromise,
-      ]);
-
-      return mapEventDetails(eventResponse, sessionsResponse.map(mapSession));
+      return await apiGet<Event>(`/events/${id}`);
     } catch (error) {
       if (!getAuthToken()) {
         throw error;
       }
 
-      const [eventResponse, sessionsResponse] = await Promise.all([
-        apiGet<BackendEventDetails>(`/organizer/events/${id}`),
-        sessionsPromise,
-      ]);
-
-      return mapEventDetails(eventResponse, sessionsResponse.map(mapSession));
+      return apiGet<Event>(`/organizer/events/${id}`);
     }
   },
 
   async getRecommendations(): Promise<Event[]> {
-    const response = await apiGet<BackendEventShort[]>('/events/recommendations', { limit: 4 });
-    return response.map(mapEventShort);
+    return apiGet<Event[]>('/events/recommendations', { limit: 4 });
   },
 
   async createEvent(data: EventUpsertPayload): Promise<Event> {
-    const response = await apiPost<BackendEventShort>('/events', buildEventPayload(data));
-    return mapEventShort(response);
+    return apiPost<Event>('/events', buildEventPayload(data));
   },
 
-  async updateEvent(id: string, data: EventUpsertPayload): Promise<Event> {
+  async updateEvent(id: Id, data: EventUpsertPayload): Promise<Event> {
     if (data.status && Object.keys(data).length === 1) {
-      const response = await apiPatch<BackendEventShort>(`/admin/events/${id}/status`, {
-        status: toBackendEventStatus(data.status),
+      return apiPatch<Event>(`/admin/events/${id}/status`, {
+        status: data.status,
       });
-      return mapEventShort(response);
     }
 
-    const response = await apiPut<BackendEventShort>(`/events/${id}`, buildEventPayload(data));
-    return mapEventShort(response);
+    return apiPut<Event>(`/events/${id}`, buildEventPayload(data));
   },
 
-  async deleteEvent(id: string): Promise<void> {
+  async deleteEvent(id: Id): Promise<void> {
     await apiDelete(`/events/${id}`);
   },
 
   async getAllEvents(): Promise<Event[]> {
-    const response = await apiGet<BackendEventShort[]>('/admin/events');
-    return response.map(mapEventShort);
+    return apiGet<Event[]>('/admin/events');
   },
 
-  async getOrganizerEvents(_organizerId: string): Promise<Event[]> {
-    const response = await apiGet<BackendEventShort[]>('/organizer/events');
-    return response.map(mapEventShort);
+  async getOrganizerEvents(_organizerId: Id): Promise<Event[]> {
+    return apiGet<Event[]>('/organizer/events');
   },
 
-  async getOrganizationById(organizationId: string): Promise<Organization> {
-    const response = await apiGet<BackendOrganizationPublic>(`/events/organizations/${organizationId}`);
-    return mapOrganizationPublic(response);
+  async getOrganizationById(organizationId: Id): Promise<Organization> {
+    return apiGet<Organization>(`/events/organizations/${organizationId}`);
   },
 
-  async getOrganizationEvents(organizationId: string): Promise<Event[]> {
-    const response = await apiGet<BackendEventShort[]>(`/events/organizations/${organizationId}/events`);
-    return response.map(mapEventShort);
+  async getOrganizationEvents(organizationId: Id): Promise<Event[]> {
+    return apiGet<Event[]>(`/events/organizations/${organizationId}/events`);
   },
 };

@@ -1,7 +1,5 @@
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types';
 import { ApiError, apiGet, apiPost, apiPut, removeAuthToken, setAuthToken } from './api-client';
-import type { BackendAuthResponse, BackendCurrentUser } from './api-mappers';
-import { mapCurrentUser } from './api-mappers';
 
 const CURRENT_USER_KEY = 'current_user';
 const CURRENT_USER_LOGIN_KEY = 'current_user_login';
@@ -26,15 +24,14 @@ function clearSession(): void {
   localStorage.removeItem(CURRENT_USER_LOGIN_KEY);
 }
 
-function normalizeAuthResponse(response: BackendAuthResponse): AuthResponse {
-  const user = mapCurrentUser(response.user);
-  persistUser(user, response.user.login, response.token);
-  return { token: response.token, user };
+function normalizeAuthResponse(response: AuthResponse): AuthResponse {
+  persistUser(response.user, response.user.login, response.token);
+  return response;
 }
 
 export const authService = {
   async login(req: LoginRequest): Promise<AuthResponse> {
-    const response = await apiPost<BackendAuthResponse>('/auth/login', {
+    const response = await apiPost<AuthResponse>('/auth/login', {
       loginOrEmail: req.email,
       password: req.password,
     });
@@ -43,7 +40,7 @@ export const authService = {
   },
 
   async register(req: RegisterRequest): Promise<AuthResponse> {
-    const response = await apiPost<BackendAuthResponse>('/auth/register', {
+    const response = await apiPost<AuthResponse>('/auth/register', {
       login: buildLoginFromEmail(req.email),
       email: req.email,
       password: req.password,
@@ -63,8 +60,8 @@ export const authService = {
     }
 
     try {
-      const response = await apiGet<BackendCurrentUser>('/users/me');
-      const user = mapCurrentUser(response);
+      const response = await apiGet<User>('/users/me');
+      const user = response;
       persistUser(user, response.login);
       return user;
     } catch (error) {
@@ -83,7 +80,7 @@ export const authService = {
     }
 
     const login = localStorage.getItem(CURRENT_USER_LOGIN_KEY) || buildLoginFromEmail(current.email);
-    const response = await apiPut<BackendAuthResponse>('/users/me', {
+    const response = await apiPut<AuthResponse>('/users/me', {
       login,
       email: data.email ?? current.email,
       firstName: data.firstName ?? current.firstName,

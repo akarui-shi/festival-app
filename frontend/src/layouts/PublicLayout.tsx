@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCity } from '@/contexts/CityContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import type { Id } from '@/types';
 
 export function PublicLayout({ children }: { children: ReactNode }) {
   const { user, isAuthenticated, isResident, isOrganizer, isAdmin, logout } = useAuth();
@@ -59,10 +60,10 @@ export function PublicLayout({ children }: { children: ReactNode }) {
     return links;
   }, [isAdmin, isOrganizer]);
 
-  const getCityRegionLabel = (city: { region?: string; country?: string; id: string }) =>
+  const getCityRegionLabel = (city: { region?: string | null; country?: string | null; id: Id }) =>
     city.region || city.country || 'Регион не указан';
 
-  const getCityLabel = (city: { id: string; name: string; region?: string; country?: string }) => {
+  const getCityLabel = (city: { id: Id; name: string; region?: string | null; country?: string | null }) => {
     const regionLabel = getCityRegionLabel(city);
     return `${city.name}, ${regionLabel}`;
   };
@@ -182,7 +183,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
                           type="button"
                           key={city.id}
                           onClick={() => {
-                            setSelectedCityById(city.id);
+                            setSelectedCityById(String(city.id));
                             setCityOpen(false);
                             setCitySearch('');
                           }}
@@ -246,12 +247,12 @@ export function PublicLayout({ children }: { children: ReactNode }) {
                   </Button>
                 </Link>
                 {isResident && (
-                  <Link to="/registrations">
+                  <Link to="/tickets">
                     <Button
                       variant="ghost"
                       size="icon"
                       className="text-muted-foreground hover:text-primary"
-                      aria-label="Открыть мои записи"
+                      aria-label="Открыть мои билеты"
                     >
                       <Calendar className="h-5 w-5" />
                     </Button>
@@ -321,11 +322,11 @@ export function PublicLayout({ children }: { children: ReactNode }) {
                 <>
                   {isResident && (
                     <Link
-                      to="/registrations"
+                      to="/tickets"
                       onClick={() => setMobileOpen(false)}
                       className="rounded-lg px-3 py-2.5 text-sm font-body text-muted-foreground hover:bg-muted"
                     >
-                      Мои записи
+                      Мои билеты
                     </Link>
                   )}
                   {dashboardLinks.map((link) => (
@@ -395,7 +396,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
                   type="button"
                   className="w-full rounded-xl border border-border px-4 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted"
                   onClick={() => {
-                    setSelectedCityById(city.id);
+                    setSelectedCityById(String(city.id));
                     setCitySearch('');
                   }}
                 >

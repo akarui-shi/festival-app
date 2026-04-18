@@ -50,7 +50,7 @@ export function CityProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        const storedCity = cityList.find((city) => city.id === storedCityId) || null;
+        const storedCity = cityList.find((city) => String(city.id) === storedCityId) || null;
         setSelectedCity(storedCity);
 
         if (!storedCity) {
@@ -60,10 +60,10 @@ export function CityProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const setSelectedCityById = (cityId: string) => {
-    const city = cities.find((candidate) => candidate.id === cityId) || null;
+const setSelectedCityById = (cityId: string) => {
+    const city = cities.find((candidate) => String(candidate.id) === String(cityId)) || null;
     setSelectedCity(city);
-    writeStoredCityId(city?.id || null);
+    writeStoredCityId(city ? String(city.id) : null);
   };
 
   const value = useMemo<CityContextValue>(
@@ -86,4 +86,3 @@ export function useCity() {
   }
   return context;
 }
-

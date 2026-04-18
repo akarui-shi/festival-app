@@ -12,13 +12,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { OrganizerEventStats, Session, Registration } from '@/types';
+import type { Id, OrganizerEventStatsBundle, Session, SessionRegistration } from '@/types';
 
 export default function EventStatsPage() {
   const { id } = useParams<{ id: string }>();
-  const [stats, setStats] = useState<OrganizerEventStats | null>(null);
+  const [stats, setStats] = useState<OrganizerEventStatsBundle | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [registrations, setRegistrations] = useState<SessionRegistration[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddSession, setShowAddSession] = useState(false);
   const [newSession, setNewSession] = useState({ date: '', startTime: '', endTime: '', maxParticipants: '50' });
@@ -49,9 +49,9 @@ export default function EventStatsPage() {
     } catch { toast.error('Ошибка'); }
   };
 
-  const deleteSession = async (sId: string) => {
+  const deleteSession = async (sId: Id) => {
     await sessionService.deleteSession(sId);
-    setSessions((prev) => prev.filter((session) => session.id !== sId));
+    setSessions((prev) => prev.filter((session) => String(session.id) !== String(sId)));
     toast.success('Сеанс удалён');
     setSessionToDelete(null);
   };
@@ -62,7 +62,7 @@ export default function EventStatsPage() {
   return (
     <div className="space-y-8">
       <section>
-        <h1 className="page-title">{stats.eventTitle}</h1>
+        <h1 className="page-title">{stats.engagement.eventTitle}</h1>
         <p className="mt-1 text-muted-foreground">Статистика и управление сеансами</p>
       </section>
 
@@ -72,28 +72,28 @@ export default function EventStatsPage() {
             <Users className="h-4 w-4 text-primary" />
           </div>
           <p className="text-xs text-muted-foreground">Записей</p>
-          <p className="text-xl font-semibold text-foreground">{stats.totalRegistrations}</p>
+          <p className="text-xl font-semibold text-foreground">{stats.engagement.registrationsCount || 0}</p>
         </div>
         <div className="metric-card">
           <div className="metric-icon">
             <Star className="h-4 w-4 text-warning" />
           </div>
           <p className="text-xs text-muted-foreground">Рейтинг</p>
-          <p className="text-xl font-semibold text-foreground">{stats.averageRating.toFixed(1)}</p>
+          <p className="text-xl font-semibold text-foreground">{(stats.engagement.averageRating || 0).toFixed(1)}</p>
         </div>
         <div className="metric-card">
           <div className="metric-icon">
             <Calendar className="h-4 w-4 text-info" />
           </div>
           <p className="text-xs text-muted-foreground">Сеансов</p>
-          <p className="text-xl font-semibold text-foreground">{stats.sessionsCount}</p>
+          <p className="text-xl font-semibold text-foreground">{stats.engagement.sessionsCount || 0}</p>
         </div>
         <div className="metric-card">
           <div className="metric-icon">
             <Clock className="h-4 w-4 text-success" />
           </div>
           <p className="text-xs text-muted-foreground">Активных участников</p>
-          <p className="text-xl font-semibold text-foreground">{stats.totalAttended}</p>
+          <p className="text-xl font-semibold text-foreground">{stats.engagement.activeParticipants || 0}</p>
         </div>
       </section>
 
@@ -104,7 +104,7 @@ export default function EventStatsPage() {
         }}
         title="Удалить сеанс?"
         description={sessionToDelete
-          ? `Сеанс ${sessionToDelete.date} ${sessionToDelete.startTime} будет удалён без возможности восстановления.`
+          ? `Сеанс ${(sessionToDelete.date || sessionToDelete.startAt || '').toString()} ${(sessionToDelete.startTime || '').toString()} будет удалён без возможности восстановления.`
           : ''}
         confirmLabel="Удалить"
         onConfirm={() => {
@@ -159,9 +159,15 @@ export default function EventStatsPage() {
           {sessions.map((s) => (
             <div key={s.id} className="surface-row flex items-center justify-between py-3 text-sm">
               <div className="flex items-center gap-3">
-                <span>{s.date}</span>
-                <span className="text-muted-foreground">{s.startTime} - {s.endTime}</span>
-                <Badge variant="secondary">{s.currentParticipants}/{s.maxParticipants}</Badge>
+                <span>{s.date || (s.startAt ? new Date(s.startAt).toLocaleDateString('ru-RU') : 'Дата уточняется')}</span>
+                <span className="text-muted-foreground">
+                  {(s.startTime || (s.startAt ? new Date(s.startAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '--:--'))}
+                  {' - '}
+                  {(s.endTime || (s.endAt ? new Date(s.endAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '--:--'))}
+                </span>
+                <Badge variant="secondary">
+                  {(s.currentParticipants ?? 0)}/{(s.maxParticipants ?? s.totalCapacity ?? 0)}
+                </Badge>
               </div>
               <Button
                 variant="ghost"
@@ -183,11 +189,15 @@ export default function EventStatsPage() {
         ) : (
           <div className="space-y-2">
             {registrations.map((r) => (
-              <div key={r.id} className="surface-row flex items-center justify-between py-3 text-sm">
-                <span>{r.user?.firstName || 'Пользователь'} {r.user?.lastName || ''}</span>
+              <div key={r.registrationId} className="surface-row flex items-center justify-between py-3 text-sm">
+                <span>{r.userFullName || 'Пользователь'}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">{r.session?.date} {r.session?.startTime}</span>
-                  <Badge variant={r.status === 'CONFIRMED' ? 'default' : 'secondary'} className="text-xs">{r.status === 'CONFIRMED' ? 'Подтверждено' : r.status === 'ATTENDED' ? 'Посещено' : 'Отменено'}</Badge>
+                  <span className="text-muted-foreground">
+                    {r.createdAt ? new Date(r.createdAt).toLocaleString('ru-RU') : 'Дата неизвестна'}
+                  </span>
+                  <Badge variant={r.status === 'CONFIRMED' ? 'default' : 'secondary'} className="text-xs">
+                    {r.status === 'CONFIRMED' ? 'Подтверждено' : r.status === 'ATTENDED' ? 'Посещено' : r.status || 'Неизвестно'}
+                  </Badge>
                 </div>
               </div>
             ))}

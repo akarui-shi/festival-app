@@ -31,8 +31,8 @@ export default function AdminDashboard() {
         events: events.length,
         reviews: reviews.length,
         publications: pubs.length,
-        pendingEvents: events.filter((event) => event.status === 'PENDING').length,
-        pendingReviews: reviews.filter((review) => review.status === 'PENDING').length,
+        pendingEvents: events.filter((event) => event.status === 'PENDING_APPROVAL').length,
+        pendingReviews: reviews.filter((review) => review.moderationStatus === 'на_рассмотрении').length,
         pendingPubs: pubs.filter((publication) => publication.status === 'PENDING').length,
       });
       setLoading(false);
@@ -44,13 +44,13 @@ export default function AdminDashboard() {
   const cards = [
     { label: 'Пользователей', value: stats.users, icon: Users, color: 'text-primary' },
     { label: 'Мероприятий', value: stats.events, icon: Calendar, color: 'text-info' },
-    { label: 'Отзывов', value: stats.reviews, icon: MessageSquare, color: 'text-warning' },
+    { label: 'Комментариев', value: stats.reviews, icon: MessageSquare, color: 'text-warning' },
     { label: 'Публикаций', value: stats.publications, icon: FileText, color: 'text-success' },
   ];
 
   const pendingItems = [
     { label: 'Мероприятий на модерации', count: stats.pendingEvents, link: '/admin/events' },
-    { label: 'Отзывов на модерации', count: stats.pendingReviews, link: '/admin/reviews' },
+    { label: 'Комментариев на модерации', count: stats.pendingReviews, link: '/admin/comments' },
     { label: 'Публикаций на модерации', count: stats.pendingPubs, link: '/admin/publications' },
   ];
 

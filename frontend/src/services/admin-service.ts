@@ -1,19 +1,15 @@
 import type { User, UserRole } from '@/types';
 import { apiGet, apiPatch } from './api-client';
-import type { BackendAdminUser } from './api-mappers';
-import { mapAdminUser } from './api-mappers';
 
 export const adminService = {
   async getUsers(): Promise<User[]> {
-    const response = await apiGet<BackendAdminUser[]>('/admin/users');
-    return response.map(mapAdminUser);
+    return apiGet<User[]>('/admin/users');
   },
 
   async updateUserRole(userId: string, role: UserRole): Promise<User> {
-    const response = await apiPatch<BackendAdminUser>(`/admin/users/${userId}/roles`, {
+    return apiPatch<User>(`/admin/users/${userId}/roles`, {
       roles: [role],
     });
-    return mapAdminUser(response);
   },
 
   async toggleUserActive(userId: string): Promise<User> {
@@ -23,9 +19,8 @@ export const adminService = {
       throw new Error('Пользователь не найден');
     }
 
-    const response = await apiPatch<BackendAdminUser>(`/admin/users/${userId}/active`, {
+    return apiPatch<User>(`/admin/users/${userId}/active`, {
       active: !user.active,
     });
-    return mapAdminUser(response);
   },
 };

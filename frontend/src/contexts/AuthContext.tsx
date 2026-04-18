@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { User } from '@/types';
+import type { User, UserRole } from '@/types';
 import { authService } from '@/services/auth-service';
 
 interface AuthContextType {
@@ -23,6 +23,13 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
+function hasRole(user: User | null, role: UserRole): boolean {
+  if (!user) return false;
+  const roles = (user.roles || []).map((entry) => entry.toUpperCase());
+  const target = role.toUpperCase();
+  return roles.some((entry) => entry === target || entry === `ROLE_${target}`);
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -63,9 +70,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{
       user, loading, login, register, logout, updateUser,
       isAuthenticated: !!user,
-      isResident: user?.role === 'RESIDENT',
-      isOrganizer: user?.role === 'ORGANIZER',
-      isAdmin: user?.role === 'ADMIN',
+      isResident: hasRole(user, 'RESIDENT'),
+      isOrganizer: hasRole(user, 'ORGANIZER'),
+      isAdmin: hasRole(user, 'ADMIN'),
     }}>
       {children}
     </AuthContext.Provider>

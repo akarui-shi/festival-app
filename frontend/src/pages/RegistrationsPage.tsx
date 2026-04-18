@@ -9,17 +9,20 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { registrationService } from '@/services/registration-service';
-import type { Registration } from '@/types';
+import type { Id, Ticket } from '@/types';
 
 const statusLabels: Record<string, { label: string; className: string }> = {
-  CONFIRMED: { label: 'Подтверждено', className: 'bg-primary/10 text-primary' },
-  ATTENDED: { label: 'Посещено', className: 'bg-info/10 text-info' },
-  CANCELLED: { label: 'Отменено', className: 'bg-destructive/10 text-destructive' },
+  ACTIVE: { label: 'Активен', className: 'bg-primary/10 text-primary' },
+  USED: { label: 'Использован', className: 'bg-info/10 text-info' },
+  RETURNED: { label: 'Возвращён', className: 'bg-destructive/10 text-destructive' },
+  active: { label: 'Активен', className: 'bg-primary/10 text-primary' },
+  used: { label: 'Использован', className: 'bg-info/10 text-info' },
+  returned: { label: 'Возвращён', className: 'bg-destructive/10 text-destructive' },
 };
 
 export default function RegistrationsPage() {
   const { user } = useAuth();
-  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,14 +30,14 @@ export default function RegistrationsPage() {
 
     registrationService
       .getMyRegistrations(user.id)
-      .then((response) => setRegistrations(response))
+      .then((response) => setTickets(response))
       .finally(() => setLoading(false));
   }, [user]);
 
-  const cancelRegistration = async (registrationId: string) => {
-    await registrationService.cancelRegistration(registrationId);
-    setRegistrations((prev) => prev.filter((registration) => registration.id !== registrationId));
-    toast.success('Запись отменена');
+  const cancelRegistration = async (orderId: Id) => {
+    await registrationService.cancelRegistration(orderId);
+    setTickets((prev) => prev.filter((ticket) => String(ticket.orderId) !== String(orderId)));
+    toast.success('Заказ отменён');
   };
 
   if (loading) {
@@ -48,15 +51,15 @@ export default function RegistrationsPage() {
   return (
     <PublicLayout>
       <div className="container mx-auto px-4 py-8">
-        <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Мои записи</h1>
-        <p className="mt-1 text-muted-foreground">Ваши регистрации на мероприятия</p>
+        <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Мои билеты</h1>
+        <p className="mt-1 text-muted-foreground">Ваши активные и завершённые заказы</p>
 
-        {registrations.length === 0 ? (
+        {tickets.length === 0 ? (
           <>
             <EmptyState
               icon={CalendarDays}
-              title="Нет записей"
-              description="Запишитесь на мероприятие, чтобы оно появилось здесь"
+              title="Нет билетов"
+              description="Оформите билет на мероприятие, чтобы он появился здесь"
             />
             <div className="text-center">
               <Button asChild>
@@ -65,36 +68,39 @@ export default function RegistrationsPage() {
             </div>
           </>
         ) : (
-          <div className="mt-8 space-y-4">
-            {registrations.map((registration) => {
-              const status = statusLabels[registration.status];
+            <div className="mt-8 space-y-4">
+            {tickets.map((ticket) => {
+              const status = statusLabels[ticket.status || ''] || {
+                label: ticket.status || 'Неизвестно',
+                className: 'bg-muted text-muted-foreground',
+              };
 
               return (
                 <div
-                  key={registration.id}
+                  key={ticket.ticketId}
                   className="rounded-xl border border-border bg-card p-5 shadow-soft"
                 >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex-1">
                       <Link
-                        to={`/events/${registration.eventId}`}
+                        to={ticket.eventId ? `/events/${ticket.eventId}` : '/events'}
                         className="font-heading text-lg text-foreground hover:text-primary"
                       >
-                        {registration.event?.title || 'Мероприятие'}
+                        {ticket.eventTitle || 'Мероприятие'}
                       </Link>
 
                       <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1.5">
                           <CalendarDays className="h-3.5 w-3.5 text-primary/70" />
-                          {registration.session?.date || 'Дата уточняется'}
+                          {ticket.issuedAt ? new Date(ticket.issuedAt).toLocaleDateString('ru-RU') : 'Дата уточняется'}
                         </span>
                         <span className="flex items-center gap-1.5">
                           <Clock className="h-3.5 w-3.5 text-primary/70" />
-                          {registration.session?.startTime || '--:--'} - {registration.session?.endTime || '--:--'}
+                          {ticket.sessionTitle || 'Сеанс'}
                         </span>
                         <span className="flex items-center gap-1.5">
                           <MapPin className="h-3.5 w-3.5 text-primary/70" />
-                          {registration.event?.venue?.name || 'Площадка уточняется'}
+                          {ticket.qrToken ? `QR: ${ticket.qrToken}` : 'QR будет доступен после оформления'}
                         </span>
                       </div>
                     </div>
@@ -102,15 +108,15 @@ export default function RegistrationsPage() {
                     <div className="flex items-center gap-3">
                       <Badge className={status.className}>{status.label}</Badge>
 
-                      {registration.status === 'CONFIRMED' && (
+                      {ticket.orderId && (ticket.status === 'ACTIVE' || ticket.status === 'active') && (
                         <Button
                           variant="ghost"
                           size="sm"
                           className="text-destructive hover:text-destructive"
-                          onClick={() => cancelRegistration(registration.id)}
+                          onClick={() => cancelRegistration(ticket.orderId!)}
                         >
                           <X className="mr-1 h-4 w-4" />
-                          Отменить
+                          Отменить заказ
                         </Button>
                       )}
                     </div>
