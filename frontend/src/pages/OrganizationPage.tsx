@@ -6,12 +6,14 @@ import { EventCard } from '@/components/EventCard';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState, LoadingState } from '@/components/StateDisplays';
 import { eventService } from '@/services/event-service';
-import type { Event, Organization } from '@/types';
+import { publicationService } from '@/services/publication-service';
+import type { Event, Organization, Publication } from '@/types';
 
 export default function OrganizationPage() {
   const { id } = useParams<{ id: string }>();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
+  const [publications, setPublications] = useState<Publication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -22,10 +24,12 @@ export default function OrganizationPage() {
     Promise.all([
       eventService.getOrganizationById(id),
       eventService.getOrganizationEvents(id),
+      publicationService.getPublications({ organizationId: id }),
     ])
-      .then(([organizationResponse, eventsResponse]) => {
+      .then(([organizationResponse, eventsResponse, publicationsResponse]) => {
         setOrganization(organizationResponse);
         setEvents(eventsResponse);
+        setPublications(publicationsResponse);
       })
       .catch(() => setError('Не удалось загрузить страницу организации'))
       .finally(() => setLoading(false));
@@ -68,9 +72,13 @@ export default function OrganizationPage() {
 
         <section className="rounded-2xl border border-border bg-card p-6 shadow-card sm:p-8">
           <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-              <Building2 className="h-6 w-6 text-primary" />
-            </div>
+            {organization.logoUrl ? (
+              <img src={organization.logoUrl} alt={organization.name} className="h-12 w-12 rounded-xl object-cover" />
+            ) : (
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                <Building2 className="h-6 w-6 text-primary" />
+              </div>
+            )}
             <div className="min-w-0">
               <h1 className="font-heading text-3xl text-foreground sm:text-4xl">{organization.name}</h1>
               <p className="mt-3 whitespace-pre-line text-muted-foreground">
@@ -114,6 +122,26 @@ export default function OrganizationPage() {
               title="Пока нет мероприятий"
               description="У этой организации пока нет опубликованных мероприятий"
             />
+          )}
+        </section>
+
+        <section className="mt-10">
+          <h2 className="font-heading text-2xl text-foreground">Публикации организации</h2>
+          {publications.length === 0 ? (
+            <EmptyState icon={Building2} title="Пока нет публикаций" description="Новости появятся позже" />
+          ) : (
+            <div className="mt-4 space-y-3">
+              {publications.map((publication) => (
+                <Link
+                  key={publication.publicationId}
+                  to={`/publications/${publication.publicationId}`}
+                  className="block rounded-xl border border-border bg-card p-4 hover:border-primary/40"
+                >
+                  <p className="font-semibold text-foreground">{publication.title}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{publication.preview || publication.content || ''}</p>
+                </Link>
+              ))}
+            </div>
           )}
         </section>
       </div>

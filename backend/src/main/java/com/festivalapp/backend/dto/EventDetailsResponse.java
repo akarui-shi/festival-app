@@ -4,6 +4,7 @@ import com.festivalapp.backend.entity.EventStatus;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -23,6 +24,12 @@ public class EventDetailsResponse {
     private OrganizationSummary organization;
     private VenueResponse venue;
     private List<CategoryResponse> categories;
+    private List<ArtistSummaryResponse> artists;
+    private List<SessionShortResponse> sessions;
+    private Boolean free;
+    private BigDecimal minPrice;
+    private BigDecimal maxPrice;
+    private Boolean registrationOpen;
 
     @Getter
     @Builder

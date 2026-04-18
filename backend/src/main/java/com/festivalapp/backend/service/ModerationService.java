@@ -37,6 +37,7 @@ public class ModerationService {
     private final ArtistRepository artistRepository;
     private final PublicationRepository publicationRepository;
     private final CommentRepository commentRepository;
+    private final AdminAuditService adminAuditService;
 
     @Transactional
     public ModerationResponse applyDecision(ModerationDecisionRequest request, String adminIdentifier) {
@@ -62,6 +63,13 @@ public class ModerationService {
             .moderatorComment(request.getModeratorComment())
             .decidedAt(OffsetDateTime.now())
             .build());
+        adminAuditService.log(
+            adminIdentifier,
+            "MODERATION_DECISION",
+            normalizeEntityTypeRussian(entityType),
+            request.getEntityId(),
+            decision
+        );
 
         return toResponse(moderation);
     }

@@ -80,10 +80,15 @@ public class PublicationService {
     }
 
     @Transactional(readOnly = true)
-    public List<PublicationShortResponse> getPublicList(Long eventId, String title) {
-        List<Publication> list = eventId == null
-            ? publicationRepository.findAllByOrderByCreatedAtDesc()
-            : publicationRepository.findAllByEventIdOrderByCreatedAtDesc(eventId);
+    public List<PublicationShortResponse> getPublicList(Long eventId, Long organizationId, String title) {
+        List<Publication> list;
+        if (eventId != null) {
+            list = publicationRepository.findAllByEventIdOrderByCreatedAtDesc(eventId);
+        } else if (organizationId != null) {
+            list = publicationRepository.findAllByOrganizationIdOrderByCreatedAtDesc(organizationId);
+        } else {
+            list = publicationRepository.findAllByOrderByCreatedAtDesc();
+        }
 
         return list.stream()
             .filter(publication -> DomainStatusMapper.toPublicationStatus(publication.getStatus()) == PublicationStatus.PUBLISHED)

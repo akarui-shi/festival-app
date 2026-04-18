@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, Clock, MapPin, X } from 'lucide-react';
+import { CalendarDays, Clock, CreditCard, MapPin, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { EmptyState } from '@/components/EmptyState';
@@ -18,6 +18,10 @@ const statusLabels: Record<string, { label: string; className: string }> = {
   active: { label: 'Активен', className: 'bg-primary/10 text-primary' },
   used: { label: 'Использован', className: 'bg-info/10 text-info' },
   returned: { label: 'Возвращён', className: 'bg-destructive/10 text-destructive' },
+  'активен': { label: 'Активен', className: 'bg-primary/10 text-primary' },
+  'использован': { label: 'Использован', className: 'bg-info/10 text-info' },
+  'возвращён': { label: 'Возвращён', className: 'bg-destructive/10 text-destructive' },
+  'ожидает_оплаты': { label: 'Ожидает оплаты', className: 'bg-warning/10 text-warning' },
 };
 
 export default function RegistrationsPage() {
@@ -108,7 +112,7 @@ export default function RegistrationsPage() {
                     <div className="flex items-center gap-3">
                       <Badge className={status.className}>{status.label}</Badge>
 
-                      {ticket.orderId && (ticket.status === 'ACTIVE' || ticket.status === 'active') && (
+                      {ticket.orderId && (ticket.status === 'ACTIVE' || ticket.status === 'active' || ticket.status === 'активен') && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -117,6 +121,16 @@ export default function RegistrationsPage() {
                         >
                           <X className="mr-1 h-4 w-4" />
                           Отменить заказ
+                        </Button>
+                      )}
+                      {ticket.requiresPayment && ticket.paymentUrl && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => window.location.assign(ticket.paymentUrl!)}
+                        >
+                          <CreditCard className="mr-1 h-4 w-4" />
+                          Оплатить
                         </Button>
                       )}
                     </div>

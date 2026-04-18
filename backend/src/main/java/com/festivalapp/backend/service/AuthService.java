@@ -7,6 +7,7 @@ import com.festivalapp.backend.dto.RegisterRequest;
 import com.festivalapp.backend.entity.City;
 import com.festivalapp.backend.entity.Organization;
 import com.festivalapp.backend.entity.OrganizationMember;
+import com.festivalapp.backend.entity.OrganizationJoinRequest;
 import com.festivalapp.backend.entity.Role;
 import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.User;
@@ -15,6 +16,7 @@ import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.UnauthorizedException;
 import com.festivalapp.backend.repository.CityRepository;
 import com.festivalapp.backend.repository.OrganizationMemberRepository;
+import com.festivalapp.backend.repository.OrganizationJoinRequestRepository;
 import com.festivalapp.backend.repository.OrganizationRepository;
 import com.festivalapp.backend.repository.RoleRepository;
 import com.festivalapp.backend.repository.UserRepository;
@@ -40,6 +42,7 @@ public class AuthService {
     private final RoleRepository roleRepository;
     private final OrganizationRepository organizationRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
+    private final OrganizationJoinRequestRepository organizationJoinRequestRepository;
     private final UserRoleRepository userRoleRepository;
     private final CityRepository cityRepository;
     private final PasswordEncoder passwordEncoder;
@@ -88,14 +91,27 @@ public class AuthService {
         savedUser.getUserRoles().add(userRole);
 
         if (requestedRole == RoleName.ROLE_ORGANIZER) {
-            String companyName = normalizeRequired(request.getCompanyName(), "Введите название компании");
-            Organization organization = ensureOrganization(companyName, savedUser, now);
-            organizationMemberRepository.save(OrganizationMember.builder()
-                .user(savedUser)
-                .organization(organization)
-                .organizationStatus("владелец")
-                .joinedAt(now)
-                .build());
+            if (request.getOrganizationId() != null) {
+                Organization organization = organizationRepository.findByIdAndDeletedAtIsNull(request.getOrganizationId())
+                    .orElseThrow(() -> new BadRequestException("Организация не найдена"));
+
+                organizationJoinRequestRepository.save(OrganizationJoinRequest.builder()
+                    .user(savedUser)
+                    .organization(organization)
+                    .message(normalizeOptional(request.getJoinRequestMessage()))
+                    .status("pending")
+                    .requestedAt(now)
+                    .build());
+            } else {
+                String companyName = normalizeRequired(request.getCompanyName(), "Введите название компании");
+                Organization organization = ensureOrganization(companyName, savedUser, now);
+                organizationMemberRepository.save(OrganizationMember.builder()
+                    .user(savedUser)
+                    .organization(organization)
+                    .organizationStatus("владелец")
+                    .joinedAt(now)
+                    .build());
+            }
         }
 
         return AuthResponse.builder()

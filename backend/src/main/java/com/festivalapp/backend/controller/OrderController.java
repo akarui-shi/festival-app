@@ -2,6 +2,7 @@ package com.festivalapp.backend.controller;
 
 import com.festivalapp.backend.dto.OrderCreateRequest;
 import com.festivalapp.backend.dto.OrderResponse;
+import com.festivalapp.backend.dto.PaymentConfirmRequest;
 import com.festivalapp.backend.exception.UnauthorizedException;
 import com.festivalapp.backend.service.OrderService;
 import jakarta.validation.Valid;
@@ -50,6 +51,14 @@ public class OrderController {
     public ResponseEntity<Map<String, Object>> cancel(@PathVariable Long id,
                                                       @AuthenticationPrincipal UserDetails principal) {
         return ResponseEntity.ok(orderService.cancelOrder(id, extractUsername(principal)));
+    }
+
+    @PostMapping("/{id}/confirm-payment")
+    public ResponseEntity<OrderResponse> confirmPayment(@PathVariable Long id,
+                                                        @RequestBody(required = false) PaymentConfirmRequest request,
+                                                        @AuthenticationPrincipal UserDetails principal) {
+        PaymentConfirmRequest safeRequest = request == null ? new PaymentConfirmRequest() : request;
+        return ResponseEntity.ok(orderService.confirmPayment(id, safeRequest, extractUsername(principal)));
     }
 
     private String extractUsername(UserDetails principal) {

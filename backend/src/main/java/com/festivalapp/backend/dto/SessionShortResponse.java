@@ -23,4 +23,8 @@ public class SessionShortResponse {
     private BigDecimal longitude;
     private Integer availableSeats;
     private Integer totalCapacity;
+    private String participationType;
+    private BigDecimal price;
+    private String currency;
+    private Boolean registrationOpen;
 }

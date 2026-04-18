@@ -9,6 +9,7 @@ import com.festivalapp.backend.entity.Event;
 import com.festivalapp.backend.entity.OrganizationMember;
 import com.festivalapp.backend.entity.Session;
 import com.festivalapp.backend.entity.Ticket;
+import com.festivalapp.backend.entity.TicketType;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.entity.Venue;
 import com.festivalapp.backend.exception.BadRequestException;
@@ -17,12 +18,15 @@ import com.festivalapp.backend.repository.EventRepository;
 import com.festivalapp.backend.repository.OrganizationMemberRepository;
 import com.festivalapp.backend.repository.SessionRepository;
 import com.festivalapp.backend.repository.TicketRepository;
+import com.festivalapp.backend.repository.TicketTypeRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import com.festivalapp.backend.repository.VenueRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -38,6 +42,7 @@ public class SessionService {
     private final EventRepository eventRepository;
     private final VenueRepository venueRepository;
     private final TicketRepository ticketRepository;
+    private final TicketTypeRepository ticketTypeRepository;
     private final UserRepository userRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
 
@@ -80,22 +85,36 @@ public class SessionService {
             .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
         assertCanManageEvent(actor, event);
 
-        Venue venue = pickVenue(event);
+        Venue venue = request.getVenueId() == null
+            ? pickVenue(event)
+            : venueRepository.findById(request.getVenueId())
+                .orElseThrow(() -> new ResourceNotFoundException("Venue not found"));
+        if (venue == null
+            && !StringUtils.hasText(request.getManualAddress())
+            && request.getLatitude() == null
+            && request.getLongitude() == null) {
+            throw new BadRequestException("Укажите площадку или ручной адрес/координаты сеанса");
+        }
         OffsetDateTime now = OffsetDateTime.now();
 
         Session session = Session.builder()
             .event(event)
             .venue(venue)
-            .sessionTitle(event.getTitle())
+            .sessionTitle(StringUtils.hasText(request.getSessionTitle()) ? request.getSessionTitle().trim() : event.getTitle())
             .startsAt(request.getStartAt().atOffset(ZoneOffset.UTC))
             .endsAt(request.getEndAt().atOffset(ZoneOffset.UTC))
             .seatLimit(request.getCapacity())
+            .manualAddress(venue == null ? normalize(request.getManualAddress()) : null)
+            .latitude(venue == null ? request.getLatitude() : null)
+            .longitude(venue == null ? request.getLongitude() : null)
             .status("запланирован")
             .createdAt(now)
             .updatedAt(now)
             .build();
 
-        return toDetailsResponse(sessionRepository.save(session));
+        Session savedSession = sessionRepository.save(session);
+        upsertPricing(savedSession, request.getParticipationType(), request.getPrice(), request.getCurrency(), request.getSalesStartAt(), request.getSalesEndAt());
+        return toDetailsResponse(savedSession);
     }
 
     @Transactional
@@ -111,6 +130,28 @@ public class SessionService {
             assertCanManageEvent(actor, event);
             session.setEvent(event);
         }
+        if (request.getVenueId() != null) {
+            Venue venue = venueRepository.findById(request.getVenueId())
+                .orElseThrow(() -> new ResourceNotFoundException("Venue not found"));
+            session.setVenue(venue);
+            session.setManualAddress(null);
+            session.setLatitude(null);
+            session.setLongitude(null);
+        } else if (request.getManualAddress() != null || request.getLatitude() != null || request.getLongitude() != null) {
+            session.setVenue(null);
+            if (request.getManualAddress() != null) {
+                session.setManualAddress(normalize(request.getManualAddress()));
+            }
+            if (request.getLatitude() != null) {
+                session.setLatitude(request.getLatitude());
+            }
+            if (request.getLongitude() != null) {
+                session.setLongitude(request.getLongitude());
+            }
+        }
+        if (request.getSessionTitle() != null) {
+            session.setSessionTitle(normalize(request.getSessionTitle()));
+        }
 
         if (request.getStartAt() != null) {
             session.setStartsAt(request.getStartAt().atOffset(ZoneOffset.UTC));
@@ -123,7 +164,9 @@ public class SessionService {
         }
         session.setUpdatedAt(OffsetDateTime.now());
 
-        return toDetailsResponse(sessionRepository.save(session));
+        Session saved = sessionRepository.save(session);
+        upsertPricing(saved, request.getParticipationType(), request.getPrice(), request.getCurrency(), request.getSalesStartAt(), request.getSalesEndAt());
+        return toDetailsResponse(saved);
     }
 
     @Transactional
@@ -162,6 +205,8 @@ public class SessionService {
         long used = ticketRepository.countBySessionIdAndStatus(session.getId(), "активен");
         int capacity = session.getSeatLimit() == null ? 0 : session.getSeatLimit();
         int available = Math.max(0, capacity - (int) used);
+        TicketType ticketType = defaultTicketType(session.getId());
+        boolean free = ticketType == null || ticketType.getPrice() == null || ticketType.getPrice().compareTo(BigDecimal.ZERO) <= 0;
 
         return SessionShortResponse.builder()
             .id(session.getId())
@@ -177,12 +222,18 @@ public class SessionService {
             .longitude(session.getVenue() == null ? session.getLongitude() : session.getVenue().getLongitude())
             .availableSeats(available)
             .totalCapacity(capacity)
+            .participationType(free ? "free" : "paid")
+            .price(ticketType == null ? BigDecimal.ZERO : ticketType.getPrice())
+            .currency(ticketType == null ? "RUB" : ticketType.getCurrency())
+            .registrationOpen(isRegistrationOpen(session, ticketType, capacity, used))
             .build();
     }
 
     private SessionDetailsResponse toDetailsResponse(Session session) {
         long activeTickets = ticketRepository.countBySessionIdAndStatus(session.getId(), "активен");
         int total = session.getSeatLimit() == null ? 0 : session.getSeatLimit();
+        TicketType ticketType = defaultTicketType(session.getId());
+        boolean free = ticketType == null || ticketType.getPrice() == null || ticketType.getPrice().compareTo(BigDecimal.ZERO) <= 0;
 
         return SessionDetailsResponse.builder()
             .id(session.getId())
@@ -190,6 +241,12 @@ public class SessionService {
             .endAt(session.getEndsAt() == null ? null : session.getEndsAt().toLocalDateTime())
             .availableSeats(Math.max(0, total - (int) activeTickets))
             .totalCapacity(total)
+            .participationType(free ? "free" : "paid")
+            .price(ticketType == null ? BigDecimal.ZERO : ticketType.getPrice())
+            .currency(ticketType == null ? "RUB" : ticketType.getCurrency())
+            .registrationOpen(isRegistrationOpen(session, ticketType, total, activeTickets))
+            .salesStartAt(ticketType == null || ticketType.getSalesStartAt() == null ? null : ticketType.getSalesStartAt().toLocalDateTime())
+            .salesEndAt(ticketType == null || ticketType.getSalesEndAt() == null ? null : ticketType.getSalesEndAt().toLocalDateTime())
             .event(SessionDetailsResponse.EventInfo.builder()
                 .id(session.getEvent() == null ? null : session.getEvent().getId())
                 .title(session.getEvent() == null ? null : session.getEvent().getTitle())
@@ -232,6 +289,54 @@ public class SessionService {
         return venueRepository.findAllByCityIdOrderByNameAsc(event.getCity().getId()).stream().findFirst().orElse(null);
     }
 
+    private void upsertPricing(Session session,
+                               String participationType,
+                               BigDecimal requestedPrice,
+                               String requestedCurrency,
+                               java.time.LocalDateTime salesStartAt,
+                               java.time.LocalDateTime salesEndAt) {
+        TicketType pricing = defaultTicketType(session.getId());
+        if (pricing == null) {
+            pricing = TicketType.builder()
+                .session(session)
+                .name("Стандарт")
+                .active(true)
+                .quota(session.getSeatLimit() == null ? 10000 : session.getSeatLimit())
+                .build();
+        }
+
+        boolean free = !StringUtils.hasText(participationType) || "free".equalsIgnoreCase(participationType) || "бесплатно".equalsIgnoreCase(participationType);
+        BigDecimal price = requestedPrice == null ? BigDecimal.ZERO : requestedPrice;
+        if (free) {
+            price = BigDecimal.ZERO;
+        }
+
+        pricing.setPrice(price.max(BigDecimal.ZERO));
+        pricing.setCurrency(StringUtils.hasText(requestedCurrency) ? requestedCurrency.trim().toUpperCase() : "RUB");
+        pricing.setQuota(session.getSeatLimit() == null ? 10000 : session.getSeatLimit());
+        pricing.setSalesStartAt(salesStartAt == null ? OffsetDateTime.now().minusDays(1) : salesStartAt.atOffset(ZoneOffset.UTC));
+        pricing.setSalesEndAt(salesEndAt == null ? session.getStartsAt() : salesEndAt.atOffset(ZoneOffset.UTC));
+        ticketTypeRepository.save(pricing);
+    }
+
+    private TicketType defaultTicketType(Long sessionId) {
+        return ticketTypeRepository.findFirstBySessionIdAndActiveIsTrueOrderByIdAsc(sessionId).orElse(null);
+    }
+
+    private boolean isRegistrationOpen(Session session, TicketType ticketType, int capacity, long activeTickets) {
+        if (ticketType == null) {
+            return false;
+        }
+        OffsetDateTime now = OffsetDateTime.now();
+        if (ticketType.getSalesStartAt() != null && now.isBefore(ticketType.getSalesStartAt())) {
+            return false;
+        }
+        if (ticketType.getSalesEndAt() != null && now.isAfter(ticketType.getSalesEndAt())) {
+            return false;
+        }
+        return capacity <= 0 || activeTickets < capacity;
+    }
+
     private Long resolveCityId(Session session) {
         if (session.getVenue() != null && session.getVenue().getCity() != null) {
             return session.getVenue().getCity().getId();
@@ -250,5 +355,12 @@ public class SessionService {
             return session.getEvent().getCity().getName();
         }
         return null;
+    }
+
+    private String normalize(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return value.trim();
     }
 }

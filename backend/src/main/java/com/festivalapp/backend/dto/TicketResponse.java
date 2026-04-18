@@ -19,4 +19,7 @@ public class TicketResponse {
     private String qrToken;
     private LocalDateTime issuedAt;
     private LocalDateTime usedAt;
+    private Boolean requiresPayment;
+    private String paymentStatus;
+    private String paymentUrl;
 }

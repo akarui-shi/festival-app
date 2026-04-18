@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
@@ -7,6 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { organizationService } from '@/services/organization-service';
+import type { Organization } from '@/types';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -19,14 +21,29 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: '',
     role: 'RESIDENT' as 'RESIDENT' | 'ORGANIZER',
+    organizationMode: 'create' as 'create' | 'join',
     companyName: '',
+    organizationSearch: '',
+    organizationId: '',
+    joinRequestMessage: '',
   });
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const updateField = (field: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
+
+  useEffect(() => {
+    if (form.role !== 'ORGANIZER' || form.organizationMode !== 'join') {
+      return;
+    }
+
+    organizationService.getOrganizations(form.organizationSearch)
+      .then((response) => setOrganizations(response))
+      .catch(() => setOrganizations([]));
+  }, [form.organizationMode, form.organizationSearch, form.role]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -46,8 +63,13 @@ export default function RegisterPage() {
       return;
     }
 
-    if (form.role === 'ORGANIZER' && !form.companyName.trim()) {
+    if (form.role === 'ORGANIZER' && form.organizationMode === 'create' && !form.companyName.trim()) {
       setError('Для организатора укажите название организации');
+      return;
+    }
+
+    if (form.role === 'ORGANIZER' && form.organizationMode === 'join' && !form.organizationId) {
+      setError('Выберите организацию для присоединения');
       return;
     }
 
@@ -60,9 +82,11 @@ export default function RegisterPage() {
         form.firstName,
         form.lastName,
         form.role,
-        form.role === 'ORGANIZER' ? form.companyName : undefined,
+        form.role === 'ORGANIZER' && form.organizationMode === 'create' ? form.companyName : undefined,
+        form.role === 'ORGANIZER' && form.organizationMode === 'join' ? Number(form.organizationId) : undefined,
+        form.role === 'ORGANIZER' && form.organizationMode === 'join' ? form.joinRequestMessage : undefined,
       );
-      toast.success('Регистрация прошла успешно');
+      toast.success(form.organizationMode === 'join' ? 'Регистрация выполнена, заявка отправлена' : 'Регистрация прошла успешно');
       navigate('/');
     } catch (registerError: any) {
       setError(registerError?.message || 'Не удалось зарегистрироваться');
@@ -118,6 +142,36 @@ export default function RegisterPage() {
                 </div>
               </div>
 
+              {form.role === 'ORGANIZER' && (
+                <div className="space-y-2">
+                  <Label>Организация</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => updateField('organizationMode', 'create')}
+                      className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                        form.organizationMode === 'create'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border text-muted-foreground hover:border-primary/40'
+                      }`}
+                    >
+                      Создать новую
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateField('organizationMode', 'join')}
+                      className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                        form.organizationMode === 'join'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border text-muted-foreground hover:border-primary/40'
+                      }`}
+                    >
+                      Присоединиться
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">Имя</Label>
@@ -150,9 +204,9 @@ export default function RegisterPage() {
                 />
               </div>
 
-              {form.role === 'ORGANIZER' && (
+              {form.role === 'ORGANIZER' && form.organizationMode === 'create' && (
                 <div className="space-y-2">
-                  <Label htmlFor="companyName">Организация</Label>
+                  <Label htmlFor="companyName">Название новой организации</Label>
                   <Input
                     id="companyName"
                     value={form.companyName}
@@ -160,6 +214,45 @@ export default function RegisterPage() {
                     placeholder="Название организации"
                   />
                 </div>
+              )}
+
+              {form.role === 'ORGANIZER' && form.organizationMode === 'join' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="organizationSearch">Поиск организации</Label>
+                    <Input
+                      id="organizationSearch"
+                      value={form.organizationSearch}
+                      onChange={(event) => updateField('organizationSearch', event.target.value)}
+                      placeholder="Введите название"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="organizationId">Выберите организацию</Label>
+                    <select
+                      id="organizationId"
+                      value={form.organizationId}
+                      onChange={(event) => updateField('organizationId', event.target.value)}
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="">Не выбрано</option>
+                      {organizations.map((organization) => (
+                        <option key={organization.id} value={String(organization.id)}>
+                          {organization.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="joinRequestMessage">Комментарий к заявке</Label>
+                    <Input
+                      id="joinRequestMessage"
+                      value={form.joinRequestMessage}
+                      onChange={(event) => updateField('joinRequestMessage', event.target.value)}
+                      placeholder="Коротко о себе (необязательно)"
+                    />
+                  </div>
+                </>
               )}
 
               <div className="space-y-2">

@@ -6,13 +6,17 @@ import com.festivalapp.backend.dto.EventDetailsResponse;
 import com.festivalapp.backend.dto.EventImageRequest;
 import com.festivalapp.backend.dto.EventImageResponse;
 import com.festivalapp.backend.dto.EventShortResponse;
+import com.festivalapp.backend.dto.ArtistSummaryResponse;
+import com.festivalapp.backend.dto.SessionShortResponse;
 import com.festivalapp.backend.dto.EventUpdateRequest;
 import com.festivalapp.backend.dto.OrganizationPublicResponse;
 import com.festivalapp.backend.dto.OrganizerEventStatsResponse;
 import com.festivalapp.backend.dto.VenueResponse;
+import com.festivalapp.backend.entity.Artist;
 import com.festivalapp.backend.entity.Category;
 import com.festivalapp.backend.entity.City;
 import com.festivalapp.backend.entity.Event;
+import com.festivalapp.backend.entity.EventArtist;
 import com.festivalapp.backend.entity.EventCategory;
 import com.festivalapp.backend.entity.EventImage;
 import com.festivalapp.backend.entity.EventStatus;
@@ -20,13 +24,16 @@ import com.festivalapp.backend.entity.Image;
 import com.festivalapp.backend.entity.Organization;
 import com.festivalapp.backend.entity.OrganizationMember;
 import com.festivalapp.backend.entity.Session;
+import com.festivalapp.backend.entity.TicketType;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.entity.Venue;
+import com.festivalapp.backend.repository.ArtistRepository;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
 import com.festivalapp.backend.repository.CategoryRepository;
 import com.festivalapp.backend.repository.CityRepository;
 import com.festivalapp.backend.repository.CommentRepository;
+import com.festivalapp.backend.repository.EventArtistRepository;
 import com.festivalapp.backend.repository.EventCategoryRepository;
 import com.festivalapp.backend.repository.EventImageRepository;
 import com.festivalapp.backend.repository.EventRepository;
@@ -36,6 +43,7 @@ import com.festivalapp.backend.repository.OrganizationMemberRepository;
 import com.festivalapp.backend.repository.OrganizationRepository;
 import com.festivalapp.backend.repository.SessionRepository;
 import com.festivalapp.backend.repository.TicketRepository;
+import com.festivalapp.backend.repository.TicketTypeRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import com.festivalapp.backend.repository.VenueRepository;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +51,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -61,6 +70,8 @@ public class EventService {
 
     private final EventRepository eventRepository;
     private final EventCategoryRepository eventCategoryRepository;
+    private final EventArtistRepository eventArtistRepository;
+    private final ArtistRepository artistRepository;
     private final CategoryRepository categoryRepository;
     private final SessionRepository sessionRepository;
     private final EventImageRepository eventImageRepository;
@@ -73,9 +84,11 @@ public class EventService {
     private final FavoriteRepository favoriteRepository;
     private final CommentRepository commentRepository;
     private final TicketRepository ticketRepository;
+    private final TicketTypeRepository ticketTypeRepository;
 
     @Transactional(readOnly = true)
     public List<EventShortResponse> getAll(String title,
+                                           String q,
                                            Long categoryId,
                                            Long venueId,
                                            Long cityId,
@@ -83,6 +96,10 @@ public class EventService {
                                            LocalDate date,
                                            LocalDate dateFrom,
                                            LocalDate dateTo,
+                                           String participationType,
+                                           BigDecimal priceFrom,
+                                           BigDecimal priceTo,
+                                           Boolean registrationOpen,
                                            String status,
                                            String sortBy,
                                            String sortDir) {
@@ -90,7 +107,23 @@ public class EventService {
 
         return events.stream()
             .map(this::hydrateEvent)
-            .filter(event -> matchesFilters(event, title, categoryId, venueId, cityId, organizationId, date, dateFrom, dateTo, status))
+            .filter(event -> matchesFilters(
+                event,
+                title,
+                q,
+                categoryId,
+                venueId,
+                cityId,
+                organizationId,
+                date,
+                dateFrom,
+                dateTo,
+                participationType,
+                priceFrom,
+                priceTo,
+                registrationOpen,
+                status
+            ))
             .sorted(resolveSort(sortBy, sortDir))
             .map(this::toShortResponse)
             .toList();
@@ -121,6 +154,11 @@ public class EventService {
             .name(organization.getName())
             .description(organization.getDescription())
             .contacts(organization.getContacts())
+            .contactEmail(organization.getContactEmail())
+            .contactPhone(organization.getContactPhone())
+            .website(organization.getWebsite())
+            .socialLinks(organization.getSocialLinks())
+            .logoUrl(organization.getLogoUrl())
             .build();
     }
 
@@ -234,6 +272,7 @@ public class EventService {
         Event saved = eventRepository.save(event);
         updateEventCategories(saved, request.getCategoryIds());
         updateEventImages(saved, request.getEventImages());
+        updateEventArtists(saved, request.getArtistIds(), request.getNewArtistNames());
 
         if (venue != null) {
             ensureSessionForVenue(saved, venue, now);
@@ -274,6 +313,9 @@ public class EventService {
         }
         if (request.getEventImages() != null) {
             updateEventImages(saved, request.getEventImages());
+        }
+        if (request.getArtistIds() != null || request.getNewArtistNames() != null) {
+            updateEventArtists(saved, request.getArtistIds(), request.getNewArtistNames());
         }
 
         if (request.getVenueId() != null) {
@@ -326,10 +368,12 @@ public class EventService {
 
     private Event hydrateEvent(Event event) {
         List<EventCategory> categories = eventCategoryRepository.findAllByEventId(event.getId());
-        event.setEventCategories(new LinkedHashSet<>(categories));
+        event.getEventCategories().clear();
+        event.getEventCategories().addAll(categories);
 
         List<EventImage> images = eventImageRepository.findAllByEventIdOrderBySortOrderAscIdAsc(event.getId());
-        event.setEventImages(images);
+        event.getEventImages().clear();
+        event.getEventImages().addAll(images);
 
         event.setAgeRating(parseAgeRating(event.getAgeRestriction()));
         event.setCoverUrl(images.stream().filter(EventImage::isPrimary)
@@ -337,12 +381,14 @@ public class EventService {
             .map(img -> img.getImage() == null ? null : img.getImage().getFileUrl())
             .orElse(images.stream().findFirst().map(img -> img.getImage() == null ? null : img.getImage().getFileUrl()).orElse(null)));
 
-        event.setSessions(new LinkedHashSet<>(sessionRepository.findAllByEventIdOrderByStartsAtAsc(event.getId())));
+        event.getSessions().clear();
+        event.getSessions().addAll(sessionRepository.findAllByEventIdOrderByStartsAtAsc(event.getId()));
         return event;
     }
 
     private boolean matchesFilters(Event event,
                                    String title,
+                                   String q,
                                    Long categoryId,
                                    Long venueId,
                                    Long cityId,
@@ -350,10 +396,19 @@ public class EventService {
                                    LocalDate date,
                                    LocalDate dateFrom,
                                    LocalDate dateTo,
+                                   String participationType,
+                                   BigDecimal priceFrom,
+                                   BigDecimal priceTo,
+                                   Boolean registrationOpen,
                                    String status) {
-        if (StringUtils.hasText(title) && (event.getTitle() == null
-            || !event.getTitle().toLowerCase().contains(title.toLowerCase()))) {
-            return false;
+        String searchQuery = StringUtils.hasText(q) ? q.trim() : (StringUtils.hasText(title) ? title.trim() : null);
+        if (StringUtils.hasText(searchQuery)) {
+            String searchable = buildSearchableText(event);
+            for (String term : searchQuery.toLowerCase().split("\\s+")) {
+                if (!searchable.contains(term)) {
+                    return false;
+                }
+            }
         }
 
         if (categoryId != null) {
@@ -389,6 +444,47 @@ public class EventService {
             }
         }
 
+        if (StringUtils.hasText(participationType)) {
+            String normalizedType = participationType.trim().toLowerCase();
+            boolean hasMatchingType = event.getSessions().stream().anyMatch(session -> {
+                TicketType pricing = defaultTicketType(session.getId());
+                if ("free".equals(normalizedType) || "бесплатно".equals(normalizedType)) {
+                    return pricing == null || pricing.getPrice() == null || pricing.getPrice().compareTo(BigDecimal.ZERO) <= 0;
+                }
+                if ("paid".equals(normalizedType) || "платно".equals(normalizedType)) {
+                    return pricing != null && pricing.getPrice() != null && pricing.getPrice().compareTo(BigDecimal.ZERO) > 0;
+                }
+                return true;
+            });
+            if (!hasMatchingType) {
+                return false;
+            }
+        }
+
+        if (priceFrom != null || priceTo != null) {
+            boolean hasPriceInRange = event.getSessions().stream().anyMatch(session -> {
+                TicketType pricing = defaultTicketType(session.getId());
+                BigDecimal sessionPrice = pricing == null || pricing.getPrice() == null ? BigDecimal.ZERO : pricing.getPrice();
+                if (priceFrom != null && sessionPrice.compareTo(priceFrom) < 0) {
+                    return false;
+                }
+                if (priceTo != null && sessionPrice.compareTo(priceTo) > 0) {
+                    return false;
+                }
+                return true;
+            });
+            if (!hasPriceInRange) {
+                return false;
+            }
+        }
+
+        if (registrationOpen != null) {
+            boolean hasRegistrationState = event.getSessions().stream().anyMatch(session -> isRegistrationOpen(session) == registrationOpen);
+            if (!hasRegistrationState) {
+                return false;
+            }
+        }
+
         if (date != null) {
             boolean hasDate = event.getSessions().stream().anyMatch(session ->
                 session.getStartsAt() != null && session.getStartsAt().toLocalDate().equals(date)
@@ -410,6 +506,34 @@ public class EventService {
         }
 
         return true;
+    }
+
+    private String buildSearchableText(Event event) {
+        List<String> chunks = new ArrayList<>();
+        if (StringUtils.hasText(event.getTitle())) {
+            chunks.add(event.getTitle());
+        }
+        if (StringUtils.hasText(event.getShortDescription())) {
+            chunks.add(event.getShortDescription());
+        }
+        if (event.getOrganization() != null && StringUtils.hasText(event.getOrganization().getName())) {
+            chunks.add(event.getOrganization().getName());
+        }
+
+        for (EventArtist eventArtist : eventArtistRepository.findAllByEventIdOrderByDisplayOrderAscIdAsc(event.getId())) {
+            Artist artist = eventArtist.getArtist();
+            if (artist == null) {
+                continue;
+            }
+            if (StringUtils.hasText(artist.getName())) {
+                chunks.add(artist.getName());
+            }
+            if (StringUtils.hasText(artist.getStageName())) {
+                chunks.add(artist.getStageName());
+            }
+        }
+
+        return String.join(" ", chunks).toLowerCase();
     }
 
     private Comparator<Event> resolveSort(String sortBy, String sortDir) {
@@ -440,6 +564,9 @@ public class EventService {
             .filter(session -> session.getVenue() != null)
             .min(Comparator.comparing(Session::getStartsAt, Comparator.nullsLast(Comparator.naturalOrder())))
             .orElse(event.getSessions().stream().findFirst().orElse(null));
+        PriceRange priceRange = extractPriceRange(event.getSessions());
+        boolean registrationOpen = event.getSessions().stream().anyMatch(this::isRegistrationOpen);
+        List<ArtistSummaryResponse> artists = mapArtists(event.getId());
 
         return EventShortResponse.builder()
             .id(event.getId())
@@ -468,6 +595,11 @@ public class EventService {
                 .sorted()
                 .toList())
             .coverUrl(event.getCoverUrl())
+            .free(priceRange.min() == null || priceRange.min().compareTo(BigDecimal.ZERO) <= 0)
+            .minPrice(priceRange.min())
+            .maxPrice(priceRange.max())
+            .registrationOpen(registrationOpen)
+            .artists(artists)
             .build();
     }
 
@@ -478,6 +610,12 @@ public class EventService {
             .orElse(event.getSessions().stream().findFirst().orElse(null));
 
         VenueResponse venueResponse = mainSession == null ? null : toVenueResponse(mainSession);
+        List<SessionShortResponse> sessions = event.getSessions().stream()
+            .sorted(Comparator.comparing(Session::getStartsAt, Comparator.nullsLast(Comparator.naturalOrder())))
+            .map(this::toSessionShortResponse)
+            .toList();
+        PriceRange priceRange = extractPriceRange(event.getSessions());
+        boolean registrationOpen = event.getSessions().stream().anyMatch(this::isRegistrationOpen);
 
         return EventDetailsResponse.builder()
             .id(event.getId())
@@ -501,6 +639,12 @@ public class EventService {
                 .filter(Objects::nonNull)
                 .map(this::toCategoryResponse)
                 .toList())
+            .artists(mapArtists(event.getId()))
+            .sessions(sessions)
+            .free(priceRange.min() == null || priceRange.min().compareTo(BigDecimal.ZERO) <= 0)
+            .minPrice(priceRange.min())
+            .maxPrice(priceRange.max())
+            .registrationOpen(registrationOpen)
             .build();
     }
 
@@ -558,9 +702,10 @@ public class EventService {
     }
 
     private Organization resolveManagedOrganization(User actor) {
-        return organizationMemberRepository.findFirstByUserIdAndOrganizationStatusAndLeftAtIsNull(actor.getId(), "владелец")
+        return organizationMemberRepository.findAllByUserIdAndLeftAtIsNull(actor.getId()).stream()
             .map(OrganizationMember::getOrganization)
-            .orElseThrow(() -> new BadRequestException("Пользователь не является владельцем организации"));
+            .findFirst()
+            .orElseThrow(() -> new BadRequestException("Пользователь не состоит ни в одной организации"));
     }
 
     private void assertCanManageEvent(User actor, Event event) {
@@ -631,7 +776,8 @@ public class EventService {
             .createdAt(now)
             .updatedAt(now)
             .build();
-        sessionRepository.save(session);
+        Session savedSession = sessionRepository.save(session);
+        ensureDefaultTicketType(savedSession, now);
     }
 
     private void upsertSessionVenue(Event event, Venue venue) {
@@ -647,7 +793,8 @@ public class EventService {
         if (first.getSeatLimit() == null) {
             first.setSeatLimit(venue.getCapacity());
         }
-        sessionRepository.save(first);
+        Session saved = sessionRepository.save(first);
+        ensureDefaultTicketType(saved, OffsetDateTime.now());
     }
 
     private void updateEventCategories(Event event, Set<Long> categoryIds) {
@@ -667,6 +814,55 @@ public class EventService {
                 .category(category)
                 .build());
         }
+    }
+
+    private void updateEventArtists(Event event, Set<Long> artistIds, List<String> newArtistNames) {
+        eventArtistRepository.deleteByEventId(event.getId());
+        List<Artist> artists = new ArrayList<>();
+        if (artistIds != null && !artistIds.isEmpty()) {
+            artists.addAll(artistRepository.findAllById(artistIds));
+        }
+        if (newArtistNames != null) {
+            for (String rawName : newArtistNames) {
+                if (!StringUtils.hasText(rawName)) {
+                    continue;
+                }
+                String name = rawName.trim();
+                Artist artist = artistRepository.save(Artist.builder()
+                    .name(name)
+                    .moderationStatus("на_рассмотрении")
+                    .createdAt(OffsetDateTime.now())
+                    .updatedAt(OffsetDateTime.now())
+                    .build());
+                artists.add(artist);
+            }
+        }
+
+        int order = 0;
+        for (Artist artist : artists) {
+            eventArtistRepository.save(EventArtist.builder()
+                .event(event)
+                .artist(artist)
+                .eventRole("artist")
+                .displayOrder(order++)
+                .build());
+        }
+    }
+
+    private void ensureDefaultTicketType(Session session, OffsetDateTime now) {
+        if (!ticketTypeRepository.findAllBySessionIdOrderByIdAsc(session.getId()).isEmpty()) {
+            return;
+        }
+        ticketTypeRepository.save(TicketType.builder()
+            .session(session)
+            .name("Стандарт")
+            .price(BigDecimal.ZERO)
+            .currency("RUB")
+            .quota(session.getSeatLimit() == null ? 10000 : session.getSeatLimit())
+            .active(true)
+            .salesStartAt(now.minusDays(1))
+            .salesEndAt(session.getStartsAt())
+            .build());
     }
 
     private void updateEventImages(Event event, List<EventImageRequest> imageRequests) {
@@ -697,6 +893,101 @@ public class EventService {
                 .build());
             fallbackOrder++;
         }
+    }
+
+    private List<ArtistSummaryResponse> mapArtists(Long eventId) {
+        return eventArtistRepository.findAllByEventIdOrderByDisplayOrderAscIdAsc(eventId).stream()
+            .map(EventArtist::getArtist)
+            .filter(Objects::nonNull)
+            .map(artist -> ArtistSummaryResponse.builder()
+                .id(artist.getId())
+                .name(artist.getName())
+                .stageName(artist.getStageName())
+                .description(artist.getDescription())
+                .genre(artist.getGenre())
+                .build())
+            .toList();
+    }
+
+    private SessionShortResponse toSessionShortResponse(Session session) {
+        long used = ticketRepository.countBySessionIdAndStatus(session.getId(), "активен");
+        int capacity = session.getSeatLimit() == null ? 0 : session.getSeatLimit();
+        int available = Math.max(0, capacity - (int) used);
+        TicketType ticketType = defaultTicketType(session.getId());
+
+        return SessionShortResponse.builder()
+            .id(session.getId())
+            .startAt(session.getStartsAt() == null ? null : session.getStartsAt().toLocalDateTime())
+            .endAt(session.getEndsAt() == null ? null : session.getEndsAt().toLocalDateTime())
+            .eventId(session.getEvent() == null ? null : session.getEvent().getId())
+            .eventTitle(session.getEvent() == null ? null : session.getEvent().getTitle())
+            .venueId(session.getVenue() == null ? null : session.getVenue().getId())
+            .venueName(session.getVenue() == null ? session.getSessionTitle() : session.getVenue().getName())
+            .venueAddress(session.getVenue() == null ? session.getManualAddress() : session.getVenue().getAddress())
+            .cityName(resolveCityName(session))
+            .latitude(session.getVenue() == null ? session.getLatitude() : session.getVenue().getLatitude())
+            .longitude(session.getVenue() == null ? session.getLongitude() : session.getVenue().getLongitude())
+            .availableSeats(available)
+            .totalCapacity(capacity)
+            .participationType(ticketType == null || ticketType.getPrice() == null || ticketType.getPrice().compareTo(BigDecimal.ZERO) <= 0 ? "free" : "paid")
+            .price(ticketType == null ? BigDecimal.ZERO : ticketType.getPrice())
+            .currency(ticketType == null ? "RUB" : ticketType.getCurrency())
+            .registrationOpen(isRegistrationOpen(session))
+            .build();
+    }
+
+    private String resolveCityName(Session session) {
+        if (session.getVenue() != null && session.getVenue().getCity() != null) {
+            return session.getVenue().getCity().getName();
+        }
+        if (session.getEvent() != null && session.getEvent().getCity() != null) {
+            return session.getEvent().getCity().getName();
+        }
+        return null;
+    }
+
+    private TicketType defaultTicketType(Long sessionId) {
+        return ticketTypeRepository.findFirstBySessionIdAndActiveIsTrueOrderByIdAsc(sessionId).orElse(null);
+    }
+
+    private boolean isRegistrationOpen(Session session) {
+        TicketType type = defaultTicketType(session.getId());
+        if (type == null) {
+            return false;
+        }
+        OffsetDateTime now = OffsetDateTime.now();
+        if (type.getSalesStartAt() != null && now.isBefore(type.getSalesStartAt())) {
+            return false;
+        }
+        if (type.getSalesEndAt() != null && now.isAfter(type.getSalesEndAt())) {
+            return false;
+        }
+        if (session.getSeatLimit() != null) {
+            long active = ticketRepository.countBySessionIdAndStatus(session.getId(), "активен");
+            return active < session.getSeatLimit();
+        }
+        return true;
+    }
+
+    private PriceRange extractPriceRange(Set<Session> sessions) {
+        BigDecimal min = null;
+        BigDecimal max = null;
+
+        for (Session session : sessions) {
+            TicketType ticketType = defaultTicketType(session.getId());
+            BigDecimal price = ticketType == null || ticketType.getPrice() == null ? BigDecimal.ZERO : ticketType.getPrice();
+            if (min == null || price.compareTo(min) < 0) {
+                min = price;
+            }
+            if (max == null || price.compareTo(max) > 0) {
+                max = price;
+            }
+        }
+
+        return new PriceRange(min, max);
+    }
+
+    private record PriceRange(BigDecimal min, BigDecimal max) {
     }
 
     private EventStatus parseEventStatus(String raw) {

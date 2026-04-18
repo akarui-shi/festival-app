@@ -19,5 +19,8 @@ public interface PublicationRepository extends JpaRepository<Publication, Long> 
     List<Publication> findAllByEventIdOrderByCreatedAtDesc(Long eventId);
 
     @EntityGraph(attributePaths = {"event", "event.organization", "organization", "createdByUser"})
+    List<Publication> findAllByOrganizationIdOrderByCreatedAtDesc(Long organizationId);
+
+    @EntityGraph(attributePaths = {"event", "event.organization", "organization", "createdByUser"})
     Optional<Publication> findById(Long id);
 }

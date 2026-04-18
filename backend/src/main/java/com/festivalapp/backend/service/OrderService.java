@@ -1,12 +1,16 @@
 package com.festivalapp.backend.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.festivalapp.backend.dto.OrderCreateRequest;
 import com.festivalapp.backend.dto.OrderItemCreateRequest;
 import com.festivalapp.backend.dto.OrderItemResponse;
 import com.festivalapp.backend.dto.OrderResponse;
 import com.festivalapp.backend.dto.OrderTicketResponse;
+import com.festivalapp.backend.dto.PaymentConfirmRequest;
 import com.festivalapp.backend.entity.Order;
 import com.festivalapp.backend.entity.OrderItem;
+import com.festivalapp.backend.entity.Payment;
+import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.Session;
 import com.festivalapp.backend.entity.Ticket;
 import com.festivalapp.backend.entity.TicketType;
@@ -15,6 +19,7 @@ import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
 import com.festivalapp.backend.repository.OrderItemRepository;
 import com.festivalapp.backend.repository.OrderRepository;
+import com.festivalapp.backend.repository.PaymentRepository;
 import com.festivalapp.backend.repository.SessionRepository;
 import com.festivalapp.backend.repository.TicketRepository;
 import com.festivalapp.backend.repository.TicketTypeRepository;
@@ -22,6 +27,7 @@ import com.festivalapp.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -40,6 +46,10 @@ public class OrderService {
     private final TicketTypeRepository ticketTypeRepository;
     private final SessionRepository sessionRepository;
     private final UserRepository userRepository;
+    private final PaymentRepository paymentRepository;
+    private final PaymentGatewayService paymentGatewayService;
+    private final NotificationService notificationService;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public OrderResponse createOrder(OrderCreateRequest request, String actorIdentifier) {
@@ -47,17 +57,7 @@ public class OrderService {
         Session session = sessionRepository.findById(request.getSessionId())
             .orElseThrow(() -> new ResourceNotFoundException("Session not found"));
 
-        List<OrderItemCreateRequest> requestItems = request.getItems();
-        if (requestItems == null || requestItems.isEmpty()) {
-            TicketType defaultType = ticketTypeRepository.findFirstBySessionIdAndActiveIsTrueOrderByIdAsc(session.getId())
-                .orElseThrow(() -> new BadRequestException("Для сеанса не настроены типы билетов"));
-
-            OrderItemCreateRequest autoItem = new OrderItemCreateRequest();
-            autoItem.setTicketTypeId(defaultType.getId());
-            autoItem.setQuantity(1);
-            requestItems = List.of(autoItem);
-        }
-
+        List<OrderItemCreateRequest> requestItems = normalizeItems(request, session);
         int requestedTotal = requestItems.stream().mapToInt(OrderItemCreateRequest::getQuantity).sum();
         long activeTickets = ticketRepository.countBySessionIdAndStatus(session.getId(), "активен");
         int seatLimit = session.getSeatLimit() == null ? Integer.MAX_VALUE : session.getSeatLimit();
@@ -66,18 +66,20 @@ public class OrderService {
         }
 
         OffsetDateTime now = OffsetDateTime.now();
-        List<OrderItem> createdItems = new ArrayList<>();
-        BigDecimal total = BigDecimal.ZERO;
+        String currency = request.getCurrency() == null ? "RUB" : request.getCurrency();
 
         Order order = orderRepository.save(Order.builder()
             .user(actor)
             .event(session.getEvent())
-            .status("оплачен")
+            .status("ожидает_оплаты")
             .totalAmount(BigDecimal.ZERO)
-            .currency(request.getCurrency() == null ? "RUB" : request.getCurrency())
+            .currency(currency)
             .createdAt(now)
             .updatedAt(now)
             .build());
+
+        List<OrderItem> createdItems = new ArrayList<>();
+        BigDecimal total = BigDecimal.ZERO;
 
         for (OrderItemCreateRequest itemRequest : requestItems) {
             TicketType ticketType = ticketTypeRepository.findById(itemRequest.getTicketTypeId())
@@ -89,7 +91,9 @@ public class OrderService {
                 throw new BadRequestException("Ticket type is inactive");
             }
 
-            BigDecimal unitPrice = ticketType.getPrice();
+            validateSalesWindow(ticketType, now);
+
+            BigDecimal unitPrice = ticketType.getPrice() == null ? BigDecimal.ZERO : ticketType.getPrice();
             BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
             total = total.add(lineTotal);
 
@@ -101,31 +105,111 @@ public class OrderService {
                 .lineTotal(lineTotal)
                 .build());
             createdItems.add(orderItem);
-
-            for (int i = 0; i < itemRequest.getQuantity(); i++) {
-                ticketRepository.save(Ticket.builder()
-                    .orderItem(orderItem)
-                    .user(actor)
-                    .session(session)
-                    .status("активен")
-                    .qrToken(UUID.randomUUID().toString())
-                    .issuedAt(now)
-                    .build());
-            }
         }
 
+        boolean requiresPayment = total.compareTo(BigDecimal.ZERO) > 0;
+        order.setStatus(requiresPayment ? "ожидает_оплаты" : "оплачен");
         order.setTotalAmount(total);
         order.setUpdatedAt(OffsetDateTime.now());
         orderRepository.save(order);
 
-        return toOrderResponse(order, createdItems);
+        Payment payment = null;
+        if (requiresPayment) {
+            PaymentGatewayService.PaymentCheckout checkout = paymentGatewayService.createCheckout(
+                order,
+                request.getPaymentProvider(),
+                request.getSuccessUrl(),
+                request.getCancelUrl()
+            );
+
+            payment = paymentRepository.save(Payment.builder()
+                .order(order)
+                .externalPaymentId(checkout.getExternalPaymentId())
+                .provider(checkout.getProvider())
+                .status("pending")
+                .amount(total)
+                .currency(currency)
+                .createdAt(now)
+                .payloadJson(objectMapper.valueToTree(Map.of(
+                    "paymentUrl", checkout.getPaymentUrl(),
+                    "successUrl", checkout.getSuccessUrl(),
+                    "cancelUrl", checkout.getCancelUrl()
+                )))
+                .build());
+        } else {
+            List<Ticket> issued = issueTickets(actor, session, createdItems, now);
+            notificationService.notifyTicketIssued(actor, order, issued);
+        }
+
+        return toOrderResponse(order, createdItems, payment);
+    }
+
+    @Transactional
+    public OrderResponse confirmPayment(Long orderId,
+                                        PaymentConfirmRequest request,
+                                        String actorIdentifier) {
+        User actor = resolveActor(actorIdentifier);
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        boolean ownOrder = order.getUser() != null && order.getUser().getId().equals(actor.getId());
+        boolean admin = actor.getUserRoles().stream().anyMatch(userRole -> userRole.getRole().toRoleName() == RoleName.ROLE_ADMIN);
+        if (!ownOrder && !admin) {
+            throw new BadRequestException("Недостаточно прав");
+        }
+
+        Payment payment;
+        if (StringUtils.hasText(request.getExternalPaymentId())) {
+            payment = paymentRepository.findByExternalPaymentId(request.getExternalPaymentId())
+                .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
+        } else {
+            payment = paymentRepository.findFirstByOrderIdOrderByCreatedAtDesc(order.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
+        }
+
+        if (!payment.getOrder().getId().equals(order.getId())) {
+            throw new BadRequestException("Payment does not belong to order");
+        }
+
+        if ("оплачен".equals(order.getStatus())) {
+            return toOrderResponse(order, orderItemRepository.findAllByOrderId(order.getId()), payment);
+        }
+
+        String status = StringUtils.hasText(request.getStatus()) ? request.getStatus().trim().toLowerCase() : "succeeded";
+        if (!status.equals("succeeded") && !status.equals("success") && !status.equals("paid")) {
+            order.setStatus("отменён");
+            order.setUpdatedAt(OffsetDateTime.now());
+            orderRepository.save(order);
+
+            payment.setStatus("cancelled");
+            paymentRepository.save(payment);
+
+            return toOrderResponse(order, orderItemRepository.findAllByOrderId(order.getId()), payment);
+        }
+
+        order.setStatus("оплачен");
+        order.setUpdatedAt(OffsetDateTime.now());
+        orderRepository.save(order);
+
+        payment.setStatus("succeeded");
+        paymentRepository.save(payment);
+
+        List<OrderItem> items = orderItemRepository.findAllByOrderId(order.getId());
+        List<Ticket> issued = issueTickets(order.getUser(), null, items, OffsetDateTime.now());
+        notificationService.notifyTicketIssued(order.getUser(), order, issued);
+
+        return toOrderResponse(order, items, payment);
     }
 
     @Transactional(readOnly = true)
     public List<OrderResponse> getMyOrders(String actorIdentifier) {
         User actor = resolveActor(actorIdentifier);
         return orderRepository.findAllByUserIdOrderByCreatedAtDesc(actor.getId()).stream()
-            .map(order -> toOrderResponse(order, orderItemRepository.findAllByOrderId(order.getId())))
+            .map(order -> toOrderResponse(
+                order,
+                orderItemRepository.findAllByOrderId(order.getId()),
+                paymentRepository.findFirstByOrderIdOrderByCreatedAtDesc(order.getId()).orElse(null)
+            ))
             .toList();
     }
 
@@ -135,7 +219,11 @@ public class OrderService {
         Order order = orderRepository.findByIdAndUserId(orderId, actor.getId())
             .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
-        return toOrderResponse(order, orderItemRepository.findAllByOrderId(order.getId()));
+        return toOrderResponse(
+            order,
+            orderItemRepository.findAllByOrderId(order.getId()),
+            paymentRepository.findFirstByOrderIdOrderByCreatedAtDesc(order.getId()).orElse(null)
+        );
     }
 
     @Transactional
@@ -160,13 +248,74 @@ public class OrderService {
             }
         }
 
+        paymentRepository.findFirstByOrderIdOrderByCreatedAtDesc(order.getId()).ifPresent(payment -> {
+            if (!"succeeded".equalsIgnoreCase(payment.getStatus())) {
+                payment.setStatus("cancelled");
+                paymentRepository.save(payment);
+            }
+        });
+
         order.setStatus("отменён");
         order.setUpdatedAt(OffsetDateTime.now());
         orderRepository.save(order);
         return Map.of("success", true, "status", order.getStatus());
     }
 
-    private OrderResponse toOrderResponse(Order order, List<OrderItem> items) {
+    private List<OrderItemCreateRequest> normalizeItems(OrderCreateRequest request, Session session) {
+        List<OrderItemCreateRequest> requestItems = request.getItems();
+        if (requestItems == null || requestItems.isEmpty()) {
+            TicketType defaultType = ticketTypeRepository.findFirstBySessionIdAndActiveIsTrueOrderByIdAsc(session.getId())
+                .orElseThrow(() -> new BadRequestException("Для сеанса не настроены типы билетов"));
+
+            OrderItemCreateRequest autoItem = new OrderItemCreateRequest();
+            autoItem.setTicketTypeId(defaultType.getId());
+            autoItem.setQuantity(1);
+            requestItems = List.of(autoItem);
+        }
+
+        for (OrderItemCreateRequest item : requestItems) {
+            if (item.getQuantity() <= 0) {
+                throw new BadRequestException("Количество билетов должно быть больше 0");
+            }
+        }
+
+        return requestItems;
+    }
+
+    private void validateSalesWindow(TicketType ticketType, OffsetDateTime now) {
+        if (ticketType.getSalesStartAt() != null && now.isBefore(ticketType.getSalesStartAt())) {
+            throw new BadRequestException("Продажи по этому сеансу еще не открыты");
+        }
+        if (ticketType.getSalesEndAt() != null && now.isAfter(ticketType.getSalesEndAt())) {
+            throw new BadRequestException("Период продаж по этому сеансу завершен");
+        }
+    }
+
+    private List<Ticket> issueTickets(User actor, Session session, List<OrderItem> items, OffsetDateTime now) {
+        List<Ticket> issued = new ArrayList<>();
+        for (OrderItem item : items) {
+            Session resolvedSession = session == null
+                ? (item.getTicketType() == null ? null : item.getTicketType().getSession())
+                : session;
+            if (resolvedSession == null) {
+                throw new BadRequestException("Cannot resolve session for ticket issuance");
+            }
+            for (int i = 0; i < item.getQuantity(); i++) {
+                Ticket ticket = ticketRepository.save(Ticket.builder()
+                    .orderItem(item)
+                    .user(actor)
+                    .session(resolvedSession)
+                    .status("активен")
+                    .qrToken(UUID.randomUUID().toString())
+                    .issuedAt(now)
+                    .build());
+                issued.add(ticket);
+            }
+        }
+        return issued;
+    }
+
+    private OrderResponse toOrderResponse(Order order, List<OrderItem> items, Payment payment) {
         List<OrderItemResponse> itemResponses = items.stream()
             .map(item -> {
                 List<OrderTicketResponse> tickets = ticketRepository.findAllByOrderItemId(item.getId()).stream()
@@ -192,6 +341,17 @@ public class OrderService {
             })
             .toList();
 
+        String paymentUrl = null;
+        String paymentStatus = null;
+        String paymentProvider = null;
+        if (payment != null) {
+            paymentStatus = payment.getStatus();
+            paymentProvider = payment.getProvider();
+            if (payment.getPayloadJson() != null && payment.getPayloadJson().has("paymentUrl")) {
+                paymentUrl = payment.getPayloadJson().get("paymentUrl").asText(null);
+            }
+        }
+
         return OrderResponse.builder()
             .orderId(order.getId())
             .eventId(order.getEvent() == null ? null : order.getEvent().getId())
@@ -201,6 +361,10 @@ public class OrderService {
             .currency(order.getCurrency())
             .createdAt(order.getCreatedAt() == null ? null : order.getCreatedAt().toLocalDateTime())
             .updatedAt(order.getUpdatedAt() == null ? null : order.getUpdatedAt().toLocalDateTime())
+            .requiresPayment("ожидает_оплаты".equals(order.getStatus()))
+            .paymentStatus(paymentStatus)
+            .paymentProvider(paymentProvider)
+            .paymentUrl(paymentUrl)
             .items(itemResponses)
             .build();
     }

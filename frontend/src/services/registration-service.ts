@@ -2,9 +2,17 @@ import type { Id, Order, SessionRegistration, Ticket } from '@/types';
 import { apiDelete, apiGet, apiPost } from './api-client';
 
 export const registrationService = {
-  async createRegistration(sessionId: Id, _userId: Id): Promise<Order> {
+  async createRegistration(sessionId: Id, _userId: Id, paymentProvider: 'yookassa' | 'sbp' = 'yookassa'): Promise<Order> {
     return apiPost<Order>('/orders', {
       sessionId: Number(sessionId),
+      paymentProvider,
+    });
+  },
+
+  async confirmPayment(orderId: Id, externalPaymentId?: string): Promise<Order> {
+    return apiPost<Order>(`/orders/${orderId}/confirm-payment`, {
+      externalPaymentId,
+      status: 'succeeded',
     });
   },
 

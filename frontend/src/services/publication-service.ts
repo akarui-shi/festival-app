@@ -2,8 +2,12 @@ import type { Id, Publication, PublicationStatus } from '@/types';
 import { ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut } from './api-client';
 
 export const publicationService = {
-  async getPublications(): Promise<Publication[]> {
-    return apiGet<Publication[]>('/publications');
+  async getPublications(params?: { eventId?: Id; organizationId?: Id; title?: string }): Promise<Publication[]> {
+    return apiGet<Publication[]>('/publications', {
+      eventId: params?.eventId,
+      organizationId: params?.organizationId,
+      title: params?.title,
+    });
   },
 
   async getPublicationById(id: Id): Promise<Publication> {

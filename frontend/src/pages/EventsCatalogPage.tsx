@@ -22,6 +22,12 @@ export default function EventsCatalogPage() {
 
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [categoryId, setCategoryId] = useState(searchParams.get('category') || '');
+  const [dateFrom, setDateFrom] = useState(searchParams.get('dateFrom') || '');
+  const [dateTo, setDateTo] = useState(searchParams.get('dateTo') || '');
+  const [participationType, setParticipationType] = useState(searchParams.get('participationType') || '');
+  const [priceFrom, setPriceFrom] = useState(searchParams.get('priceFrom') || '');
+  const [priceTo, setPriceTo] = useState(searchParams.get('priceTo') || '');
+  const [registrationOpen, setRegistrationOpen] = useState(searchParams.get('registrationOpen') || '');
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
@@ -50,7 +56,15 @@ export default function EventsCatalogPage() {
     eventService
       .getEvents({
         size: 400,
+        search,
+        categoryId: categoryId || undefined,
         cityId: selectedCity?.id || undefined,
+        startDate: dateFrom || undefined,
+        endDate: dateTo || undefined,
+        participationType: participationType || undefined,
+        priceFrom: priceFrom ? Number(priceFrom) : undefined,
+        priceTo: priceTo ? Number(priceTo) : undefined,
+        registrationOpen: registrationOpen === '' ? undefined : registrationOpen === 'true',
       })
       .then((eventsResponse) => {
         if (!active) return;
@@ -63,56 +77,41 @@ export default function EventsCatalogPage() {
     return () => {
       active = false;
     };
-  }, [selectedCity?.id]);
+  }, [selectedCity?.id, search, categoryId, dateFrom, dateTo, participationType, priceFrom, priceTo, registrationOpen]);
 
   useEffect(() => {
     const nextParams: Record<string, string> = {};
 
     if (search) nextParams.search = search;
     if (categoryId) nextParams.category = categoryId;
+    if (dateFrom) nextParams.dateFrom = dateFrom;
+    if (dateTo) nextParams.dateTo = dateTo;
+    if (participationType) nextParams.participationType = participationType;
+    if (priceFrom) nextParams.priceFrom = priceFrom;
+    if (priceTo) nextParams.priceTo = priceTo;
+    if (registrationOpen) nextParams.registrationOpen = registrationOpen;
 
     setSearchParams(nextParams, { replace: true });
-  }, [search, categoryId, setSearchParams]);
+  }, [search, categoryId, dateFrom, dateTo, participationType, priceFrom, priceTo, registrationOpen, setSearchParams]);
 
-  const filteredEvents = useMemo(() => {
-    const searchTerms = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
-
-    return events.filter((event) => {
-      const searchableText = [
-        event.title,
-        event.shortDescription,
-        event.description,
-        event.category?.name,
-        ...(event.categories || []).map((category) => category.name),
-        event.city?.name,
-        ...(event.tags || []),
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-
-      const matchesSearch = searchTerms.length === 0 || searchTerms.every((term) => searchableText.includes(term));
-      const matchesCategory = !categoryId
-        || String(event.categoryId || '') === categoryId
-        || (event.categories || []).some((category) => String(category.id) === categoryId);
-      const matchesCity = !selectedCity
-        || String(event.cityId || '') === String(selectedCity.id)
-        || (event.city?.name?.toLowerCase() === selectedCity.name.toLowerCase());
-
-      return matchesSearch && matchesCategory && matchesCity;
-    });
-  }, [events, search, categoryId, selectedCity]);
+  const filteredEvents = useMemo(() => events, [events]);
 
   const loading = eventsLoading || categoriesLoading;
   const selectedCityLabel = selectedCity
     ? `${selectedCity.name}${selectedCity.region ? `, ${selectedCity.region}` : ''}`
     : '';
 
-  const hasFilters = Boolean(search || categoryId);
+  const hasFilters = Boolean(search || categoryId || dateFrom || dateTo || participationType || priceFrom || priceTo || registrationOpen);
 
   const clearFilters = () => {
     setSearch('');
     setCategoryId('');
+    setDateFrom('');
+    setDateTo('');
+    setParticipationType('');
+    setPriceFrom('');
+    setPriceTo('');
+    setRegistrationOpen('');
   };
 
   if (loading) {
@@ -141,7 +140,7 @@ export default function EventsCatalogPage() {
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Поиск мероприятий…"
+              placeholder="Поиск мероприятий, организаций и артистов…"
               className="pl-9"
             />
           </div>
@@ -183,6 +182,31 @@ export default function EventsCatalogPage() {
                 {category.name}
               </button>
             ))}
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} placeholder="Дата с" />
+            <Input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} placeholder="Дата по" />
+            <select
+              value={participationType}
+              onChange={(event) => setParticipationType(event.target.value)}
+              className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="">Тип участия</option>
+              <option value="free">Бесплатно</option>
+              <option value="paid">Платно</option>
+            </select>
+            <select
+              value={registrationOpen}
+              onChange={(event) => setRegistrationOpen(event.target.value)}
+              className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="">Статус регистрации</option>
+              <option value="true">Открыта</option>
+              <option value="false">Закрыта</option>
+            </select>
+            <Input type="number" min={0} value={priceFrom} onChange={(event) => setPriceFrom(event.target.value)} placeholder="Цена от" />
+            <Input type="number" min={0} value={priceTo} onChange={(event) => setPriceTo(event.target.value)} placeholder="Цена до" />
           </div>
 
           {hasFilters && (

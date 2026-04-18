@@ -13,6 +13,8 @@ interface AuthContextType {
     lastName: string,
     role?: 'RESIDENT' | 'ORGANIZER',
     companyName?: string,
+    organizationId?: number,
+    joinRequestMessage?: string,
   ) => Promise<void>;
   logout: () => void;
   updateUser: (data: Partial<User>) => Promise<void>;
@@ -51,8 +53,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     lastName: string,
     role?: 'RESIDENT' | 'ORGANIZER',
     companyName?: string,
+    organizationId?: number,
+    joinRequestMessage?: string,
   ) => {
-    const res = await authService.register({ email, password, firstName, lastName, role, companyName });
+    const res = await authService.register({
+      email,
+      password,
+      firstName,
+      lastName,
+      role,
+      companyName,
+      organizationId,
+      joinRequestMessage,
+    });
     setUser(res.user);
   }, []);
 

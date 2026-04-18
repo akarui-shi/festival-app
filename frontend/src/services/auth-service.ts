@@ -48,6 +48,8 @@ export const authService = {
       lastName: req.lastName,
       role: req.role || 'RESIDENT',
       companyName: req.companyName,
+      organizationId: req.organizationId,
+      joinRequestMessage: req.joinRequestMessage,
     });
 
     return normalizeAuthResponse(response);
@@ -80,7 +82,7 @@ export const authService = {
     }
 
     const login = localStorage.getItem(CURRENT_USER_LOGIN_KEY) || buildLoginFromEmail(current.email);
-    const response = await apiPut<AuthResponse>('/users/me', {
+    const response = await apiPut<User>('/users/me', {
       login,
       email: data.email ?? current.email,
       firstName: data.firstName ?? current.firstName,
@@ -89,7 +91,8 @@ export const authService = {
       avatarUrl: data.avatarUrl ?? current.avatarUrl ?? '',
     });
 
-    return normalizeAuthResponse(response).user;
+    persistUser(response, response.login, localStorage.getItem('auth_token') || undefined);
+    return response;
   },
 
   logout(): void {

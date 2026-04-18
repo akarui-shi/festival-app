@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface OrganizationMemberRepository extends JpaRepository<OrganizationMember, Long> {
 
@@ -15,5 +16,15 @@ public interface OrganizationMemberRepository extends JpaRepository<Organization
     @EntityGraph(attributePaths = {"organization", "organization.city"})
     Optional<OrganizationMember> findFirstByUserIdAndOrganizationStatusAndLeftAtIsNull(Long userId, String status);
 
+    @EntityGraph(attributePaths = {"organization", "organization.city", "user"})
+    List<OrganizationMember> findAllByOrganizationIdAndLeftAtIsNull(Long organizationId);
+
+    @EntityGraph(attributePaths = {"organization", "organization.city", "user"})
+    Optional<OrganizationMember> findFirstByOrganizationIdAndOrganizationStatusAndLeftAtIsNull(Long organizationId, String status);
+
     boolean existsByUserIdAndOrganizationIdAndLeftAtIsNull(Long userId, Long organizationId);
+
+    boolean existsByUserIdAndOrganizationIdAndOrganizationStatusInAndLeftAtIsNull(Long userId,
+                                                                                   Long organizationId,
+                                                                                   Set<String> statuses);
 }

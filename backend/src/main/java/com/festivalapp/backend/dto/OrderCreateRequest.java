@@ -18,4 +18,10 @@ public class OrderCreateRequest {
     private List<OrderItemCreateRequest> items;
 
     private String currency;
+
+    private String paymentProvider;
+
+    private String successUrl;
+
+    private String cancelUrl;
 }
