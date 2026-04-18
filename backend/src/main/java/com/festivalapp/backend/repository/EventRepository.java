@@ -1,36 +1,23 @@
 package com.festivalapp.backend.repository;
 
 import com.festivalapp.backend.entity.Event;
-import com.festivalapp.backend.entity.EventStatus;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecificationExecutor<Event> {
+public interface EventRepository extends JpaRepository<Event, Long> {
 
-    @EntityGraph(attributePaths = {"organization", "categories", "venue", "venue.city", "sessions"})
-    List<Event> findAll(Specification<Event> specification, Sort sort);
+    @EntityGraph(attributePaths = {"organization", "organization.city", "createdByUser", "city"})
+    List<Event> findAllByDeletedAtIsNullOrderByCreatedAtDesc();
 
-    @EntityGraph(attributePaths = {"organization", "categories", "venue", "venue.city", "sessions", "eventImages"})
-    @Query("select e from Event e where e.id = :id")
-    Optional<Event> findDetailedById(@Param("id") Long id);
+    @EntityGraph(attributePaths = {"organization", "organization.city", "createdByUser", "city"})
+    List<Event> findAllByOrganizationIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long organizationId);
 
-    @EntityGraph(attributePaths = {"organization", "categories", "venue", "venue.city", "sessions"})
-    List<Event> findAllByOrganizationId(Long organizationId, Sort sort);
+    @EntityGraph(attributePaths = {"organization", "organization.city", "createdByUser", "city"})
+    List<Event> findAllByCreatedByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long userId);
 
-    @EntityGraph(attributePaths = {"organization", "categories", "venue", "venue.city", "sessions"})
-    List<Event> findAllByOrganizationIdAndStatus(Long organizationId, EventStatus status, Sort sort);
-
-    @EntityGraph(attributePaths = {"organization", "categories", "venue", "venue.city", "sessions"})
-    List<Event> findAllByStatus(EventStatus status, Sort sort);
-
-    @EntityGraph(attributePaths = {"organization", "categories", "venue", "venue.city", "sessions"})
-    List<Event> findAllByStatusAndVenueCityId(EventStatus status, Long cityId, Sort sort);
+    @EntityGraph(attributePaths = {"organization", "organization.city", "createdByUser", "city"})
+    Optional<Event> findByIdAndDeletedAtIsNull(Long id);
 }

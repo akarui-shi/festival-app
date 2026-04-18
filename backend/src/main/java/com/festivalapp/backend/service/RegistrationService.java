@@ -3,236 +3,179 @@ package com.festivalapp.backend.service;
 import com.festivalapp.backend.dto.MyRegistrationResponse;
 import com.festivalapp.backend.dto.RegistrationCreateRequest;
 import com.festivalapp.backend.dto.RegistrationResponse;
-import com.festivalapp.backend.entity.EventStatus;
-import com.festivalapp.backend.entity.Registration;
-import com.festivalapp.backend.entity.RegistrationStatus;
-import com.festivalapp.backend.entity.RoleName;
+import com.festivalapp.backend.entity.Order;
+import com.festivalapp.backend.entity.OrderItem;
 import com.festivalapp.backend.entity.Session;
+import com.festivalapp.backend.entity.Ticket;
+import com.festivalapp.backend.entity.TicketType;
 import com.festivalapp.backend.entity.User;
-import com.festivalapp.backend.entity.Venue;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
-import com.festivalapp.backend.repository.RegistrationRepository;
+import com.festivalapp.backend.repository.OrderItemRepository;
+import com.festivalapp.backend.repository.OrderRepository;
 import com.festivalapp.backend.repository.SessionRepository;
+import com.festivalapp.backend.repository.TicketRepository;
+import com.festivalapp.backend.repository.TicketTypeRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.format.DateTimeFormatter;
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class RegistrationService {
 
-    private static final Set<RegistrationStatus> ACTIVE_REGISTRATION_STATUSES =
-        Set.of(RegistrationStatus.CREATED);
-    private static final DateTimeFormatter SESSION_TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
-
-    private final RegistrationRepository registrationRepository;
-    private final SessionRepository sessionRepository;
     private final UserRepository userRepository;
+    private final SessionRepository sessionRepository;
+    private final TicketTypeRepository ticketTypeRepository;
+    private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
+    private final TicketRepository ticketRepository;
 
     @Transactional
     public RegistrationResponse create(RegistrationCreateRequest request, String actorIdentifier) {
-        User user = loadActor(actorIdentifier);
-        if (hasRole(user, RoleName.ROLE_ADMIN) || hasRole(user, RoleName.ROLE_ORGANIZER)) {
-            throw new AccessDeniedException("Только жители могут регистрироваться на мероприятия");
+        User actor = resolveActor(actorIdentifier);
+        Session session = sessionRepository.findById(request.getSessionId())
+            .orElseThrow(() -> new ResourceNotFoundException("Session not found"));
+
+        int requested = request.getQuantity();
+        if (requested <= 0) {
+            throw new BadRequestException("Quantity must be positive");
         }
 
-        Session session = sessionRepository.findDetailedById(request.getSessionId())
-            .orElseThrow(() -> new ResourceNotFoundException("Session not found: " + request.getSessionId()));
-        if (session.getEvent() == null || session.getEvent().getStatus() != EventStatus.PUBLISHED) {
-            throw new ResourceNotFoundException("Session not found: " + request.getSessionId());
+        long occupied = ticketRepository.countBySessionIdAndStatus(session.getId(), "активен");
+        int capacity = session.getSeatLimit() == null ? Integer.MAX_VALUE : session.getSeatLimit();
+        if (occupied + requested > capacity) {
+            throw new BadRequestException("Недостаточно свободных мест");
         }
 
-        boolean alreadyRegistered = registrationRepository.existsByUserIdAndSessionIdAndStatusIn(
-            user.getId(),
-            session.getId(),
-            ACTIVE_REGISTRATION_STATUSES
-        );
-        if (alreadyRegistered) {
-            throw new BadRequestException("User already has an active registration for this session");
+        TicketType ticketType = ticketTypeRepository.findFirstBySessionIdAndActiveIsTrueOrderByIdAsc(session.getId())
+            .orElseGet(() -> ticketTypeRepository.save(TicketType.builder()
+                .session(session)
+                .name("Стандарт")
+                .price(BigDecimal.ZERO)
+                .currency("RUB")
+                .quota(capacity)
+                .active(true)
+                .build()));
+
+        OffsetDateTime now = OffsetDateTime.now();
+
+        Order order = orderRepository.save(Order.builder()
+            .user(actor)
+            .event(session.getEvent())
+            .status("завершён")
+            .totalAmount(ticketType.getPrice().multiply(BigDecimal.valueOf(requested)))
+            .currency(ticketType.getCurrency())
+            .createdAt(now)
+            .updatedAt(now)
+            .build());
+
+        OrderItem orderItem = orderItemRepository.save(OrderItem.builder()
+            .order(order)
+            .ticketType(ticketType)
+            .quantity(requested)
+            .unitPrice(ticketType.getPrice())
+            .lineTotal(ticketType.getPrice().multiply(BigDecimal.valueOf(requested)))
+            .build());
+
+        List<Ticket> createdTickets = new ArrayList<>();
+        for (int i = 0; i < requested; i++) {
+            createdTickets.add(ticketRepository.save(Ticket.builder()
+                .orderItem(orderItem)
+                .user(actor)
+                .session(session)
+                .status("активен")
+                .qrToken(UUID.randomUUID().toString())
+                .issuedAt(now)
+                .build()));
         }
 
-        int totalCapacity = safeCapacity(session);
-        int reservedSeats = getReservedSeats(session.getId());
-        int availableSeats = Math.max(totalCapacity - reservedSeats, 0);
+        String qrToken = createdTickets.isEmpty() ? null : createdTickets.get(0).getQrToken();
 
-        if (request.getQuantity() > availableSeats) {
-            throw new BadRequestException("Not enough seats");
-        }
-
-        Registration registration = Registration.builder()
-            .user(user)
-            .session(session)
-            .quantity(request.getQuantity())
-            .status(RegistrationStatus.CREATED)
-            .qrToken(generateUniqueQrToken())
+        return RegistrationResponse.builder()
+            .registrationId(order.getId())
+            .sessionId(session.getId())
+            .eventId(session.getEvent() == null ? null : session.getEvent().getId())
+            .eventTitle(session.getEvent() == null ? null : session.getEvent().getTitle())
+            .sessionTitle(session.getSessionTitle())
+            .venueName(session.getVenue() == null ? null : session.getVenue().getName())
+            .startAt(session.getStartsAt() == null ? null : session.getStartsAt().toLocalDateTime())
+            .quantity(requested)
+            .status(com.festivalapp.backend.entity.RegistrationStatus.CREATED)
+            .qrToken(qrToken)
+            .createdAt(now.toLocalDateTime())
             .build();
-
-        Registration saved;
-        try {
-            saved = registrationRepository.save(registration);
-        } catch (DataIntegrityViolationException ex) {
-            throw new BadRequestException(resolveRegistrationIntegrityMessage(ex));
-        }
-        return toRegistrationResponse(saved);
     }
 
     @Transactional(readOnly = true)
     public List<MyRegistrationResponse> getMyRegistrations(String actorIdentifier) {
-        User user = loadActor(actorIdentifier);
+        User actor = resolveActor(actorIdentifier);
 
-        return registrationRepository.findAllByUserIdWithDetails(user.getId()).stream()
-            .map(this::toMyRegistrationResponse)
+        Map<Long, Ticket> firstTicketByOrderId = new LinkedHashMap<>();
+        for (Ticket ticket : ticketRepository.findAllByUserIdOrderByIssuedAtDesc(actor.getId())) {
+            if (ticket.getOrderItem() == null || ticket.getOrderItem().getOrder() == null) {
+                continue;
+            }
+            Long orderId = ticket.getOrderItem().getOrder().getId();
+            firstTicketByOrderId.putIfAbsent(orderId, ticket);
+        }
+
+        return firstTicketByOrderId.values().stream()
+            .map(ticket -> {
+                Session session = ticket.getSession();
+                OrderItem item = ticket.getOrderItem();
+                return MyRegistrationResponse.builder()
+                    .registrationId(item.getOrder().getId())
+                    .sessionId(session == null ? null : session.getId())
+                    .eventId(session == null || session.getEvent() == null ? null : session.getEvent().getId())
+                    .eventTitle(session == null || session.getEvent() == null ? null : session.getEvent().getTitle())
+                    .sessionTitle(session == null ? null : session.getSessionTitle())
+                    .venueName(session == null || session.getVenue() == null ? null : session.getVenue().getName())
+                    .startAt(session == null || session.getStartsAt() == null ? null : session.getStartsAt().toLocalDateTime())
+                    .quantity(item == null ? 1 : item.getQuantity())
+                    .status(DomainStatusMapper.toRegistrationStatus(ticket.getStatus()))
+                    .qrToken(ticket.getQrToken())
+                    .createdAt(ticket.getIssuedAt() == null ? null : ticket.getIssuedAt().toLocalDateTime())
+                    .build();
+            })
             .toList();
     }
 
     @Transactional
     public Map<String, Object> cancelRegistration(Long id, String actorIdentifier) {
-        User user = loadActor(actorIdentifier);
+        User actor = resolveActor(actorIdentifier);
+        Order order = orderRepository.findByIdAndUserId(id, actor.getId())
+            .orElseThrow(() -> new ResourceNotFoundException("Registration not found"));
 
-        Registration registration = registrationRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Registration not found: " + id));
-
-        if (!registration.getUser().getId().equals(user.getId())) {
-            throw new AccessDeniedException("You can cancel only your registrations");
+        List<OrderItem> items = orderItemRepository.findAllByOrderId(order.getId());
+        for (OrderItem item : items) {
+            List<Ticket> tickets = ticketRepository.findAllByOrderItemId(item.getId());
+            for (Ticket ticket : tickets) {
+                ticket.setStatus("возвращён");
+                ticket.setUsedAt(OffsetDateTime.now());
+                ticketRepository.save(ticket);
+            }
         }
 
-        if (registration.getStatus() == RegistrationStatus.CANCELLED) {
-            return Map.of(
-                "message", "Registration already cancelled",
-                "registrationId", registration.getId(),
-                "status", registration.getStatus()
-            );
-        }
+        order.setStatus("отменён");
+        order.setUpdatedAt(OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC));
+        orderRepository.save(order);
 
-        registration.setStatus(RegistrationStatus.CANCELLED);
-        registrationRepository.save(registration);
-
-        return Map.of(
-            "message", "Registration cancelled successfully",
-            "registrationId", registration.getId(),
-            "status", registration.getStatus()
-        );
+        return Map.of("success", true);
     }
 
-    private User loadActor(String actorIdentifier) {
+    private User resolveActor(String actorIdentifier) {
         return userRepository.findByLoginOrEmailWithRoles(actorIdentifier)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-    }
-
-    private boolean hasRole(User user, RoleName roleName) {
-        return user.getUserRoles().stream()
-            .anyMatch(userRole -> userRole.getRole().getName() == roleName);
-    }
-
-    private String generateUniqueQrToken() {
-        // UUID token is sufficient as a unique QR payload for current scope.
-        String token;
-        do {
-            token = UUID.randomUUID().toString();
-        } while (registrationRepository.existsByQrToken(token));
-        return token;
-    }
-
-    private int getReservedSeats(Long sessionId) {
-        Integer reservedSeats = registrationRepository.sumParticipantsBySessionIdAndStatuses(
-            sessionId,
-            ACTIVE_REGISTRATION_STATUSES
-        );
-        return reservedSeats == null ? 0 : reservedSeats;
-    }
-
-    private int safeCapacity(Session session) {
-        if (session != null && session.getCapacity() != null && session.getCapacity() > 0) {
-            return session.getCapacity();
-        }
-        Venue venue = resolveSessionVenue(session);
-        if (venue == null || venue.getCapacity() == null) {
-            return 0;
-        }
-        return venue.getCapacity();
-    }
-
-    private RegistrationResponse toRegistrationResponse(Registration registration) {
-        Session session = registration.getSession();
-        Venue venue = resolveSessionVenue(session);
-
-        return RegistrationResponse.builder()
-            .registrationId(registration.getId())
-            .sessionId(session.getId())
-            .eventId(session.getEvent() != null ? session.getEvent().getId() : null)
-            .eventTitle(session.getEvent() != null ? session.getEvent().getTitle() : null)
-            .sessionTitle(buildSessionLabel(session))
-            .venueName(venue != null ? venue.getName() : null)
-            .startAt(session.getStartTime())
-            .quantity(registration.getQuantity())
-            .status(registration.getStatus())
-            .qrToken(registration.getQrToken())
-            .createdAt(registration.getCreatedAt())
-            .build();
-    }
-
-    private MyRegistrationResponse toMyRegistrationResponse(Registration registration) {
-        Session session = registration.getSession();
-        Venue venue = resolveSessionVenue(session);
-
-        return MyRegistrationResponse.builder()
-            .registrationId(registration.getId())
-            .sessionId(session.getId())
-            .eventId(session.getEvent() != null ? session.getEvent().getId() : null)
-            .eventTitle(session.getEvent() != null ? session.getEvent().getTitle() : null)
-            .sessionTitle(buildSessionLabel(session))
-            .venueName(venue != null ? venue.getName() : null)
-            .startAt(session.getStartTime())
-            .quantity(registration.getQuantity())
-            .status(registration.getStatus())
-            .qrToken(registration.getQrToken())
-            .createdAt(registration.getCreatedAt())
-            .build();
-    }
-
-    private Venue resolveSessionVenue(Session session) {
-        if (session == null) {
-            return null;
-        }
-        return session.getEvent() != null ? session.getEvent().getVenue() : null;
-    }
-
-    private String buildSessionLabel(Session session) {
-        if (session == null || session.getStartTime() == null || session.getEndTime() == null) {
-            return "Сеанс";
-        }
-        return session.getStartTime().format(SESSION_TIME_FORMATTER)
-            + "-" + session.getEndTime().format(SESSION_TIME_FORMATTER);
-    }
-
-    private String resolveRegistrationIntegrityMessage(DataIntegrityViolationException ex) {
-        String rawMessage = ex.getMostSpecificCause() != null
-            ? ex.getMostSpecificCause().getMessage()
-            : ex.getMessage();
-        String normalized = rawMessage == null ? "" : rawMessage.toLowerCase();
-
-        if (normalized.contains("registrations_status_check")) {
-            return "Не удалось создать регистрацию: недопустимый статус регистрации";
-        }
-        if (normalized.contains("qr_token")) {
-            return "Не удалось создать регистрацию: конфликт QR-токена";
-        }
-        if (normalized.contains("session_id")) {
-            return "Не удалось создать регистрацию: сеанс не найден";
-        }
-        if (normalized.contains("user_id")) {
-            return "Не удалось создать регистрацию: пользователь не найден";
-        }
-        return "Не удалось создать регистрацию";
     }
 }

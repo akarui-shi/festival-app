@@ -41,8 +41,6 @@ app:
   upload:
     dir: uploads
     max-file-size-bytes: 5242880
-  seed:
-    legacy-enabled: ${APP_SEED_LEGACY_ENABLED:false}
 
 yandex:
   metrika:

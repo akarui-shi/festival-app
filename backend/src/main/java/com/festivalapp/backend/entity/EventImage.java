@@ -32,11 +32,12 @@ public class EventImage {
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
-    @Column(name = "image_url", nullable = false)
-    private String imageUrl;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "image_id", nullable = false)
+    private Image image;
 
-    @Column(name = "is_cover", nullable = false)
-    private boolean isCover;
+    @Column(name = "is_primary", nullable = false)
+    private boolean primary;
 
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;

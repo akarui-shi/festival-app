@@ -23,21 +23,29 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "user_roles")
-public class UserRole {
+@Table(name = "moderations")
+public class Moderation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "admin_id", nullable = false)
+    private User admin;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "role_id", nullable = false)
-    private Role role;
+    @Column(name = "entity_type", nullable = false)
+    private String entityType;
 
-    @Column(name = "assigned_at", nullable = false)
-    private OffsetDateTime assignedAt;
+    @Column(name = "entity_id", nullable = false)
+    private Long entityId;
+
+    @Column(nullable = false)
+    private String decision;
+
+    @Column(name = "moderator_comment")
+    private String moderatorComment;
+
+    @Column(name = "decided_at", nullable = false)
+    private OffsetDateTime decidedAt;
 }

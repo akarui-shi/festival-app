@@ -5,16 +5,15 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -32,11 +31,15 @@ public class City {
     @Column(nullable = false)
     private String name;
 
+    @Column
     private String region;
 
-    private String country;
+    @Column(name = "is_active", nullable = false)
+    private boolean active;
 
-    @Builder.Default
-    @OneToMany(mappedBy = "city")
-    private Set<Venue> venues = new HashSet<>();
+    @Column(name = "created_at", nullable = false)
+    private OffsetDateTime createdAt;
+
+    @Transient
+    private String country;
 }

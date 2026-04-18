@@ -23,21 +23,34 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "user_roles")
-public class UserRole {
+@Table(name = "tickets")
+public class Ticket {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_item_id", nullable = false)
+    private OrderItem orderItem;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "role_id", nullable = false)
-    private Role role;
+    @JoinColumn(name = "session_id", nullable = false)
+    private Session session;
 
-    @Column(name = "assigned_at", nullable = false)
-    private OffsetDateTime assignedAt;
+    @Column(nullable = false)
+    private String status;
+
+    @Column(name = "qr_token", nullable = false)
+    private String qrToken;
+
+    @Column(name = "issued_at", nullable = false)
+    private OffsetDateTime issuedAt;
+
+    @Column(name = "used_at")
+    private OffsetDateTime usedAt;
 }

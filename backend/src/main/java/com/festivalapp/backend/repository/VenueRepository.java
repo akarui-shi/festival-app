@@ -12,5 +12,8 @@ public interface VenueRepository extends JpaRepository<Venue, Long> {
     @EntityGraph(attributePaths = {"city"})
     List<Venue> findAllByOrderByNameAsc();
 
+    @EntityGraph(attributePaths = {"city"})
+    List<Venue> findAllByCityIdOrderByNameAsc(Long cityId);
+
     Optional<Venue> findFirstByAddressIgnoreCaseAndCityId(String address, Long cityId);
 }
