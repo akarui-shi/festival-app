@@ -6,11 +6,13 @@ import com.festivalapp.backend.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
 @Order(1)
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "app.seed.legacy-enabled", havingValue = "true")
 public class RoleDataInitializer implements CommandLineRunner {
 
     private final RoleRepository roleRepository;

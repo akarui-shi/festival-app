@@ -32,6 +32,7 @@ import com.festivalapp.backend.repository.UserRepository;
 import com.festivalapp.backend.repository.UserRoleRepository;
 import com.festivalapp.backend.repository.VenueRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -52,6 +53,7 @@ import java.util.Set;
 @Component
 @Order(3)
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "app.seed.legacy-enabled", havingValue = "true")
 public class DemoDataInitializer implements CommandLineRunner {
 
     private static final String DEMO_PASSWORD = "Passw0rd123";

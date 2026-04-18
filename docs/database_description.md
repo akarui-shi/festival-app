@@ -1,100 +1,39 @@
-# Описание базы данных
+# Описание базы данных (v2)
 
-## Основные сущности
+Проект переведён на явные миграции Flyway. Финальная схема БД реализована в файле:
 
-User
-- id
-- login
-- email
-- phone
-- password_hash
-- first_name
-- last_name
-- avatar_url
-- created_at
-- status
+- `backend/src/main/resources/db/migration/V1__new_er_schema.sql`
 
-Role
-- id
-- name
+Схема полностью повторяет финальную ER-модель и включает:
 
-UserRole
-- user_id
-- role_id
+- `users`, `roles`, `user_roles`
+- `cities`
+- `organizations`, `organization_members`
+- `events`, `categories`, `event_categories`
+- `artists`, `event_artists`
+- `venues`, `sessions`
+- `ticket_types`, `orders`, `order_items`, `tickets`, `payments`, `refunds`
+- `favorites`, `comments`
+- `publications`
+- `images`, `event_images`, `publication_images`, `organization_images`, `artist_images`
+- `moderations`
 
-Organizer
-- id
-- user_id
-- name
-- description
-- contacts
+## Принципы схемы
 
-Event
-- id
-- title
-- short_description
-- full_description
-- age_rating
-- created_at
-- status
-- organizer_id
+- Все связи между сущностями заданы внешними ключами.
+- Для статусов добавлены `CHECK`-ограничения (модерация, публикации, заказы, билеты и т.д.).
+- Для бизнес-критичных уникальностей добавлены `UNIQUE`-ограничения (логин/email, избранное, связи many-to-many).
+- Для производительности добавлены индексы по FK, статусам и типовым фильтрам.
+- Для ряда сущностей предусмотрено soft-delete поле `deleted_at`.
 
-Category
-- id
-- name
-- description
+## Инициализация данных
 
-EventCategory
-- event_id
-- category_id
+В миграции добавлены базовые сиды:
 
-City
-- id
-- name
-- region
-- country
+- роли: Житель, Организатор, Администратор
+- категории: Музыка, Театр, Выставка, Городской праздник
+- города: Коломна, Москва, Рязань, Тула
 
-Venue
-- id
-- name
-- address
-- latitude
-- longitude
-- capacity
-- city_id
+## Важное замечание
 
-Session
-- id
-- event_id
-- venue_id
-- start_time
-- end_time
-
-Registration
-- id
-- user_id
-- session_id
-- participants_count
-- status
-- qr_token
-
-Review
-- id
-- user_id
-- event_id
-- rating
-- text
-- created_at
-
-Favorite
-- id
-- user_id
-- event_id
-
-Publication
-- id
-- title
-- content
-- status
-- created_at
-- author_id
+Миграция `V1__new_er_schema.sql` носит **destructive**-характер: она удаляет legacy-таблицы и пересоздаёт схему под новую архитектуру.
