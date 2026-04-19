@@ -14,6 +14,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 
@@ -42,8 +44,9 @@ public class Image {
     @Column(name = "file_url", nullable = false)
     private String fileUrl;
 
-    @Column(name = "alt_text")
-    private String altText;
+    @JdbcTypeCode(SqlTypes.LONGVARBINARY)
+    @Column(name = "file_data", columnDefinition = "bytea")
+    private byte[] fileData;
 
     @Column
     private Integer width;

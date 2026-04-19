@@ -28,7 +28,9 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
@@ -101,8 +103,8 @@ public class SessionService {
             .event(event)
             .venue(venue)
             .sessionTitle(StringUtils.hasText(request.getSessionTitle()) ? request.getSessionTitle().trim() : event.getTitle())
-            .startsAt(request.getStartAt().atOffset(ZoneOffset.UTC))
-            .endsAt(request.getEndAt().atOffset(ZoneOffset.UTC))
+            .startsAt(toSystemOffset(request.getStartAt()))
+            .endsAt(toSystemOffset(request.getEndAt()))
             .seatLimit(request.getCapacity())
             .manualAddress(venue == null ? normalize(request.getManualAddress()) : null)
             .latitude(venue == null ? request.getLatitude() : null)
@@ -154,10 +156,10 @@ public class SessionService {
         }
 
         if (request.getStartAt() != null) {
-            session.setStartsAt(request.getStartAt().atOffset(ZoneOffset.UTC));
+            session.setStartsAt(toSystemOffset(request.getStartAt()));
         }
         if (request.getEndAt() != null) {
-            session.setEndsAt(request.getEndAt().atOffset(ZoneOffset.UTC));
+            session.setEndsAt(toSystemOffset(request.getEndAt()));
         }
         if (request.getCapacity() != null) {
             session.setSeatLimit(request.getCapacity());
@@ -314,8 +316,8 @@ public class SessionService {
         pricing.setPrice(price.max(BigDecimal.ZERO));
         pricing.setCurrency(StringUtils.hasText(requestedCurrency) ? requestedCurrency.trim().toUpperCase() : "RUB");
         pricing.setQuota(session.getSeatLimit() == null ? 10000 : session.getSeatLimit());
-        pricing.setSalesStartAt(salesStartAt == null ? OffsetDateTime.now().minusDays(1) : salesStartAt.atOffset(ZoneOffset.UTC));
-        pricing.setSalesEndAt(salesEndAt == null ? session.getStartsAt() : salesEndAt.atOffset(ZoneOffset.UTC));
+        pricing.setSalesStartAt(salesStartAt == null ? OffsetDateTime.now().minusDays(1) : toSystemOffset(salesStartAt));
+        pricing.setSalesEndAt(salesEndAt == null ? session.getStartsAt() : toSystemOffset(salesEndAt));
         ticketTypeRepository.save(pricing);
     }
 
@@ -362,5 +364,9 @@ public class SessionService {
             return null;
         }
         return value.trim();
+    }
+
+    private OffsetDateTime toSystemOffset(LocalDateTime value) {
+        return value.atZone(ZoneId.systemDefault()).toOffsetDateTime();
     }
 }

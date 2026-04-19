@@ -85,7 +85,15 @@ function toShortAddress(address?: string): string {
 
 export function EventCard({ event, onFavoriteToggle, isFavorite }: EventCardProps) {
   const image = event.coverUrl || event.imageUrl || '/placeholder.svg';
-  const categoryName = event.category?.name || event.categories?.[0]?.name || 'Событие';
+  const categoryNames = (event.categories || [])
+    .map((category) => category?.name)
+    .filter((name): name is string => Boolean(name && name.trim()));
+  if (categoryNames.length === 0 && event.category?.name) {
+    categoryNames.push(event.category.name);
+  }
+  if (categoryNames.length === 0) {
+    categoryNames.push('Событие');
+  }
   const ageRestriction = '6+';
   const eventDate = event.nextSessionAt || event.startDate || event.createdAt || '';
   const eventAddress = toShortAddress(event.venue?.address || event.venueAddress || '') || event.venue?.name || event.venueName || 'Площадка уточняется';
@@ -104,10 +112,12 @@ export function EventCard({ event, onFavoriteToggle, isFavorite }: EventCardProp
           loading="lazy"
         />
 
-        <div className="absolute left-3 top-3 flex gap-1.5">
-          <Badge variant="secondary" className="bg-card/90 text-xs font-semibold backdrop-blur-sm">
-            {categoryName}
-          </Badge>
+        <div className="absolute left-3 top-3 flex max-w-[calc(100%-5rem)] flex-wrap gap-1.5">
+          {categoryNames.map((categoryName, index) => (
+            <Badge key={`${categoryName}-${index}`} variant="secondary" className="bg-card/90 text-xs font-semibold backdrop-blur-sm">
+              {categoryName}
+            </Badge>
+          ))}
           <Badge variant="outline" className="border-card/60 bg-card/90 text-xs backdrop-blur-sm">
             {ageRestriction}
           </Badge>

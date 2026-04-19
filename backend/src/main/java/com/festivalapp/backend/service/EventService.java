@@ -442,6 +442,8 @@ public class EventService {
             if (requested != null && DomainStatusMapper.toEventStatus(event.getStatus()) != requested) {
                 return false;
             }
+        } else if (DomainStatusMapper.toEventStatus(event.getStatus()) != EventStatus.PUBLISHED) {
+            return false;
         }
 
         if (StringUtils.hasText(participationType)) {
@@ -871,24 +873,26 @@ public class EventService {
             return;
         }
 
+        boolean primarySelected = false;
         int fallbackOrder = 0;
         for (EventImageRequest imageRequest : imageRequests) {
-            if (!StringUtils.hasText(imageRequest.getImageUrl())) {
+            Image image = resolveImage(imageRequest.getImageId(), imageRequest.getImageUrl());
+            if (image == null) {
                 continue;
             }
 
-            Image image = imageRepository.save(Image.builder()
-                .fileName(fileNameFromUrl(imageRequest.getImageUrl()))
-                .mimeType("image/*")
-                .fileSize(0L)
-                .fileUrl(imageRequest.getImageUrl().trim())
-                .uploadedAt(OffsetDateTime.now())
-                .build());
+            boolean markPrimary = Boolean.TRUE.equals(imageRequest.getIsCover());
+            if (markPrimary && primarySelected) {
+                markPrimary = false;
+            }
+            if (markPrimary) {
+                primarySelected = true;
+            }
 
             eventImageRepository.save(EventImage.builder()
                 .event(event)
                 .image(image)
-                .primary(Boolean.TRUE.equals(imageRequest.getIsCover()))
+                .primary(markPrimary)
                 .sortOrder(imageRequest.getSortOrder() == null ? fallbackOrder : imageRequest.getSortOrder())
                 .build());
             fallbackOrder++;
@@ -1033,6 +1037,48 @@ public class EventService {
             return null;
         }
         return ageRating + "+";
+    }
+
+    private Image resolveImage(Long imageId, String imageUrl) {
+        if (imageId != null) {
+            return imageRepository.findById(imageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
+        }
+
+        if (!StringUtils.hasText(imageUrl)) {
+            return null;
+        }
+
+        Long parsedId = extractImageIdFromUrl(imageUrl);
+        if (parsedId != null) {
+            return imageRepository.findById(parsedId)
+                .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
+        }
+
+        return imageRepository.save(Image.builder()
+            .fileName(fileNameFromUrl(imageUrl))
+            .mimeType("image/*")
+            .fileSize(0L)
+            .fileUrl(imageUrl.trim())
+            .uploadedAt(OffsetDateTime.now())
+            .build());
+    }
+
+    private Long extractImageIdFromUrl(String imageUrl) {
+        if (!StringUtils.hasText(imageUrl)) {
+            return null;
+        }
+        String normalized = imageUrl.trim();
+        int slash = normalized.lastIndexOf('/');
+        if (slash < 0 || slash == normalized.length() - 1) {
+            return null;
+        }
+        String tail = normalized.substring(slash + 1);
+        try {
+            return Long.parseLong(tail);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
     private String fileNameFromUrl(String url) {

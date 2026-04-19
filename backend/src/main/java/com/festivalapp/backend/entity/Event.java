@@ -1,6 +1,5 @@
 package com.festivalapp.backend.entity;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -93,15 +92,15 @@ public class Event {
     private String coverUrl;
 
     @Builder.Default
-    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "event")
     private Set<EventCategory> eventCategories = new HashSet<>();
 
     @Builder.Default
-    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "event")
     private Set<Session> sessions = new HashSet<>();
 
     @Builder.Default
-    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "event")
     @OrderBy("sortOrder ASC, id ASC")
     private List<EventImage> eventImages = new ArrayList<>();
 }

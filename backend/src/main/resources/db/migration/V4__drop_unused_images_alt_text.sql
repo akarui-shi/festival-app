@@ -1,0 +1,2 @@
+ALTER TABLE images
+    DROP COLUMN IF EXISTS alt_text;

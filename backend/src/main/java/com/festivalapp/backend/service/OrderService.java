@@ -10,6 +10,7 @@ import com.festivalapp.backend.dto.PaymentConfirmRequest;
 import com.festivalapp.backend.entity.Order;
 import com.festivalapp.backend.entity.OrderItem;
 import com.festivalapp.backend.entity.Payment;
+import com.festivalapp.backend.entity.EventStatus;
 import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.Session;
 import com.festivalapp.backend.entity.Ticket;
@@ -56,6 +57,9 @@ public class OrderService {
         User actor = resolveActor(actorIdentifier);
         Session session = sessionRepository.findById(request.getSessionId())
             .orElseThrow(() -> new ResourceNotFoundException("Session not found"));
+        if (session.getEvent() == null || DomainStatusMapper.toEventStatus(session.getEvent().getStatus()) != EventStatus.PUBLISHED) {
+            throw new BadRequestException("Регистрация доступна только для опубликованных мероприятий");
+        }
 
         List<OrderItemCreateRequest> requestItems = normalizeItems(request, session);
         int requestedTotal = requestItems.stream().mapToInt(OrderItemCreateRequest::getQuantity).sum();

@@ -244,13 +244,7 @@ public class PublicationService {
                 continue;
             }
 
-            Image image = imageRepository.save(Image.builder()
-                .fileName(fileNameFromUrl(imageUrl))
-                .mimeType("image/*")
-                .fileSize(0L)
-                .fileUrl(imageUrl.trim())
-                .uploadedAt(OffsetDateTime.now())
-                .build());
+            Image image = resolveImage(imageUrl);
 
             publicationImageRepository.save(PublicationImage.builder()
                 .publication(publication)
@@ -339,5 +333,38 @@ public class PublicationService {
             return "image-" + System.nanoTime();
         }
         return trimmed.substring(slash + 1);
+    }
+
+    private Image resolveImage(String imageUrl) {
+        Long imageId = extractImageIdFromUrl(imageUrl);
+        if (imageId != null) {
+            return imageRepository.findById(imageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
+        }
+
+        return imageRepository.save(Image.builder()
+            .fileName(fileNameFromUrl(imageUrl))
+            .mimeType("image/*")
+            .fileSize(0L)
+            .fileUrl(imageUrl.trim())
+            .uploadedAt(OffsetDateTime.now())
+            .build());
+    }
+
+    private Long extractImageIdFromUrl(String imageUrl) {
+        if (!StringUtils.hasText(imageUrl)) {
+            return null;
+        }
+        String normalized = imageUrl.trim();
+        int slash = normalized.lastIndexOf('/');
+        if (slash < 0 || slash == normalized.length() - 1) {
+            return null;
+        }
+        String tail = normalized.substring(slash + 1);
+        try {
+            return Long.parseLong(tail);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 }

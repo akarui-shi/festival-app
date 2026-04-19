@@ -14,5 +14,6 @@ public class ArtistDetailsResponse {
     private String stageName;
     private String description;
     private String genre;
+    private String imageUrl;
     private List<EventShortResponse> events;
 }

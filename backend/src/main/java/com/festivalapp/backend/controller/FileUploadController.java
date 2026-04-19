@@ -10,6 +10,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,26 +29,37 @@ public class FileUploadController {
     private final FileStorageService fileStorageService;
 
     @PostMapping(value = "/event-cover", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<FileUploadResponse> uploadEventCover(@RequestPart("file") @NotNull MultipartFile file) {
-        Image image = fileStorageService.storeEventCover(file);
+    public ResponseEntity<FileUploadResponse> uploadEventCover(@RequestPart("file") @NotNull MultipartFile file,
+                                                               @AuthenticationPrincipal UserDetails principal) {
+        Image image = fileStorageService.storeEventCover(file, principal == null ? null : principal.getUsername());
         return buildUploadResponse(image);
     }
 
     @PostMapping(value = "/event-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<FileUploadResponse> uploadEventImage(@RequestPart("file") @NotNull MultipartFile file) {
-        Image image = fileStorageService.storeEventImage(file);
+    public ResponseEntity<FileUploadResponse> uploadEventImage(@RequestPart("file") @NotNull MultipartFile file,
+                                                               @AuthenticationPrincipal UserDetails principal) {
+        Image image = fileStorageService.storeEventImage(file, principal == null ? null : principal.getUsername());
         return buildUploadResponse(image);
     }
 
     @PostMapping(value = "/publication-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<FileUploadResponse> uploadPublicationImage(@RequestPart("file") @NotNull MultipartFile file) {
-        Image image = fileStorageService.storePublicationImage(file);
+    public ResponseEntity<FileUploadResponse> uploadPublicationImage(@RequestPart("file") @NotNull MultipartFile file,
+                                                                     @AuthenticationPrincipal UserDetails principal) {
+        Image image = fileStorageService.storePublicationImage(file, principal == null ? null : principal.getUsername());
         return buildUploadResponse(image);
     }
 
     @PostMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<FileUploadResponse> uploadAvatar(@RequestPart("file") @NotNull MultipartFile file) {
-        Image image = fileStorageService.storeAvatar(file);
+    public ResponseEntity<FileUploadResponse> uploadAvatar(@RequestPart("file") @NotNull MultipartFile file,
+                                                           @AuthenticationPrincipal UserDetails principal) {
+        Image image = fileStorageService.storeAvatar(file, principal == null ? null : principal.getUsername());
+        return buildUploadResponse(image);
+    }
+
+    @PostMapping(value = "/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<FileUploadResponse> uploadGenericImage(@RequestPart("file") @NotNull MultipartFile file,
+                                                                 @AuthenticationPrincipal UserDetails principal) {
+        Image image = fileStorageService.storeEventImage(file, principal == null ? null : principal.getUsername());
         return buildUploadResponse(image);
     }
 
@@ -77,6 +90,7 @@ public class FileUploadController {
             .toUriString();
 
         FileUploadResponse response = FileUploadResponse.builder()
+            .imageId(image.getId())
             .fileName(image.getFileName())
             .relativePath(relativePath)
             .url(fileUrl)
