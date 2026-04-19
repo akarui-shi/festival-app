@@ -5,15 +5,19 @@ import com.festivalapp.backend.dto.ArtistSummaryResponse;
 import com.festivalapp.backend.dto.ArtistUpsertRequest;
 import com.festivalapp.backend.dto.EventShortResponse;
 import com.festivalapp.backend.entity.Artist;
+import com.festivalapp.backend.entity.ArtistImage;
 import com.festivalapp.backend.entity.Event;
 import com.festivalapp.backend.entity.EventArtist;
 import com.festivalapp.backend.entity.EventStatus;
+import com.festivalapp.backend.entity.Image;
 import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
+import com.festivalapp.backend.repository.ArtistImageRepository;
 import com.festivalapp.backend.repository.ArtistRepository;
 import com.festivalapp.backend.repository.EventArtistRepository;
+import com.festivalapp.backend.repository.ImageRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,7 +32,9 @@ import java.util.List;
 public class ArtistService {
 
     private final ArtistRepository artistRepository;
+    private final ArtistImageRepository artistImageRepository;
     private final EventArtistRepository eventArtistRepository;
+    private final ImageRepository imageRepository;
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
@@ -58,6 +64,7 @@ public class ArtistService {
             .stageName(artist.getStageName())
             .description(artist.getDescription())
             .genre(artist.getGenre())
+            .imageUrl(resolveArtistImageUrl(artist.getId()))
             .events(events)
             .build();
     }
@@ -76,6 +83,7 @@ public class ArtistService {
             .createdAt(OffsetDateTime.now())
             .updatedAt(OffsetDateTime.now())
             .build());
+        applyArtistImage(artist, request.getImageId(), request.getImageUrl());
 
         return toSummary(artist);
     }
@@ -101,6 +109,9 @@ public class ArtistService {
             artist.setGenre(normalize(request.getGenre()));
         }
         artist.setUpdatedAt(OffsetDateTime.now());
+        if (request.getImageId() != null || StringUtils.hasText(request.getImageUrl())) {
+            applyArtistImage(artist, request.getImageId(), request.getImageUrl());
+        }
 
         return toSummary(artistRepository.save(artist));
     }
@@ -151,7 +162,58 @@ public class ArtistService {
             .stageName(artist.getStageName())
             .description(artist.getDescription())
             .genre(artist.getGenre())
+            .imageUrl(resolveArtistImageUrl(artist.getId()))
             .build();
+    }
+
+    private void applyArtistImage(Artist artist, Long imageId, String imageUrl) {
+        Image image = resolveImage(imageId, imageUrl);
+        if (image == null) {
+            return;
+        }
+        artistImageRepository.deleteByArtistId(artist.getId());
+        artistImageRepository.save(ArtistImage.builder()
+            .artist(artist)
+            .image(image)
+            .primary(true)
+            .build());
+    }
+
+    private Image resolveImage(Long imageId, String imageUrl) {
+        if (imageId != null) {
+            return imageRepository.findById(imageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
+        }
+        Long parsed = extractImageIdFromUrl(imageUrl);
+        if (parsed != null) {
+            return imageRepository.findById(parsed)
+                .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
+        }
+        return null;
+    }
+
+    private Long extractImageIdFromUrl(String imageUrl) {
+        if (!StringUtils.hasText(imageUrl)) {
+            return null;
+        }
+        String normalized = imageUrl.trim();
+        int slash = normalized.lastIndexOf('/');
+        if (slash < 0 || slash == normalized.length() - 1) {
+            return null;
+        }
+        String tail = normalized.substring(slash + 1);
+        try {
+            return Long.parseLong(tail);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private String resolveArtistImageUrl(Long artistId) {
+        return artistImageRepository.findFirstByArtistIdAndPrimaryIsTrueOrderByIdAsc(artistId)
+            .map(ArtistImage::getImage)
+            .map(Image::getFileUrl)
+            .orElse(null);
     }
 
     private User resolveActor(String actorIdentifier) {

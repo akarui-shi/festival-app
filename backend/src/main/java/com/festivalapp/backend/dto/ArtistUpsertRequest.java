@@ -16,4 +16,8 @@ public class ArtistUpsertRequest {
     private String description;
 
     private String genre;
+
+    private Long imageId;
+
+    private String imageUrl;
 }

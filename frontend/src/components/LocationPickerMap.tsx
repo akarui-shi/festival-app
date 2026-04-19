@@ -17,12 +17,16 @@ export function LocationPickerMap({ latitude, longitude, initialCenter, onPick }
   const ymapsRef = useRef<any>(null);
   const onPickRef = useRef(onPick);
 
+  const normalizedLatitude = latitude == null ? undefined : Number(latitude);
+  const normalizedLongitude = longitude == null ? undefined : Number(longitude);
+  const hasExactPoint = Number.isFinite(normalizedLatitude) && Number.isFinite(normalizedLongitude);
+
   useEffect(() => {
     onPickRef.current = onPick;
   }, [onPick]);
 
-  const center: [number, number] = latitude != null && longitude != null
-    ? [latitude, longitude]
+  const center: [number, number] = hasExactPoint
+    ? [normalizedLatitude as number, normalizedLongitude as number]
     : initialCenter || MOSCOW_CENTER;
 
   useEffect(() => {
@@ -54,6 +58,21 @@ export function LocationPickerMap({ latitude, longitude, initialCenter, onPick }
         });
 
         mapRef.current = map;
+
+        const initialMarkerCoordinates: [number, number] | null = hasExactPoint
+          ? [normalizedLatitude as number, normalizedLongitude as number]
+          : initialCenter || null;
+        const initialIsPickedPoint = hasExactPoint;
+        if (initialMarkerCoordinates) {
+          placemarkRef.current = new ymaps.Placemark(
+            initialMarkerCoordinates,
+            {},
+            {
+              preset: initialIsPickedPoint ? 'islands#redDotIcon' : 'islands#grayDotIcon',
+            },
+          );
+          map.geoObjects.add(placemarkRef.current);
+        }
       })
       .catch(() => {
         // ignore init errors in component; parent handles UX through validations
@@ -76,10 +95,10 @@ export function LocationPickerMap({ latitude, longitude, initialCenter, onPick }
 
     map.setCenter(center, 12, { duration: 200 });
 
-    const markerCoordinates: [number, number] | null = latitude != null && longitude != null
-      ? [latitude, longitude]
+    const markerCoordinates: [number, number] | null = hasExactPoint
+      ? [normalizedLatitude as number, normalizedLongitude as number]
       : initialCenter || null;
-    const isPickedPoint = latitude != null && longitude != null;
+    const isPickedPoint = hasExactPoint;
 
     if (!markerCoordinates) {
       if (placemarkRef.current) {
@@ -106,7 +125,7 @@ export function LocationPickerMap({ latitude, longitude, initialCenter, onPick }
 
     placemarkRef.current.geometry.setCoordinates(markerCoordinates);
     placemarkRef.current.options.set('preset', isPickedPoint ? 'islands#redDotIcon' : 'islands#grayDotIcon');
-  }, [center, initialCenter, latitude, longitude]);
+  }, [center, hasExactPoint, initialCenter, normalizedLatitude, normalizedLongitude]);
 
   return (
     <div className="overflow-hidden rounded-xl border border-border">

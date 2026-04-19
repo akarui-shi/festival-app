@@ -1,22 +1,27 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, SlidersHorizontal } from 'lucide-react';
+import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { EventCard } from '@/components/EventCard';
 import { EmptyState } from '@/components/EmptyState';
 import { LoadingState } from '@/components/StateDisplays';
 import { PublicLayout } from '@/layouts/PublicLayout';
+import { useAuth } from '@/contexts/AuthContext';
 import { useCity } from '@/contexts/CityContext';
 import { eventService } from '@/services/event-service';
 import { directoryService } from '@/services/directory-service';
-import type { Category, Event } from '@/types';
+import { favoriteService } from '@/services/favorite-service';
+import type { Category, Event, Id } from '@/types';
 
 export default function EventsCatalogPage() {
+  const { user } = useAuth();
   const { selectedCity } = useCity();
   const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState<Event[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [eventsLoading, setEventsLoading] = useState(true);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
 
@@ -27,7 +32,6 @@ export default function EventsCatalogPage() {
   const [participationType, setParticipationType] = useState(searchParams.get('participationType') || '');
   const [priceFrom, setPriceFrom] = useState(searchParams.get('priceFrom') || '');
   const [priceTo, setPriceTo] = useState(searchParams.get('priceTo') || '');
-  const [registrationOpen, setRegistrationOpen] = useState(searchParams.get('registrationOpen') || '');
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
@@ -64,7 +68,8 @@ export default function EventsCatalogPage() {
         participationType: participationType || undefined,
         priceFrom: priceFrom ? Number(priceFrom) : undefined,
         priceTo: priceTo ? Number(priceTo) : undefined,
-        registrationOpen: registrationOpen === '' ? undefined : registrationOpen === 'true',
+        registrationOpen: true,
+        status: 'PUBLISHED',
       })
       .then((eventsResponse) => {
         if (!active) return;
@@ -77,7 +82,33 @@ export default function EventsCatalogPage() {
     return () => {
       active = false;
     };
-  }, [selectedCity?.id, search, categoryId, dateFrom, dateTo, participationType, priceFrom, priceTo, registrationOpen]);
+  }, [selectedCity?.id, search, categoryId, dateFrom, dateTo, participationType, priceFrom, priceTo]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!user) {
+      setFavoriteIds(new Set());
+      return () => {
+        active = false;
+      };
+    }
+
+    favoriteService
+      .getMyFavorites(user.id)
+      .then((favorites) => {
+        if (!active) return;
+        setFavoriteIds(new Set(favorites.map((favorite) => String(favorite.eventId))));
+      })
+      .catch(() => {
+        if (!active) return;
+        setFavoriteIds(new Set());
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   useEffect(() => {
     const nextParams: Record<string, string> = {};
@@ -89,10 +120,9 @@ export default function EventsCatalogPage() {
     if (participationType) nextParams.participationType = participationType;
     if (priceFrom) nextParams.priceFrom = priceFrom;
     if (priceTo) nextParams.priceTo = priceTo;
-    if (registrationOpen) nextParams.registrationOpen = registrationOpen;
 
     setSearchParams(nextParams, { replace: true });
-  }, [search, categoryId, dateFrom, dateTo, participationType, priceFrom, priceTo, registrationOpen, setSearchParams]);
+  }, [search, categoryId, dateFrom, dateTo, participationType, priceFrom, priceTo, setSearchParams]);
 
   const filteredEvents = useMemo(() => events, [events]);
 
@@ -101,7 +131,7 @@ export default function EventsCatalogPage() {
     ? `${selectedCity.name}${selectedCity.region ? `, ${selectedCity.region}` : ''}`
     : '';
 
-  const hasFilters = Boolean(search || categoryId || dateFrom || dateTo || participationType || priceFrom || priceTo || registrationOpen);
+  const hasFilters = Boolean(search || categoryId || dateFrom || dateTo || participationType || priceFrom || priceTo);
 
   const clearFilters = () => {
     setSearch('');
@@ -111,7 +141,39 @@ export default function EventsCatalogPage() {
     setParticipationType('');
     setPriceFrom('');
     setPriceTo('');
-    setRegistrationOpen('');
+  };
+
+  const toggleFavorite = async (eventId: Id) => {
+    if (!user) {
+      toast.info('Войдите, чтобы добавлять события в избранное');
+      return;
+    }
+
+    const key = String(eventId);
+    const isFavorite = favoriteIds.has(key);
+
+    try {
+      if (isFavorite) {
+        await favoriteService.removeFavorite(user.id, eventId);
+        setFavoriteIds((prev) => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+        toast.success('Удалено из избранного');
+        return;
+      }
+
+      await favoriteService.addFavorite(user.id, eventId);
+      setFavoriteIds((prev) => {
+        const next = new Set(prev);
+        next.add(key);
+        return next;
+      });
+      toast.success('Добавлено в избранное');
+    } catch (error: any) {
+      toast.error(error?.message || 'Не удалось обновить избранное');
+    }
   };
 
   if (loading) {
@@ -196,15 +258,6 @@ export default function EventsCatalogPage() {
               <option value="free">Бесплатно</option>
               <option value="paid">Платно</option>
             </select>
-            <select
-              value={registrationOpen}
-              onChange={(event) => setRegistrationOpen(event.target.value)}
-              className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="">Статус регистрации</option>
-              <option value="true">Открыта</option>
-              <option value="false">Закрыта</option>
-            </select>
             <Input type="number" min={0} value={priceFrom} onChange={(event) => setPriceFrom(event.target.value)} placeholder="Цена от" />
             <Input type="number" min={0} value={priceTo} onChange={(event) => setPriceTo(event.target.value)} placeholder="Цена до" />
           </div>
@@ -219,7 +272,12 @@ export default function EventsCatalogPage() {
         {filteredEvents.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {filteredEvents.map((event) => (
-              <EventCard key={event.id} event={event} />
+              <EventCard
+                key={event.id}
+                event={event}
+                isFavorite={favoriteIds.has(String(event.id))}
+                onFavoriteToggle={toggleFavorite}
+              />
             ))}
           </div>
         ) : (

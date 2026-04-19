@@ -6,18 +6,22 @@ import com.festivalapp.backend.dto.OrganizationJoinRequestResponse;
 import com.festivalapp.backend.dto.OrganizationPublicResponse;
 import com.festivalapp.backend.dto.OrganizationUpdateRequest;
 import com.festivalapp.backend.entity.Organization;
+import com.festivalapp.backend.entity.OrganizationImage;
 import com.festivalapp.backend.entity.OrganizationJoinRequest;
 import com.festivalapp.backend.entity.OrganizationMember;
 import com.festivalapp.backend.entity.Role;
 import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.entity.UserRole;
+import com.festivalapp.backend.entity.Image;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
 import com.festivalapp.backend.repository.OrganizationJoinRequestRepository;
 import com.festivalapp.backend.repository.OrganizationMemberRepository;
+import com.festivalapp.backend.repository.OrganizationImageRepository;
 import com.festivalapp.backend.repository.OrganizationRepository;
 import com.festivalapp.backend.repository.RoleRepository;
+import com.festivalapp.backend.repository.ImageRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import com.festivalapp.backend.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +41,8 @@ public class OrganizationService {
     private final OrganizationRepository organizationRepository;
     private final OrganizationJoinRequestRepository organizationJoinRequestRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
+    private final OrganizationImageRepository organizationImageRepository;
+    private final ImageRepository imageRepository;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
@@ -80,6 +86,17 @@ public class OrganizationService {
         }
         if (request.getLogoUrl() != null) {
             organization.setLogoUrl(normalize(request.getLogoUrl()));
+        }
+        if (request.getLogoImageId() != null) {
+            Image logoImage = imageRepository.findById(request.getLogoImageId())
+                .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
+            organizationImageRepository.deleteByOrganizationId(organization.getId());
+            organizationImageRepository.save(OrganizationImage.builder()
+                .organization(organization)
+                .image(logoImage)
+                .logo(true)
+                .build());
+            organization.setLogoUrl(logoImage.getFileUrl());
         }
         organization.setUpdatedAt(OffsetDateTime.now());
 

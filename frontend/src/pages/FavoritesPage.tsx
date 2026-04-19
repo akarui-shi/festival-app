@@ -7,7 +7,18 @@ import { EmptyState } from '@/components/EmptyState';
 import { LoadingState } from '@/components/StateDisplays';
 import { useAuth } from '@/contexts/AuthContext';
 import { favoriteService } from '@/services/favorite-service';
-import type { Favorite } from '@/types';
+import type { Event, Favorite } from '@/types';
+
+function favoriteToEvent(favorite: Favorite): Event {
+  return {
+    id: favorite.eventId,
+    title: favorite.title,
+    shortDescription: favorite.shortDescription || null,
+    coverUrl: favorite.coverUrl || null,
+    ageRating: favorite.ageRating || null,
+    status: favorite.status ? String(favorite.status) : null,
+  };
+}
 
 export default function FavoritesPage() {
   const { user } = useAuth();
@@ -15,11 +26,18 @@ export default function FavoritesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setFavorites([]);
+      setLoading(false);
+      return;
+    }
 
     favoriteService
       .getMyFavorites(user.id)
       .then((response) => setFavorites(response))
+      .catch((error: any) => {
+        toast.error(error?.message || 'Не удалось загрузить избранное');
+      })
       .finally(() => setLoading(false));
   }, [user]);
 
@@ -47,16 +65,14 @@ export default function FavoritesPage() {
 
         {favorites.length > 0 ? (
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {favorites.map((favorite) =>
-              favorite.event ? (
-                <EventCard
-                  key={favorite.id}
-                  event={favorite.event}
-                  isFavorite
-                  onFavoriteToggle={removeFavorite}
-                />
-              ) : null,
-            )}
+            {favorites.map((favorite) => (
+              <EventCard
+                key={String(favorite.eventId)}
+                event={favorite.event || favoriteToEvent(favorite)}
+                isFavorite
+                onFavoriteToggle={removeFavorite}
+              />
+            ))}
           </div>
         ) : (
           <EmptyState

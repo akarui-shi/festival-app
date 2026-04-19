@@ -1,6 +1,5 @@
 package com.festivalapp.backend.dto;
 
-import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -8,7 +7,8 @@ import lombok.Setter;
 @Setter
 public class EventImageRequest {
 
-    @NotBlank(message = "Image URL is required")
+    private Long imageId;
+
     private String imageUrl;
 
     private Boolean isCover;

@@ -1,6 +1,7 @@
 import { apiPost } from './api-client';
 
 interface FileUploadResponse {
+  imageId: number;
   fileName: string;
   relativePath: string;
   url: string;
@@ -15,6 +16,10 @@ async function uploadFile(endpoint: string, file: File): Promise<FileUploadRespo
 }
 
 export const fileUploadService = {
+  uploadImage(file: File): Promise<FileUploadResponse> {
+    return uploadFile('/files/image', file);
+  },
+
   uploadEventCover(file: File): Promise<FileUploadResponse> {
     return uploadFile('/files/event-cover', file);
   },
