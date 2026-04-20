@@ -496,6 +496,20 @@ public class OrganizerEventWizardService {
                 ? List.of()
                 : sessionItem.getTicketTypes();
 
+            if (session.getSeatLimit() != null && session.getSeatLimit() > 0) {
+                int requestedQuotaSum = requestedTypes.stream()
+                    .map(OrganizerEventTicketsRequest.TicketTypeItem::getQuota)
+                    .filter(Objects::nonNull)
+                    .mapToInt(quota -> Math.max(quota, 0))
+                    .sum();
+                if (requestedQuotaSum > session.getSeatLimit()) {
+                    throw new BadRequestException(
+                        "Суммарное количество мест по билетам (" + requestedQuotaSum + ") превышает лимит мест сеанса ("
+                            + session.getSeatLimit() + ") для сеанса \"" + sessionDisplayName(session) + "\""
+                    );
+                }
+            }
+
             Map<Long, TicketType> existingTypes = ticketTypeRepository.findAllBySessionIdOrderByIdAsc(session.getId()).stream()
                 .collect(LinkedHashMap::new, (map, type) -> map.put(type.getId(), type), Map::putAll);
             Set<Long> keepIds = new HashSet<>();
@@ -810,9 +824,35 @@ public class OrganizerEventWizardService {
                     }
                 }
             }
+
+            if (session.getSeatLimit() != null && session.getSeatLimit() > 0) {
+                int totalQuota = types.stream()
+                    .map(TicketType::getQuota)
+                    .filter(Objects::nonNull)
+                    .mapToInt(quota -> Math.max(quota, 0))
+                    .sum();
+                if (totalQuota > session.getSeatLimit()) {
+                    issues.add(issue(
+                        "ticket_quota_exceeds_seat_limit",
+                        "Сумма квот билетов (" + totalQuota + ") превышает лимит мест сеанса (" + session.getSeatLimit()
+                            + ") для \"" + sessionDisplayName(session) + "\"",
+                        "step_5"
+                    ));
+                }
+            }
         }
 
         return issues;
+    }
+
+    private String sessionDisplayName(Session session) {
+        if (StringUtils.hasText(session.getSessionTitle())) {
+            return session.getSessionTitle().trim();
+        }
+        if (session.getStartsAt() != null) {
+            return "сеанс " + session.getStartsAt().toLocalDateTime();
+        }
+        return "сеанс #" + session.getId();
     }
 
     private OrganizerEventWizardValidationIssue issue(String code, String message, String step) {
