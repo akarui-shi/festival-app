@@ -287,7 +287,7 @@ public class EventService {
             .startsAt(now)
             .endsAt(now.plusHours(2))
             .status("черновик")
-            .moderationStatus("на_рассмотрении")
+            .moderationStatus("черновик")
             .createdAt(now)
             .updatedAt(now)
             .build();
@@ -600,6 +600,7 @@ public class EventService {
             .ageRating(event.getAgeRating())
             .createdAt(event.getCreatedAt() == null ? null : event.getCreatedAt().toLocalDateTime())
             .status(DomainStatusMapper.toEventStatus(event.getStatus()))
+            .moderationStatus(event.getModerationStatus())
             .organizationId(event.getOrganization() == null ? null : event.getOrganization().getId())
             .organizationName(event.getOrganization() == null ? null : event.getOrganization().getName())
             .venueId(mainSession != null && mainSession.getVenue() != null ? mainSession.getVenue().getId() : null)

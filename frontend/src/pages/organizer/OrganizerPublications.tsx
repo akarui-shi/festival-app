@@ -15,14 +15,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { imageSrc } from '@/lib/image';
+import { getPublicationStatusBadge } from '@/lib/statuses';
 import type { Event, Id, Publication } from '@/types';
-
-const statusMap: Record<string, { label: string; cls: string }> = {
-  DRAFT: { label: 'Черновик', cls: 'bg-muted text-muted-foreground' },
-  PENDING: { label: 'На модерации', cls: 'bg-warning/10 text-warning' },
-  PUBLISHED: { label: 'Опубликовано', cls: 'bg-success/10 text-success' },
-  REJECTED: { label: 'Отклонено', cls: 'bg-destructive/10 text-destructive' },
-};
 
 export default function OrganizerPublications() {
   const { user } = useAuth();
@@ -232,7 +226,7 @@ export default function OrganizerPublications() {
         <div className="space-y-3">
           {pubs.map((pub) => {
             const publicationId = pub.publicationId ?? pub.id;
-            const status = statusMap[pub.status || ''] || { label: pub.status || 'Статус не указан', cls: 'bg-muted text-muted-foreground' };
+            const status = getPublicationStatusBadge(pub.status);
             return (
               <div
                 key={publicationId}
@@ -241,7 +235,7 @@ export default function OrganizerPublications() {
                 <div>
                   <div className="mb-1 flex items-center gap-2">
                     <span className="font-medium text-foreground">{pub.title}</span>
-                    <Badge className={`${status.cls} border-0 text-xs`}>{status.label}</Badge>
+                    <Badge className={`${status.className} border-0 text-xs`}>{status.label}</Badge>
                   </div>
                   {pub.eventId && pub.eventTitle && (
                     <p className="mb-1 text-xs text-muted-foreground">

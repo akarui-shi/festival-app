@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { getRegistrationStatusBadge } from '@/lib/statuses';
 import type { Id, OrganizerEventStatsBundle, Session, SessionRegistration } from '@/types';
 
 const WEEKDAY_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -181,17 +182,8 @@ export default function EventStatsPage() {
   const statusDistribution = useMemo(() => {
     const statusMap = new Map<string, number>();
     registrations.forEach((registration) => {
-      const rawStatus = (registration.status || 'UNKNOWN').toUpperCase();
-      const normalized = rawStatus === 'CONFIRMED'
-        ? 'Подтверждено'
-        : rawStatus === 'ATTENDED'
-          ? 'Посещено'
-          : rawStatus === 'PENDING_PAYMENT'
-            ? 'Ожидает оплаты'
-            : rawStatus === 'CANCELLED'
-              ? 'Отменено'
-              : 'Другое';
-      statusMap.set(normalized, (statusMap.get(normalized) || 0) + 1);
+      const { label } = getRegistrationStatusBadge(registration.status);
+      statusMap.set(label, (statusMap.get(label) || 0) + 1);
     });
 
     if (statusMap.size === 0) {
@@ -536,19 +528,22 @@ export default function EventStatsPage() {
           <EmptyState icon={Users} title="Нет регистраций" description="Пользователи пока не записались на это событие" />
         ) : (
           <div className="space-y-2">
-            {registrations.map((r) => (
-              <div key={r.registrationId} className="surface-row flex items-center justify-between py-3 text-sm">
-                <span>{r.userFullName || 'Пользователь'}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">
-                    {r.createdAt ? new Date(r.createdAt).toLocaleString('ru-RU') : 'Дата неизвестна'}
-                  </span>
-                  <Badge variant={r.status === 'CONFIRMED' ? 'default' : 'secondary'} className="text-xs">
-                    {r.status === 'CONFIRMED' ? 'Подтверждено' : r.status === 'ATTENDED' ? 'Посещено' : r.status || 'Неизвестно'}
-                  </Badge>
+            {registrations.map((r) => {
+              const status = getRegistrationStatusBadge(r.status);
+              return (
+                <div key={r.registrationId} className="surface-row flex items-center justify-between py-3 text-sm">
+                  <span>{r.userFullName || 'Пользователь'}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">
+                      {r.createdAt ? new Date(r.createdAt).toLocaleString('ru-RU') : 'Дата неизвестна'}
+                    </span>
+                    <Badge className={`${status.className} text-xs`}>
+                      {status.label}
+                    </Badge>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

@@ -9,15 +9,8 @@ import { LoadingState } from '@/components/StateDisplays';
 import { EmptyState } from '@/components/EmptyState';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { getEventStatusBadge } from '@/lib/statuses';
 import type { Event, Id } from '@/types';
-
-const statusMap: Record<string, { label: string; cls: string }> = {
-  DRAFT: { label: 'Черновик', cls: 'bg-muted text-muted-foreground' },
-  PENDING: { label: 'На модерации', cls: 'bg-warning/10 text-warning' },
-  PUBLISHED: { label: 'Опубликовано', cls: 'bg-success/10 text-success' },
-  REJECTED: { label: 'Отклонено', cls: 'bg-destructive/10 text-destructive' },
-  CANCELLED: { label: 'Отменено', cls: 'bg-muted text-muted-foreground' },
-};
 
 export default function OrganizerEvents() {
   const { user } = useAuth();
@@ -86,7 +79,7 @@ export default function OrganizerEvents() {
       ) : (
         <div className="space-y-3">
           {events.map((event) => {
-            const status = statusMap[event.status || ''] || { label: event.status || 'Статус не указан', cls: 'bg-muted text-muted-foreground' };
+            const status = getEventStatusBadge(event.status, event.moderationStatus);
             return (
               <div
                 key={event.id}
@@ -95,7 +88,7 @@ export default function OrganizerEvents() {
                 <div className="flex-1 min-w-0">
                   <div className="mb-1 flex items-center gap-2">
                     <h3 className="truncate font-medium text-foreground">{event.title}</h3>
-                    <Badge className={`${status.cls} border-0 text-xs`}>{status.label}</Badge>
+                    <Badge className={`${status.className} border-0 text-xs`}>{status.label}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {event.category?.name || 'Категория не указана'} · {event.city?.name || 'Город не указан'} ·{' '}

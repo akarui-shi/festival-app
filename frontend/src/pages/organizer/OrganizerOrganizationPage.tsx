@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { organizationService, type OrganizationJoinRequest, type OrganizationMember } from '@/services/organization-service';
 import { fileUploadService } from '@/services/file-upload-service';
 import { imageSrc } from '@/lib/image';
+import { getJoinRequestStatusLabel, isJoinRequestPending } from '@/lib/statuses';
 import type { Organization } from '@/types';
 
 function toDateTimeLabel(value?: string | null): string {
@@ -84,12 +85,12 @@ export default function OrganizerOrganizationPage() {
   }, [ownerOrganizationId]);
 
   const pendingRequests = useMemo(
-    () => joinRequests.filter((request) => (request.status || '').toLowerCase() === 'pending'),
+    () => joinRequests.filter((request) => isJoinRequestPending(request.status)),
     [joinRequests],
   );
 
   const processedRequests = useMemo(
-    () => joinRequests.filter((request) => (request.status || '').toLowerCase() !== 'pending'),
+    () => joinRequests.filter((request) => !isJoinRequestPending(request.status)),
     [joinRequests],
   );
 
@@ -366,7 +367,7 @@ export default function OrganizerOrganizationPage() {
             {processedRequests.slice(0, 12).map((request) => (
               <div key={String(request.requestId)} className="rounded-lg border border-border bg-card px-3 py-2 text-sm">
                 <p className="text-foreground">
-                  {request.userName || 'Пользователь'} - {request.status === 'approved' ? 'одобрена' : 'отклонена'}
+                  {request.userName || 'Пользователь'} - {getJoinRequestStatusLabel(request.status)}
                 </p>
                 <p className="text-xs text-muted-foreground">Решение: {toDateTimeLabel(request.reviewedAt)}</p>
               </div>

@@ -130,7 +130,7 @@ public class OrganizerEventWizardService {
             .startsAt(now.plusDays(7))
             .endsAt(now.plusDays(7).plusHours(2))
             .status("черновик")
-            .moderationStatus("на_рассмотрении")
+            .moderationStatus("черновик")
             .createdAt(now)
             .updatedAt(now)
             .build());
@@ -574,6 +574,7 @@ public class OrganizerEventWizardService {
         Event event = loadManagedEventForUpdate(eventId, actor);
 
         event.setStatus("черновик");
+        event.setModerationStatus("черновик");
         event.setUpdatedAt(OffsetDateTime.now());
         eventRepository.save(event);
 

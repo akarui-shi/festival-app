@@ -7,14 +7,8 @@ import { LoadingState } from '@/components/StateDisplays';
 import { EmptyState } from '@/components/EmptyState';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { getPublicationStatusBadge } from '@/lib/statuses';
 import type { Publication, PublicationStatus } from '@/types';
-
-const statusMap: Record<string, { label: string; cls: string }> = {
-  DRAFT: { label: 'Черновик', cls: 'bg-muted text-muted-foreground' },
-  PENDING: { label: 'На модерации', cls: 'bg-warning/10 text-warning' },
-  PUBLISHED: { label: 'Опубликовано', cls: 'bg-success/10 text-success' },
-  REJECTED: { label: 'Отклонено', cls: 'bg-destructive/10 text-destructive' },
-};
 
 export default function AdminPublications() {
   const [pubs, setPubs] = useState<Publication[]>([]);
@@ -48,7 +42,7 @@ export default function AdminPublications() {
 
       <div className="space-y-3">
         {pubs.map((pub) => {
-          const status = statusMap[pub.status];
+          const status = getPublicationStatusBadge(pub.status);
           return (
             <div
               key={pub.publicationId}
@@ -57,7 +51,7 @@ export default function AdminPublications() {
               <div>
                 <div className="mb-1 flex items-center gap-2">
                   <span className="font-medium text-foreground">{pub.title}</span>
-                  <Badge className={`${status.cls} border-0 text-xs`}>{status.label}</Badge>
+                  <Badge className={`${status.className} border-0 text-xs`}>{status.label}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {pub.preview || pub.excerpt || 'Без анонса'}
