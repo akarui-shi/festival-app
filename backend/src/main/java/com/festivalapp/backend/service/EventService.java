@@ -237,7 +237,28 @@ public class EventService {
     @Transactional(readOnly = true)
     public List<EventShortResponse> getOrganizerEvents(String actorIdentifier) {
         User actor = resolveActor(actorIdentifier);
-        return eventRepository.findAllByCreatedByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(actor.getId()).stream()
+        List<OrganizationMember> memberships = organizationMemberRepository.findAllByUserIdAndLeftAtIsNull(actor.getId()).stream()
+            .filter(member -> member.getOrganization() != null && member.getOrganization().getDeletedAt() == null)
+            .toList();
+
+        if (memberships.isEmpty()) {
+            return List.of();
+        }
+
+        Set<Long> seen = new LinkedHashSet<>();
+        List<Event> events = new ArrayList<>();
+        for (OrganizationMember membership : memberships) {
+            for (Event event : eventRepository.findAllByOrganizationIdAndDeletedAtIsNullOrderByCreatedAtDesc(
+                membership.getOrganization().getId()
+            )) {
+                if (seen.add(event.getId())) {
+                    events.add(event);
+                }
+            }
+        }
+
+        events.sort(Comparator.comparing(Event::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())));
+        return events.stream()
             .map(this::hydrateEvent)
             .map(this::toShortResponse)
             .toList();

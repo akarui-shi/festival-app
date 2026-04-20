@@ -57,13 +57,13 @@ export default function PublicationsPage() {
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {publications.map((publication) => (
               <Link
-                key={publication.id}
-                to={`/publications/${publication.id}`}
+                key={publication.publicationId ?? publication.id}
+                to={`/publications/${publication.publicationId ?? publication.id}`}
                 className="group overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-hover"
               >
                 <div className="aspect-[3/2] overflow-hidden bg-muted">
                   <img
-                    src={publication.eventImageUrl || publication.imageUrl || '/placeholder.svg'}
+                    src={publication.imageUrl || publication.eventImageUrl || '/placeholder.svg'}
                     alt={publication.eventTitle || publication.title}
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
@@ -77,11 +77,11 @@ export default function PublicationsPage() {
                     {publication.title}
                   </h2>
                   <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">
-                    {publication.excerpt || 'Краткое описание публикации появится позже'}
+                    {publication.excerpt || publication.preview || 'Краткое описание публикации появится позже'}
                   </p>
                   <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Building2 className="h-3.5 w-3.5 text-primary/70" />
-                    <span className="truncate">{publication.organization?.name || 'Организация не указана'}</span>
+                    <span className="truncate">{publication.organization?.name || publication.organizationName || 'Организация не указана'}</span>
                   </div>
                   <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary">
                     Читать <ArrowRight className="h-3.5 w-3.5" />

@@ -5,6 +5,8 @@ import {
   Building2,
   CalendarDays,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Heart,
   MapPin,
@@ -19,6 +21,21 @@ import { StarRating } from '@/components/StarRating';
 import { EventLocationMap } from '@/components/EventLocationMap';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { eventService } from '@/services/event-service';
@@ -26,7 +43,7 @@ import { sessionService } from '@/services/session-service';
 import { reviewService } from '@/services/review-service';
 import { registrationService } from '@/services/registration-service';
 import { favoriteService } from '@/services/favorite-service';
-import type { Event, Id, Review, Session } from '@/types';
+import type { Event, Id, Review, Session, SessionTicketType } from '@/types';
 
 function formatDate(value?: string): string {
   if (!value) return 'Дата уточняется';
@@ -116,6 +133,12 @@ export default function EventDetailPage() {
   const [newRating, setNewRating] = useState(0);
   const [newComment, setNewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [ticketTypesBySession, setTicketTypesBySession] = useState<Record<string, SessionTicketType[]>>({});
+  const [ticketDialogSessionId, setTicketDialogSessionId] = useState<string | null>(null);
+  const [selectedTicketTypeId, setSelectedTicketTypeId] = useState<string>('');
+  const [registeringSessionId, setRegisteringSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -129,11 +152,23 @@ export default function EventDetailPage() {
       .then(([eventResponse, sessionsResponse, reviewsResponse]) => {
         setEvent(eventResponse);
         setSessions(sessionsResponse);
+        setSelectedSessionId(sessionsResponse.length > 0 ? String(sessionsResponse[0].id) : null);
+        setTicketTypesBySession({});
+        setTicketDialogSessionId(null);
+        setSelectedTicketTypeId('');
+        setActiveImageIndex(0);
         setReviews(reviewsResponse);
       })
       .catch(() => setError('Не удалось загрузить мероприятие'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    if (!selectedSessionId || sessions.some((session) => String(session.id) === selectedSessionId)) {
+      return;
+    }
+    setSelectedSessionId(sessions.length > 0 ? String(sessions[0].id) : null);
+  }, [sessions, selectedSessionId]);
 
   useEffect(() => {
     if (!user || !id) return;
@@ -173,14 +208,15 @@ export default function EventDetailPage() {
     toast.success('Добавлено в избранное');
   };
 
-  const registerForSession = async (sessionId: Id) => {
+  const registerForSession = async (sessionId: Id, ticketTypeId?: Id) => {
     if (!user || !isResident) {
       toast.error('Запись доступна только жителям');
       return;
     }
 
     try {
-      const order = await registrationService.createRegistration(sessionId, user.id);
+      setRegisteringSessionId(String(sessionId));
+      const order = await registrationService.createRegistration(sessionId, user.id, 'yookassa', ticketTypeId);
       if (order.requiresPayment && order.paymentUrl) {
         toast.info('Перенаправляем в платёжный шлюз...');
         window.location.assign(order.paymentUrl);
@@ -190,6 +226,58 @@ export default function EventDetailPage() {
       toast.success('Вы записаны на сеанс');
     } catch (registrationError: any) {
       toast.error(registrationError?.message || 'Не удалось записаться');
+    } finally {
+      setRegisteringSessionId(null);
+    }
+  };
+
+  const loadTicketTypes = async (sessionId: Id): Promise<SessionTicketType[]> => {
+    const key = String(sessionId);
+    if (ticketTypesBySession[key]) {
+      return ticketTypesBySession[key];
+    }
+
+    const types = await sessionService.getTicketTypes(sessionId);
+    setTicketTypesBySession((prev) => ({ ...prev, [key]: types }));
+    return types;
+  };
+
+  const openRegistrationForSession = async (session: Session) => {
+    if (!user || !isResident) {
+      toast.error('Запись доступна только жителям');
+      return;
+    }
+
+    const isRegistered = registeredSessionIds.includes(String(session.id));
+    if (isRegistered) {
+      toast.info('Вы уже записаны на этот сеанс');
+      return;
+    }
+
+    const seatsAvailable = session.availableSeats == null || session.availableSeats > 0;
+    const isOpen = session.registrationOpen ?? true;
+    if (!seatsAvailable || !isOpen) {
+      toast.error('Регистрация на сеанс недоступна');
+      return;
+    }
+
+    try {
+      const types = await loadTicketTypes(session.id);
+      const openTypes = types.filter((type) => type.registrationOpen ?? true);
+      if (openTypes.length === 0) {
+        await registerForSession(session.id);
+        return;
+      }
+
+      if (openTypes.length === 1) {
+        await registerForSession(session.id, openTypes[0].id);
+        return;
+      }
+
+      setTicketDialogSessionId(String(session.id));
+      setSelectedTicketTypeId(String(openTypes[0].id));
+    } catch (e: any) {
+      toast.error(e?.message || 'Не удалось загрузить типы билетов');
     }
   };
 
@@ -250,6 +338,25 @@ export default function EventDetailPage() {
   const canRegisterForEvent = isAuthenticated && isResident;
   const canLeaveReview = isAuthenticated && isResident;
   const primarySession = sessions[0];
+  const selectedSession = sessions.find((session) => String(session.id) === selectedSessionId) || primarySession;
+
+  const eventImageItems = (event.eventImages || [])
+    .filter((image) => image?.imageUrl)
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    .map((image) => image.imageUrl as string);
+  const galleryImages = eventImageItems.length > 0
+    ? eventImageItems
+    : [event.coverUrl || event.imageUrl || '/placeholder.svg'];
+  const currentImage = galleryImages[activeImageIndex] || galleryImages[0];
+
+  const selectedSessionAddress = selectedSession?.venueAddress || selectedSession?.venue?.address || '';
+  const selectedSessionVenueName = selectedSession?.venueName || selectedSession?.venue?.name || event.title;
+  const selectedSessionLatitude = selectedSession?.latitude ?? selectedSession?.venue?.latitude;
+  const selectedSessionLongitude = selectedSession?.longitude ?? selectedSession?.venue?.longitude;
+  const ticketDialogSession = sessions.find((session) => String(session.id) === ticketDialogSessionId) || null;
+  const ticketDialogTypes = ticketDialogSessionId
+    ? (ticketTypesBySession[ticketDialogSessionId] || []).filter((type) => type.registrationOpen ?? true)
+    : [];
 
   return (
     <PublicLayout>
@@ -264,13 +371,47 @@ export default function EventDetailPage() {
 
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <div className="overflow-hidden rounded-2xl">
+            <div className="relative overflow-hidden rounded-2xl border border-border bg-card">
               <img
-                src={event.coverUrl || event.imageUrl || '/placeholder.svg'}
+                src={currentImage}
                 alt={event.title}
                 className="aspect-video w-full object-cover"
               />
+              {galleryImages.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="absolute left-6 top-[50%] z-10 -translate-y-1/2 rounded-full border border-border bg-card/90 p-2"
+                    onClick={() => setActiveImageIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length)}
+                    aria-label="Предыдущее изображение"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    className="absolute right-6 top-[50%] z-10 -translate-y-1/2 rounded-full border border-border bg-card/90 p-2"
+                    onClick={() => setActiveImageIndex((prev) => (prev + 1) % galleryImages.length)}
+                    aria-label="Следующее изображение"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </>
+              )}
             </div>
+            {galleryImages.length > 1 && (
+              <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                {galleryImages.map((image, index) => (
+                  <button
+                    type="button"
+                    key={`${image}-${index}`}
+                    onClick={() => setActiveImageIndex(index)}
+                    className={`h-16 w-24 shrink-0 overflow-hidden rounded-md border ${index === activeImageIndex ? 'border-primary' : 'border-border'}`}
+                  >
+                    <img src={image} alt={`Изображение ${index + 1}`} className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div className="mt-6">
               <div className="flex flex-wrap gap-2">
@@ -353,11 +494,13 @@ export default function EventDetailPage() {
                   const isRegistered = registeredSessionIds.includes(String(session.id));
                   const isFull = session.availableSeats != null ? session.availableSeats <= 0 : currentParticipants >= maxParticipants;
                   const isOpen = session.registrationOpen ?? true;
+                  const isSelected = String(session.id) === String(selectedSession?.id);
 
                   return (
                     <div
                       key={session.id}
-                      className="flex items-center justify-between rounded-xl border border-border bg-card p-4"
+                      className={`flex items-center justify-between rounded-xl border bg-card p-4 ${isSelected ? 'border-primary' : 'border-border'}`}
+                      onClick={() => setSelectedSessionId(String(session.id))}
                     >
                       <div className="flex items-center gap-4">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -386,8 +529,17 @@ export default function EventDetailPage() {
                           isRegistered ? (
                             <Badge className="bg-primary/10 text-primary">Вы записаны</Badge>
                           ) : (
-                            <Button size="sm" onClick={() => registerForSession(session.id)} disabled={isFull || !isOpen}>
-                              {!isOpen ? 'Регистрация закрыта' : isFull ? 'Мест нет' : 'Записаться'}
+                            <Button
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void openRegistrationForSession(session);
+                              }}
+                              disabled={isFull || !isOpen || registeringSessionId === String(session.id)}
+                            >
+                              {registeringSessionId === String(session.id)
+                                ? 'Оформляем...'
+                                : !isOpen ? 'Регистрация закрыта' : isFull ? 'Мест нет' : 'Записаться'}
                             </Button>
                           )
                         ) : isAuthenticated ? (
@@ -463,7 +615,7 @@ export default function EventDetailPage() {
                     size="lg"
                     onClick={() => {
                       if (firstAvailableSession) {
-                        registerForSession(firstAvailableSession.id);
+                        void openRegistrationForSession(firstAvailableSession);
                         return;
                       }
 
@@ -515,24 +667,24 @@ export default function EventDetailPage() {
                   <div className="flex items-start gap-3">
                     <CalendarDays className="mt-0.5 h-4 w-4 text-primary" />
                     <div>
-                      <p className="text-sm font-semibold text-foreground">{formatDate(primarySession?.startAt)}</p>
-                      <p className="text-xs text-muted-foreground">до {formatDate(primarySession?.endAt)}</p>
+                      <p className="text-sm font-semibold text-foreground">{formatDate(selectedSession?.startAt)}</p>
+                      <p className="text-xs text-muted-foreground">до {formatDate(selectedSession?.endAt)}</p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-3">
                     <Clock className="mt-0.5 h-4 w-4 text-primary" />
-                    <p className="text-sm text-foreground">Начало в {formatTime(primarySession?.startAt)}</p>
+                    <p className="text-sm text-foreground">Начало в {formatTime(selectedSession?.startAt)}</p>
                   </div>
 
                   <div className="flex items-start gap-3">
                     <MapPin className="mt-0.5 h-4 w-4 text-primary" />
                     <div>
                       <p className="text-sm font-semibold text-foreground">
-                        {toShortAddress(event.venue?.address) || event.venue?.name || 'Адрес уточняется'}
+                        {toShortAddress(selectedSessionAddress) || selectedSessionVenueName || 'Адрес уточняется'}
                       </p>
-                      {event.venue?.name && event.venue?.address && (
-                        <p className="mt-1 text-xs text-muted-foreground">{event.venue.name}</p>
+                      {selectedSessionAddress && (
+                        <p className="mt-1 text-xs text-muted-foreground">{selectedSessionVenueName}</p>
                       )}
                     </div>
                   </div>
@@ -540,15 +692,70 @@ export default function EventDetailPage() {
               </div>
 
               <EventLocationMap
-                title={event.venue?.name || event.title}
-                address={event.venue?.address}
-                latitude={event.venue?.latitude}
-                longitude={event.venue?.longitude}
+                title={selectedSessionVenueName}
+                address={selectedSessionAddress}
+                latitude={selectedSessionLatitude ?? undefined}
+                longitude={selectedSessionLongitude ?? undefined}
               />
             </div>
           </div>
         </div>
       </div>
+
+      <Dialog open={Boolean(ticketDialogSessionId)} onOpenChange={(open) => {
+        if (!open) {
+          setTicketDialogSessionId(null);
+          setSelectedTicketTypeId('');
+        }
+      }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Выберите тип билета</DialogTitle>
+            <DialogDescription>
+              {ticketDialogSession
+                ? `Сеанс ${formatDate(ticketDialogSession.startAt)} ${formatTime(ticketDialogSession.startAt)}`
+                : 'Выберите подходящий билет для регистрации'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Select value={selectedTicketTypeId} onValueChange={setSelectedTicketTypeId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Выберите билет" />
+              </SelectTrigger>
+              <SelectContent>
+                {ticketDialogTypes.map((ticketType) => (
+                  <SelectItem key={ticketType.id} value={String(ticketType.id)}>
+                    {ticketType.name} - {Number(ticketType.price || 0).toLocaleString('ru-RU')} {ticketType.currency || 'RUB'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setTicketDialogSessionId(null);
+              setSelectedTicketTypeId('');
+            }}
+            >
+              Отмена
+            </Button>
+            <Button
+              disabled={!ticketDialogSession || !selectedTicketTypeId || registeringSessionId === String(ticketDialogSession?.id)}
+              onClick={async () => {
+                if (!ticketDialogSession || !selectedTicketTypeId) return;
+                await registerForSession(ticketDialogSession.id, selectedTicketTypeId);
+                setTicketDialogSessionId(null);
+                setSelectedTicketTypeId('');
+              }}
+            >
+              Продолжить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PublicLayout>
   );
 }

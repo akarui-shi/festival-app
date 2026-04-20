@@ -74,7 +74,36 @@ public class PublicationService {
     @Transactional(readOnly = true)
     public List<PublicationShortResponse> getMine(String actorIdentifier) {
         User actor = resolveActor(actorIdentifier);
-        return publicationRepository.findAllByCreatedByUserIdOrderByCreatedAtDesc(actor.getId()).stream()
+        List<OrganizationMember> memberships = organizationMemberRepository.findAllByUserIdAndLeftAtIsNull(actor.getId()).stream()
+            .filter(member -> member.getOrganization() != null && member.getOrganization().getDeletedAt() == null)
+            .toList();
+
+        if (memberships.isEmpty()) {
+            return List.of();
+        }
+
+        Set<Long> seen = new LinkedHashSet<>();
+        List<Publication> publications = new ArrayList<>();
+        for (OrganizationMember membership : memberships) {
+            for (Publication publication : publicationRepository.findAllByOrganizationIdOrderByCreatedAtDesc(
+                membership.getOrganization().getId()
+            )) {
+                if (seen.add(publication.getId())) {
+                    publications.add(publication);
+                }
+            }
+        }
+
+        publications.sort((left, right) -> {
+            OffsetDateTime leftCreated = left.getCreatedAt();
+            OffsetDateTime rightCreated = right.getCreatedAt();
+            if (leftCreated == null && rightCreated == null) return 0;
+            if (leftCreated == null) return 1;
+            if (rightCreated == null) return -1;
+            return rightCreated.compareTo(leftCreated);
+        });
+
+        return publications.stream()
             .map(this::toShort)
             .toList();
     }

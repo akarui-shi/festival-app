@@ -1,37 +1,67 @@
 import type { Id, Publication, PublicationStatus } from '@/types';
 import { ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut } from './api-client';
 
+function normalizePublication(publication: Publication): Publication {
+  const normalizedId = publication.publicationId ?? publication.id;
+  const normalizedImageUrls = publication.imageUrls && publication.imageUrls.length > 0
+    ? publication.imageUrls
+    : publication.imageUrl ? [publication.imageUrl] : [];
+  const normalizedImageUrl = publication.imageUrl
+    || normalizedImageUrls[0]
+    || publication.eventImageUrl
+    || null;
+
+  return {
+    ...publication,
+    publicationId: normalizedId,
+    id: normalizedId,
+    imageUrls: normalizedImageUrls,
+    imageUrl: normalizedImageUrl,
+    preview: publication.preview ?? publication.excerpt ?? null,
+    excerpt: publication.excerpt ?? publication.preview ?? null,
+    tags: publication.tags ?? [],
+  };
+}
+
+function normalizePublications(list: Publication[]): Publication[] {
+  return list.map(normalizePublication);
+}
+
 export const publicationService = {
   async getPublications(params?: { eventId?: Id; organizationId?: Id; title?: string }): Promise<Publication[]> {
-    return apiGet<Publication[]>('/publications', {
+    const response = await apiGet<Publication[]>('/publications', {
       eventId: params?.eventId,
       organizationId: params?.organizationId,
       title: params?.title,
     });
+    return normalizePublications(response);
   },
 
   async getPublicationById(id: Id): Promise<Publication> {
-    return apiGet<Publication>(`/publications/${id}`);
+    const response = await apiGet<Publication>(`/publications/${id}`);
+    return normalizePublication(response);
   },
 
   async createPublication(data: Partial<Publication>): Promise<Publication> {
-    return apiPost<Publication>('/publications', {
+    const response = await apiPost<Publication>('/publications', {
       title: data.title,
       content: data.content,
       imageUrl: data.imageUrl,
       imageUrls: data.imageUrls,
       eventId: data.eventId,
     });
+    return normalizePublication(response);
   },
 
   async updatePublication(id: Id, data: Partial<Publication>): Promise<Publication> {
-    return apiPut<Publication>(`/publications/${id}`, {
+    const response = await apiPut<Publication>(`/publications/${id}`, {
       title: data.title,
       content: data.content,
       imageUrl: data.imageUrl,
       imageUrls: data.imageUrls,
       eventId: data.eventId,
     });
+    return normalizePublication(response);
   },
 
   async deletePublication(id: Id): Promise<void> {
@@ -39,15 +69,16 @@ export const publicationService = {
   },
 
   async updateStatus(id: Id, status: PublicationStatus): Promise<Publication> {
-    return apiPatch<Publication>(`/publications/${id}/status`, {
+    const response = await apiPatch<Publication>(`/publications/${id}/status`, {
       status,
     });
+    return normalizePublication(response);
   },
 
   async getAllPublications(): Promise<Publication[]> {
     try {
       const response = await apiGet<Publication[]>('/admin/publications');
-      return response
+      return normalizePublications(response)
         .filter((publication) => publication.status !== 'DELETED')
     } catch (error) {
       if (!(error instanceof ApiError) || (error.status !== 401 && error.status !== 403)) {
@@ -55,7 +86,7 @@ export const publicationService = {
       }
 
       const response = await apiGet<Publication[]>('/publications/mine');
-      return response
+      return normalizePublications(response)
         .filter((publication) => publication.status !== 'DELETED')
     }
   },

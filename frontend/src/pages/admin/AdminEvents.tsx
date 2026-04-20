@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Calendar } from 'lucide-react';
+import { Calendar, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 import { eventService } from '@/services/event-service';
 import { LoadingState } from '@/components/StateDisplays';
 import { EmptyState } from '@/components/EmptyState';
@@ -67,6 +68,12 @@ export default function AdminEvents() {
               </div>
 
               <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" asChild>
+                  <Link to={`/events/${event.id}`} target="_blank" rel="noreferrer" className="gap-1.5">
+                    Подробнее
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
                 {(event.status === 'PENDING' || event.status === 'PENDING_APPROVAL') && (
                   <>
                     <Button size="sm" onClick={() => changeStatus(String(event.id), 'PUBLISHED')}>

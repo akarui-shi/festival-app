@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Building2, User } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -67,6 +68,12 @@ export default function ProfilePage() {
                 {user.organization.contacts && (
                   <p className="mt-1 text-xs text-muted-foreground">{user.organization.contacts}</p>
                 )}
+                <Link
+                  to={`/organizations/${user.organization.id}`}
+                  className="mt-2 inline-flex text-xs font-medium text-primary hover:underline"
+                >
+                  Перейти на страницу организации
+                </Link>
               </div>
             )}
 

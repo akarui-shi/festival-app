@@ -53,8 +53,6 @@ interface ImageDraft {
 
 interface ExistingArtistDraft {
   artistId: number;
-  eventRole: string;
-  displayOrder: number;
 }
 
 interface TicketTypeDraft {
@@ -140,11 +138,9 @@ function mapImage(item: WizardImageItem, index: number): ImageDraft | null {
   };
 }
 
-function mapArtistToExisting(item: WizardArtistItem, index: number): ExistingArtistDraft {
+function mapArtistToExisting(item: WizardArtistItem): ExistingArtistDraft {
   return {
     artistId: item.artistId,
-    eventRole: item.eventRole || 'artist',
-    displayOrder: item.displayOrder ?? index,
   };
 }
 
@@ -450,10 +446,8 @@ export default function EventFormPage() {
       });
     } else if (targetStep === 2) {
       state = await organizerEventWizardService.updateArtists(targetEventId, {
-        artists: hasArtists ? existingArtists.map((artist, index) => ({
+        artists: hasArtists ? existingArtists.map((artist) => ({
           artistId: artist.artistId,
-          eventRole: artist.eventRole || 'artist',
-          displayOrder: artist.displayOrder ?? index,
         })) : [],
       });
     } else if (targetStep === 3) {
@@ -670,7 +664,7 @@ export default function EventFormPage() {
     setExistingArtists((prev) => {
       if (checked) {
         if (prev.some((artist) => artist.artistId === artistId)) return prev;
-        return [...prev, { artistId, eventRole: 'artist', displayOrder: prev.length }];
+        return [...prev, { artistId }];
       }
       return prev.filter((artist) => artist.artistId !== artistId);
     });
@@ -932,7 +926,6 @@ export default function EventFormPage() {
           </div>
 
           <div className="text-right text-sm text-muted-foreground">
-            <p>{eventId ? `ID мероприятия: ${eventId}` : 'Черновик еще не создан'}</p>
             <p>{autoSaving ? 'Автосохранение...' : dirty ? 'Есть несохраненные изменения' : 'Все изменения сохранены'}</p>
           </div>
         </div>
@@ -1070,22 +1063,59 @@ export default function EventFormPage() {
             </div>
 
             {hasArtists ? (
-              <div className="rounded-xl border border-border p-3">
+              <div className="space-y-3 rounded-xl border border-border p-3">
                 <Label>Поиск существующих артистов</Label>
                 <Input value={artistSearch} onChange={(event) => setArtistSearch(event.target.value)} placeholder="Поиск по имени или сценическому имени" />
 
-                <div className="mt-3 max-h-64 space-y-2 overflow-auto">
+                {existingArtists.length > 0 && (
+                  <div className="rounded-lg border border-border bg-muted/20 p-3">
+                    <p className="mb-2 text-sm font-semibold">Выбрано артистов: {existingArtists.length}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {existingArtists.map((selected) => {
+                        const artist = artistsCatalog.find((item) => Number(item.id) === selected.artistId);
+                        const label = artist?.stageName
+                          ? `${artist.name} (${artist.stageName})`
+                          : artist?.name || `Артист #${selected.artistId}`;
+                        return (
+                          <button
+                            key={selected.artistId}
+                            type="button"
+                            onClick={() => toggleExistingArtist(selected.artistId, false)}
+                            className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
+                            title="Убрать артиста"
+                          >
+                            {label} ×
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="max-h-72 space-y-2 overflow-auto">
+                  {artistOptions.length === 0 && (
+                    <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
+                      Артисты не найдены
+                    </p>
+                  )}
                   {artistOptions.map((artist) => {
                     const checked = existingArtists.some((item) => item.artistId === Number(artist.id));
                     return (
-                      <label key={artist.id} className="flex items-center gap-2 rounded-md border border-border px-2 py-1.5 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(event) => toggleExistingArtist(Number(artist.id), event.target.checked)}
-                        />
-                        <span>{artist.name}{artist.stageName ? ` (${artist.stageName})` : ''}</span>
-                      </label>
+                      <div key={artist.id} className={`flex items-center justify-between rounded-lg border p-3 ${checked ? 'border-primary/40 bg-primary/5' : 'border-border'}`}>
+                        <div>
+                          <p className="text-sm font-semibold">{artist.name}</p>
+                          {artist.stageName && <p className="text-xs text-muted-foreground">{artist.stageName}</p>}
+                          {artist.genre && <p className="text-xs text-muted-foreground">{artist.genre}</p>}
+                        </div>
+                        <Button
+                          type="button"
+                          variant={checked ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => toggleExistingArtist(Number(artist.id), !checked)}
+                        >
+                          {checked ? 'Выбран' : 'Добавить'}
+                        </Button>
+                      </div>
                     );
                   })}
                 </div>
@@ -1094,31 +1124,6 @@ export default function EventFormPage() {
               <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
                 Для этого мероприятия артисты не выбраны.
               </p>
-            )}
-
-            {hasArtists && existingArtists.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-sm font-semibold">Роли выбранных артистов</p>
-                {existingArtists.map((artist, index) => (
-                  <div key={artist.artistId} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_200px_120px]">
-                    <Input value={String(artist.artistId)} readOnly />
-                    <Input value={artist.eventRole} onChange={(event) => {
-                      const value = event.target.value;
-                      setExistingArtists((prev) => prev.map((item) => item.artistId === artist.artistId ? { ...item, eventRole: value } : item));
-                      markDirty();
-                    }} placeholder="event_role" />
-                    <Input
-                      type="number"
-                      value={artist.displayOrder}
-                      onChange={(event) => {
-                        const value = Number(event.target.value || index);
-                        setExistingArtists((prev) => prev.map((item) => item.artistId === artist.artistId ? { ...item, displayOrder: value } : item));
-                        markDirty();
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
             )}
           </div>
         )}

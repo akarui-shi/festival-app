@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Building2, CalendarDays, Clock, Heart, MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -84,7 +85,13 @@ function toShortAddress(address?: string): string {
 }
 
 export function EventCard({ event, onFavoriteToggle, isFavorite }: EventCardProps) {
-  const image = event.coverUrl || event.imageUrl || '/placeholder.svg';
+  const fallbackImage = '/placeholder-event.svg';
+  const preferredImage = event.coverUrl || event.imageUrl || fallbackImage;
+  const [image, setImage] = useState(preferredImage);
+
+  useEffect(() => {
+    setImage(preferredImage);
+  }, [preferredImage, event.id]);
   const categoryNames = (event.categories || [])
     .map((category) => category?.name)
     .filter((name): name is string => Boolean(name && name.trim()));
@@ -110,6 +117,11 @@ export function EventCard({ event, onFavoriteToggle, isFavorite }: EventCardProp
           alt={event.title}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
+          onError={() => {
+            if (image !== fallbackImage) {
+              setImage(fallbackImage);
+            }
+          }}
         />
 
         <div className="absolute left-3 top-3 flex max-w-[calc(100%-5rem)] flex-wrap gap-1.5">

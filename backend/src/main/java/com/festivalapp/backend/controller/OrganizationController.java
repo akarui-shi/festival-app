@@ -3,6 +3,7 @@ package com.festivalapp.backend.controller;
 import com.festivalapp.backend.dto.OrganizationJoinRequestCreateRequest;
 import com.festivalapp.backend.dto.OrganizationJoinRequestDecisionRequest;
 import com.festivalapp.backend.dto.OrganizationJoinRequestResponse;
+import com.festivalapp.backend.dto.OrganizationMemberResponse;
 import com.festivalapp.backend.dto.OrganizationPublicResponse;
 import com.festivalapp.backend.dto.OrganizationUpdateRequest;
 import com.festivalapp.backend.exception.UnauthorizedException;
@@ -37,6 +38,11 @@ public class OrganizationController {
         return ResponseEntity.ok(organizationService.searchPublicOrganizations(q));
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<OrganizationPublicResponse> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(organizationService.getPublicOrganization(id));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<OrganizationPublicResponse> update(@PathVariable Long id,
                                                              @Valid @RequestBody OrganizationUpdateRequest request,
@@ -66,6 +72,12 @@ public class OrganizationController {
                                                                                            @RequestParam(required = false) String status,
                                                                                            @AuthenticationPrincipal UserDetails principal) {
         return ResponseEntity.ok(organizationService.getOrganizationJoinRequests(id, extractUsername(principal), status));
+    }
+
+    @GetMapping("/{id}/members")
+    public ResponseEntity<List<OrganizationMemberResponse>> organizationMembers(@PathVariable Long id,
+                                                                                 @AuthenticationPrincipal UserDetails principal) {
+        return ResponseEntity.ok(organizationService.getOrganizationMembers(id, extractUsername(principal)));
     }
 
     @PatchMapping("/join-requests/{requestId}")

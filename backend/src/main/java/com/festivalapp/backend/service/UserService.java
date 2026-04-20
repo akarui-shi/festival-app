@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.OffsetDateTime;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -70,8 +72,7 @@ public class UserService {
             .map(userRole -> userRole.getRole().toRoleName().toApiName())
             .collect(Collectors.toSet());
 
-        Optional<OrganizationMember> ownerMembership = organizationMemberRepository
-            .findFirstByUserIdAndOrganizationStatusAndLeftAtIsNull(user.getId(), "владелец");
+        Optional<OrganizationMember> primaryMembership = findPrimaryMembership(user.getId());
 
         return CurrentUserResponse.builder()
             .id(user.getId())
@@ -82,8 +83,33 @@ public class UserService {
             .lastName(user.getLastName())
             .avatarUrl(user.getAvatarUrl())
             .roles(roles)
-            .organization(ownerMembership.map(this::toOrganizationInfo).orElse(null))
+            .organization(primaryMembership.map(this::toOrganizationInfo).orElse(null))
             .build();
+    }
+
+    private Optional<OrganizationMember> findPrimaryMembership(Long userId) {
+        List<OrganizationMember> memberships = organizationMemberRepository.findAllByUserIdAndLeftAtIsNull(userId);
+        if (memberships.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return memberships.stream()
+            .sorted(Comparator
+                .comparingInt((OrganizationMember item) -> statusPriority(item.getOrganizationStatus()))
+                .thenComparing(OrganizationMember::getJoinedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+            .findFirst();
+    }
+
+    private int statusPriority(String status) {
+        if (status == null) {
+            return 99;
+        }
+        return switch (status.trim().toLowerCase()) {
+            case "владелец" -> 0;
+            case "администратор" -> 1;
+            case "участник" -> 2;
+            default -> 10;
+        };
     }
 
     private CurrentUserResponse.OrganizationInfo toOrganizationInfo(OrganizationMember membership) {

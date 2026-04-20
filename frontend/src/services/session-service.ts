@@ -1,4 +1,4 @@
-import type { Id, Session } from '@/types';
+import type { Id, Session, SessionTicketType } from '@/types';
 import { apiDelete, apiGet, apiPost, apiPut } from './api-client';
 
 function toBackendDateTime(date: string, time: string): string {
@@ -7,6 +7,7 @@ function toBackendDateTime(date: string, time: string): string {
 }
 
 type SessionMutationInput = Partial<Session> & {
+  sessionTitle?: string;
   date?: string;
   startTime?: string;
   endTime?: string;
@@ -52,6 +53,10 @@ export const sessionService = {
 
   async getSessionById(id: Id): Promise<Session> {
     return apiGet<Session>(`/sessions/${id}`);
+  },
+
+  async getTicketTypes(sessionId: Id): Promise<SessionTicketType[]> {
+    return apiGet<SessionTicketType[]>(`/sessions/${sessionId}/ticket-types`);
   },
 
   async createSession(data: SessionMutationInput): Promise<Session> {

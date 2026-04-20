@@ -29,8 +29,6 @@ export interface WizardArtistItem {
   description?: string | null;
   genre?: string | null;
   imageUrl?: string | null;
-  eventRole?: string | null;
-  displayOrder?: number | null;
 }
 
 export interface WizardTicketTypeItem {
@@ -110,8 +108,6 @@ export interface WizardImagesPayload {
 export interface WizardArtistsPayload {
   artists?: Array<{
     artistId: number;
-    eventRole?: string;
-    displayOrder?: number;
   }>;
 }
 

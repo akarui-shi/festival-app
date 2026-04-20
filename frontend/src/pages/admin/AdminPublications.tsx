@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { FileText } from 'lucide-react';
+import { ExternalLink, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 import { publicationService } from '@/services/publication-service';
 import { LoadingState } from '@/components/StateDisplays';
 import { EmptyState } from '@/components/EmptyState';
@@ -59,11 +60,20 @@ export default function AdminPublications() {
                   <Badge className={`${status.cls} border-0 text-xs`}>{status.label}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
+                  {pub.preview || pub.excerpt || 'Без анонса'}
+                </p>
+                <p className="text-xs text-muted-foreground">
                   {pub.authorName || 'Автор'}
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" asChild>
+                  <Link to={`/publications/${pub.publicationId ?? pub.id}`} target="_blank" rel="noreferrer" className="gap-1.5">
+                    Подробнее
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
                 {pub.status === 'PENDING' && (
                   <>
                     <Button size="sm" onClick={() => changeStatus(String(pub.publicationId), 'PUBLISHED')}>
