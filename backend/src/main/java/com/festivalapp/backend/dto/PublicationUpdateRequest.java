@@ -15,8 +15,8 @@ public class PublicationUpdateRequest {
 
     private String content;
 
-    private String imageUrl;
-    private List<String> imageUrls;
+    private Long imageId;
+    private List<Long> imageIds;
 
     private Long eventId;
 }

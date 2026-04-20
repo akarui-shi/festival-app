@@ -194,7 +194,7 @@ public class AuthService {
             .phone(user.getPhone())
             .firstName(user.getFirstName())
             .lastName(user.getLastName())
-            .avatarUrl(user.getAvatarUrl())
+            .avatarImageId(user.getAvatarImage() == null ? null : user.getAvatarImage().getId())
             .roles(roles)
             .organization(primaryMembership.map(this::toOrganizationInfo).orElse(null))
             .build();

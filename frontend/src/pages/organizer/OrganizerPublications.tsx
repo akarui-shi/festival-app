@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { imageSrc } from '@/lib/image';
 import type { Event, Id, Publication } from '@/types';
 
 const statusMap: Record<string, { label: string; cls: string }> = {
@@ -29,7 +30,7 @@ export default function OrganizerPublications() {
   const [organizerEvents, setOrganizerEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: '', excerpt: '', content: '', tags: '', eventId: '', imageUrl: '' });
+  const [form, setForm] = useState({ title: '', excerpt: '', content: '', tags: '', eventId: '', imageId: null as number | null });
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [publicationToDelete, setPublicationToDelete] = useState<Publication | null>(null);
@@ -63,11 +64,12 @@ export default function OrganizerPublications() {
         ...form,
         authorId: user!.id,
         eventId: Number(form.eventId),
+        imageId: form.imageId ?? undefined,
         tags: form.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
       });
       setPubs((prev) => [pub, ...prev]);
       setShowForm(false);
-      setForm((prev) => ({ title: '', excerpt: '', content: '', tags: '', eventId: prev.eventId, imageUrl: '' }));
+      setForm((prev) => ({ title: '', excerpt: '', content: '', tags: '', eventId: prev.eventId, imageId: null }));
       toast.success('Публикация создана');
     } catch { toast.error('Ошибка'); }
     setSaving(false);
@@ -80,7 +82,7 @@ export default function OrganizerPublications() {
     setUploadingImage(true);
     try {
       const uploaded = await fileUploadService.uploadPublicationImage(file);
-      setForm((prev) => ({ ...prev, imageUrl: uploaded.url }));
+      setForm((prev) => ({ ...prev, imageId: uploaded.imageId }));
       toast.success('Изображение публикации загружено');
     } catch (error: any) {
       toast.error(error?.message || 'Не удалось загрузить изображение');
@@ -191,20 +193,20 @@ export default function OrganizerPublications() {
                   />
                 </label>
               </Button>
-              {form.imageUrl && (
+              {form.imageId != null && (
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setForm((prev) => ({ ...prev, imageUrl: '' }))}
+                  onClick={() => setForm((prev) => ({ ...prev, imageId: null }))}
                 >
                   Убрать
                 </Button>
               )}
             </div>
-            {form.imageUrl && (
+            {form.imageId != null && (
               <div className="overflow-hidden rounded-lg border border-border bg-muted">
-                <img src={form.imageUrl} alt="Изображение публикации" className="h-44 w-full object-cover" />
+                <img src={imageSrc(form.imageId)} alt="Изображение публикации" className="h-44 w-full object-cover" />
               </div>
             )}
           </div>

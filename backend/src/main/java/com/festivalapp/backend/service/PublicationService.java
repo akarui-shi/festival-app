@@ -67,7 +67,7 @@ public class PublicationService {
             .updatedAt(now)
             .build());
 
-        replacePublicationImages(publication, normalizeImageUrls(request.getImageUrls(), request.getImageUrl()));
+        replacePublicationImages(publication, normalizeImageIds(request.getImageIds(), request.getImageId()));
         return toDetails(publicationRepository.findById(publication.getId()).orElse(publication));
     }
 
@@ -172,8 +172,8 @@ public class PublicationService {
         publication.setUpdatedAt(OffsetDateTime.now());
 
         Publication saved = publicationRepository.save(publication);
-        if (request.getImageUrl() != null || request.getImageUrls() != null) {
-            replacePublicationImages(saved, normalizeImageUrls(request.getImageUrls(), request.getImageUrl()));
+        if (request.getImageId() != null || request.getImageIds() != null) {
+            replacePublicationImages(saved, normalizeImageIds(request.getImageIds(), request.getImageId()));
         }
 
         return toDetails(saved);
@@ -216,13 +216,13 @@ public class PublicationService {
     }
 
     private PublicationDetailsResponse toDetails(Publication publication) {
-        List<String> imageUrls = getPublicationImageUrls(publication.getId());
+        List<Long> imageIds = getPublicationImageIds(publication.getId());
         return PublicationDetailsResponse.builder()
             .publicationId(publication.getId())
             .title(publication.getTitle())
             .content(publication.getContent())
-            .imageUrl(imageUrls.stream().findFirst().orElse(null))
-            .imageUrls(imageUrls)
+            .imageId(imageIds.stream().findFirst().orElse(null))
+            .imageIds(imageIds)
             .createdAt(publication.getCreatedAt() == null ? null : publication.getCreatedAt().toLocalDateTime())
             .publishedAt(publication.getPublishedAt() == null ? null : publication.getPublishedAt().toLocalDateTime())
             .status(DomainStatusMapper.toPublicationStatus(publication.getStatus()))
@@ -233,14 +233,14 @@ public class PublicationService {
             .organizationName(publication.getOrganization() == null ? null : publication.getOrganization().getName())
             .eventId(publication.getEvent() == null ? null : publication.getEvent().getId())
             .eventTitle(publication.getEvent() == null ? null : publication.getEvent().getTitle())
-            .eventImageUrl(getEventCover(publication.getEvent() == null ? null : publication.getEvent().getId()))
+            .eventImageId(getEventCoverImageId(publication.getEvent() == null ? null : publication.getEvent().getId()))
             .build();
     }
 
     private PublicationShortResponse toShort(Publication publication) {
         String content = publication.getContent() == null ? "" : publication.getContent();
         String preview = content.length() > 140 ? content.substring(0, 140) + "..." : content;
-        List<String> imageUrls = getPublicationImageUrls(publication.getId());
+        List<Long> imageIds = getPublicationImageIds(publication.getId());
 
         return PublicationShortResponse.builder()
             .publicationId(publication.getId())
@@ -251,29 +251,29 @@ public class PublicationService {
             .status(DomainStatusMapper.toPublicationStatus(publication.getStatus()))
             .moderationStatus(publication.getModerationStatus())
             .authorName(fullName(publication.getCreatedByUser()))
-            .imageUrl(imageUrls.stream().findFirst().orElse(null))
-            .imageUrls(imageUrls)
+            .imageId(imageIds.stream().findFirst().orElse(null))
+            .imageIds(imageIds)
             .organizationId(publication.getOrganization() == null ? null : publication.getOrganization().getId())
             .organizationName(publication.getOrganization() == null ? null : publication.getOrganization().getName())
             .eventId(publication.getEvent() == null ? null : publication.getEvent().getId())
             .eventTitle(publication.getEvent() == null ? null : publication.getEvent().getTitle())
-            .eventImageUrl(getEventCover(publication.getEvent() == null ? null : publication.getEvent().getId()))
+            .eventImageId(getEventCoverImageId(publication.getEvent() == null ? null : publication.getEvent().getId()))
             .build();
     }
 
-    private void replacePublicationImages(Publication publication, List<String> imageUrls) {
+    private void replacePublicationImages(Publication publication, List<Long> imageIds) {
         publicationImageRepository.deleteByPublicationId(publication.getId());
-        if (imageUrls == null || imageUrls.isEmpty()) {
+        if (imageIds == null || imageIds.isEmpty()) {
             return;
         }
 
         int sortOrder = 0;
-        for (String imageUrl : imageUrls) {
-            if (!StringUtils.hasText(imageUrl)) {
+        for (Long imageId : imageIds) {
+            if (imageId == null) {
                 continue;
             }
-
-            Image image = resolveImage(imageUrl);
+            Image image = imageRepository.findById(imageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
 
             publicationImageRepository.save(PublicationImage.builder()
                 .publication(publication)
@@ -283,35 +283,35 @@ public class PublicationService {
         }
     }
 
-    private List<String> getPublicationImageUrls(Long publicationId) {
+    private List<Long> getPublicationImageIds(Long publicationId) {
         return publicationImageRepository.findAllByPublicationIdOrderBySortOrderAscIdAsc(publicationId).stream()
             .map(PublicationImage::getImage)
-            .map(Image::getFileUrl)
+            .map(Image::getId)
             .toList();
     }
 
-    private List<String> normalizeImageUrls(List<String> imageUrls, String imageUrl) {
-        Set<String> unique = new LinkedHashSet<>();
-        if (imageUrls != null) {
-            for (String candidate : imageUrls) {
-                if (StringUtils.hasText(candidate)) {
-                    unique.add(candidate.trim());
+    private List<Long> normalizeImageIds(List<Long> imageIds, Long imageId) {
+        Set<Long> unique = new LinkedHashSet<>();
+        if (imageIds != null) {
+            for (Long candidate : imageIds) {
+                if (candidate != null) {
+                    unique.add(candidate);
                 }
             }
         }
-        if (StringUtils.hasText(imageUrl)) {
-            unique.add(imageUrl.trim());
+        if (imageId != null) {
+            unique.add(imageId);
         }
         return new ArrayList<>(unique);
     }
 
-    private String getEventCover(Long eventId) {
+    private Long getEventCoverImageId(Long eventId) {
         if (eventId == null) {
             return null;
         }
         return eventImageRepository.findFirstByEventIdAndPrimaryIsTrueOrderBySortOrderAscIdAsc(eventId)
             .map(EventImage::getImage)
-            .map(Image::getFileUrl)
+            .map(Image::getId)
             .orElse(null);
     }
 
@@ -355,45 +355,4 @@ public class PublicationService {
         return value.trim();
     }
 
-    private String fileNameFromUrl(String url) {
-        String trimmed = url.trim();
-        int slash = trimmed.lastIndexOf('/');
-        if (slash < 0 || slash == trimmed.length() - 1) {
-            return "image-" + System.nanoTime();
-        }
-        return trimmed.substring(slash + 1);
-    }
-
-    private Image resolveImage(String imageUrl) {
-        Long imageId = extractImageIdFromUrl(imageUrl);
-        if (imageId != null) {
-            return imageRepository.findById(imageId)
-                .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
-        }
-
-        return imageRepository.save(Image.builder()
-            .fileName(fileNameFromUrl(imageUrl))
-            .mimeType("image/*")
-            .fileSize(0L)
-            .fileUrl(imageUrl.trim())
-            .uploadedAt(OffsetDateTime.now())
-            .build());
-    }
-
-    private Long extractImageIdFromUrl(String imageUrl) {
-        if (!StringUtils.hasText(imageUrl)) {
-            return null;
-        }
-        String normalized = imageUrl.trim();
-        int slash = normalized.lastIndexOf('/');
-        if (slash < 0 || slash == normalized.length() - 1) {
-            return null;
-        }
-        String tail = normalized.substring(slash + 1);
-        try {
-            return Long.parseLong(tail);
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
-    }
 }

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PublicLayout } from '@/layouts/PublicLayout';
+import { imageSrc } from '@/lib/image';
 import { LoadingState, ErrorState } from '@/components/StateDisplays';
 import { StarRating } from '@/components/StarRating';
 import { EventLocationMap } from '@/components/EventLocationMap';
@@ -341,12 +342,12 @@ export default function EventDetailPage() {
   const selectedSession = sessions.find((session) => String(session.id) === selectedSessionId) || primarySession;
 
   const eventImageItems = (event.eventImages || [])
-    .filter((image) => image?.imageUrl)
+    .filter((image) => image?.imageId != null)
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-    .map((image) => image.imageUrl as string);
+    .map((image) => imageSrc(image.imageId == null ? null : Number(image.imageId)));
   const galleryImages = eventImageItems.length > 0
     ? eventImageItems
-    : [event.coverUrl || event.imageUrl || '/placeholder.svg'];
+    : [imageSrc(event.coverImageId == null ? null : Number(event.coverImageId))];
   const currentImage = galleryImages[activeImageIndex] || galleryImages[0];
 
   const selectedSessionAddress = selectedSession?.venueAddress || selectedSession?.venue?.address || '';

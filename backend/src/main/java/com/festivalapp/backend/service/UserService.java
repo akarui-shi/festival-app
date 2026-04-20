@@ -5,8 +5,10 @@ import com.festivalapp.backend.dto.UpdateCurrentUserRequest;
 import com.festivalapp.backend.entity.Organization;
 import com.festivalapp.backend.entity.OrganizationMember;
 import com.festivalapp.backend.entity.User;
+import com.festivalapp.backend.entity.Image;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
+import com.festivalapp.backend.repository.ImageRepository;
 import com.festivalapp.backend.repository.OrganizationMemberRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
+    private final ImageRepository imageRepository;
 
     @Transactional(readOnly = true)
     public CurrentUserResponse getCurrentUser(String username) {
@@ -60,7 +63,11 @@ public class UserService {
         user.setFirstName(normalizeOptional(request.getFirstName()) == null ? user.getFirstName() : normalizeOptional(request.getFirstName()));
         user.setLastName(normalizeOptional(request.getLastName()) == null ? user.getLastName() : normalizeOptional(request.getLastName()));
         user.setPhone(normalizedPhone);
-        user.setAvatarUrl(normalizeOptional(request.getAvatarUrl()));
+        if (request.getAvatarImageId() != null) {
+            Image avatarImage = imageRepository.findById(request.getAvatarImageId())
+                .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
+            user.setAvatarImage(avatarImage);
+        }
         user.setUpdatedAt(OffsetDateTime.now());
 
         User saved = userRepository.save(user);
@@ -81,7 +88,7 @@ public class UserService {
             .phone(user.getPhone())
             .firstName(user.getFirstName())
             .lastName(user.getLastName())
-            .avatarUrl(user.getAvatarUrl())
+            .avatarImageId(user.getAvatarImage() == null ? null : user.getAvatarImage().getId())
             .roles(roles)
             .organization(primaryMembership.map(this::toOrganizationInfo).orElse(null))
             .build();

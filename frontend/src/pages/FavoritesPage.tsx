@@ -15,7 +15,7 @@ function favoriteToEvent(favorite: Favorite): Event {
     id: favorite.eventId,
     title: favorite.title,
     shortDescription: favorite.shortDescription || null,
-    coverUrl: favorite.coverUrl || null,
+    coverImageId: favorite.coverImageId || null,
     ageRating: favorite.ageRating || null,
     status: favorite.status ? String(favorite.status) : null,
   };

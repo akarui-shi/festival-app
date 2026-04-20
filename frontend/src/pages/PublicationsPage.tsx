@@ -4,6 +4,7 @@ import { ArrowRight, Building2, CalendarDays, FileText } from 'lucide-react';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { LoadingState } from '@/components/StateDisplays';
 import { EmptyState } from '@/components/EmptyState';
+import { imageSrc } from '@/lib/image';
 import { publicationService } from '@/services/publication-service';
 import type { Publication } from '@/types';
 
@@ -63,7 +64,9 @@ export default function PublicationsPage() {
               >
                 <div className="aspect-[3/2] overflow-hidden bg-muted">
                   <img
-                    src={publication.imageUrl || publication.eventImageUrl || '/placeholder.svg'}
+                    src={imageSrc(
+                      publication.imageId == null ? publication.eventImageId == null ? null : Number(publication.eventImageId) : Number(publication.imageId),
+                    )}
                     alt={publication.eventTitle || publication.title}
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />

@@ -12,5 +12,5 @@ public class ArtistSummaryResponse {
     private String stageName;
     private String description;
     private String genre;
-    private String imageUrl;
+    private Long imageId;
 }

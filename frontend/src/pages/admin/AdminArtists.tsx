@@ -17,7 +17,6 @@ type ArtistDraft = {
   stageName: string;
   genre: string;
   description: string;
-  imageUrl?: string | null;
   imageId?: number | null;
 };
 
@@ -28,8 +27,7 @@ function toDraft(artist: Artist): ArtistDraft {
     stageName: artist.stageName || '',
     genre: artist.genre || '',
     description: artist.description || '',
-    imageUrl: artist.imageUrl || null,
-    imageId: undefined,
+    imageId: artist.imageId == null ? null : Number(artist.imageId),
   };
 }
 
@@ -43,7 +41,6 @@ export default function AdminArtists() {
     stageName: '',
     genre: '',
     description: '',
-    imageUrl: null,
     imageId: null,
   });
   const [editDrafts, setEditDrafts] = useState<Record<string, ArtistDraft>>({});
@@ -63,9 +60,9 @@ export default function AdminArtists() {
     return artists.filter((artist) => `${artist.name} ${artist.stageName || ''} ${artist.genre || ''}`.toLowerCase().includes(q));
   }, [artists, search]);
 
-  const uploadArtistImage = async (file: File): Promise<{ imageId: number; url: string }> => {
+  const uploadArtistImage = async (file: File): Promise<{ imageId: number }> => {
     const uploaded = await fileUploadService.uploadImage(file);
-    return { imageId: uploaded.imageId, url: uploaded.url };
+    return { imageId: uploaded.imageId };
   };
 
   const onCreate = async () => {
@@ -82,12 +79,11 @@ export default function AdminArtists() {
         genre: newArtist.genre.trim() || undefined,
         description: newArtist.description.trim() || undefined,
         imageId: newArtist.imageId || undefined,
-        imageUrl: newArtist.imageUrl || undefined,
       });
 
       setArtists((prev) => [created, ...prev]);
       setEditDrafts((prev) => ({ ...prev, [String(created.id)]: toDraft(created) }));
-      setNewArtist({ name: '', stageName: '', genre: '', description: '', imageUrl: null, imageId: null });
+      setNewArtist({ name: '', stageName: '', genre: '', description: '', imageId: null });
       toast.success('Артист добавлен');
     } catch {
       toast.error('Не удалось добавить артиста');
@@ -111,7 +107,6 @@ export default function AdminArtists() {
         genre: draft.genre.trim() || undefined,
         description: draft.description.trim() || undefined,
         imageId: draft.imageId || undefined,
-        imageUrl: draft.imageUrl || undefined,
       });
 
       setArtists((prev) => prev.map((artist) => (String(artist.id) === String(artistId) ? updated : artist)));
@@ -162,7 +157,7 @@ export default function AdminArtists() {
                   if (!file) return;
                   try {
                     const uploaded = await uploadArtistImage(file);
-                    setNewArtist((prev) => ({ ...prev, imageId: uploaded.imageId, imageUrl: uploaded.url }));
+                    setNewArtist((prev) => ({ ...prev, imageId: uploaded.imageId }));
                     toast.success('Фото загружено');
                   } catch {
                     toast.error('Не удалось загрузить фото');
@@ -239,7 +234,6 @@ export default function AdminArtists() {
                               [String(artist.id)]: {
                                 ...draft,
                                 imageId: uploaded.imageId,
-                                imageUrl: uploaded.url,
                               },
                             }));
                             toast.success('Фото обновлено');
@@ -261,7 +255,6 @@ export default function AdminArtists() {
                 </div>
 
                 <div className="mt-3 flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">ID: {artist.id}</span>
                   <Button size="sm" onClick={() => onSaveArtist(artist.id)} disabled={saving} className="gap-1.5">
                     <Save className="h-4 w-4" />
                     Сохранить изменения

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900">
+  <defs>
+    <linearGradient id="day" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f6e3cf"/>
+      <stop offset="100%" stop-color="#d29f7a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1400" height="900" fill="url(#day)"/>
+  <rect x="0" y="600" width="1400" height="300" fill="#9a6d53" opacity="0.35"/>
+  <g fill="#fff2e7" opacity="0.9">
+    <circle cx="210" cy="250" r="36"/>
+    <circle cx="320" cy="210" r="26"/>
+    <circle cx="1160" cy="240" r="40"/>
+    <circle cx="1260" cy="200" r="24"/>
+  </g>
+  <path d="M180 620 L360 430 L540 620 Z" fill="#b8744f"/>
+  <path d="M860 620 L1040 420 L1220 620 Z" fill="#b8744f"/>
+  <rect x="560" y="520" width="280" height="100" rx="12" fill="#7d4f37"/>
+  <text x="600" y="585" font-family="Arial, sans-serif" font-size="46" fill="#f8ede3" font-weight="700">
+    FEST
+  </text>
+  <text x="120" y="150" font-family="Arial, sans-serif" font-size="72" fill="#4a2f20" font-weight="700">
+    FAMILY FESTIVAL
+  </text>
+  <text x="122" y="205" font-family="Arial, sans-serif" font-size="32" fill="#6c4634">
+    weekend activities in Kolomna
+  </text>
+</svg>

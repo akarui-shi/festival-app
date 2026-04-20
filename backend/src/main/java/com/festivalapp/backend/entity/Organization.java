@@ -52,9 +52,6 @@ public class Organization {
     @Column(name = "social_links")
     private String socialLinks;
 
-    @Column(name = "logo_url")
-    private String logoUrl;
-
     @Column(name = "moderation_status", nullable = false)
     private String moderationStatus;
 

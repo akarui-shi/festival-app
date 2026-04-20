@@ -11,7 +11,7 @@ public class FavoriteResponse {
     private Long eventId;
     private String title;
     private String shortDescription;
-    private String coverUrl;
+    private Long coverImageId;
     private Integer ageRating;
     private EventStatus status;
 }

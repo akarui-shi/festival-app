@@ -7,6 +7,7 @@ import com.festivalapp.backend.entity.Favorite;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
+import com.festivalapp.backend.repository.EventImageRepository;
 import com.festivalapp.backend.repository.EventRepository;
 import com.festivalapp.backend.repository.FavoriteRepository;
 import com.festivalapp.backend.repository.UserRepository;
@@ -25,6 +26,7 @@ public class FavoriteService {
     private final FavoriteRepository favoriteRepository;
     private final UserRepository userRepository;
     private final EventRepository eventRepository;
+    private final EventImageRepository eventImageRepository;
 
     @Transactional
     public FavoriteResponse create(FavoriteCreateRequest request, String actorIdentifier) {
@@ -69,10 +71,19 @@ public class FavoriteService {
             .eventId(event.getId())
             .title(event.getTitle())
             .shortDescription(event.getShortDescription())
-            .coverUrl(event.getCoverUrl())
+            .coverImageId(resolveCoverImageId(event.getId()))
             .ageRating(event.getAgeRating())
             .status(DomainStatusMapper.toEventStatus(event.getStatus()))
             .build();
+    }
+
+    private Long resolveCoverImageId(Long eventId) {
+        if (eventId == null) {
+            return null;
+        }
+        return eventImageRepository.findFirstByEventIdAndPrimaryIsTrueOrderBySortOrderAscIdAsc(eventId)
+            .map(link -> link.getImage() == null ? null : link.getImage().getId())
+            .orElse(null);
     }
 
     private User resolveActor(String actorIdentifier) {

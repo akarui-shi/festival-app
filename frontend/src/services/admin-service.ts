@@ -1,4 +1,4 @@
-import type { User, UserRole } from '@/types';
+import type { OrganizerAnalyticsOverview, User, UserRole } from '@/types';
 import { apiGet, apiPatch } from './api-client';
 
 export const adminService = {
@@ -22,5 +22,9 @@ export const adminService = {
     return apiPatch<User>(`/admin/users/${userId}/active`, {
       active: !user.active,
     });
+  },
+
+  async getAnalyticsOverview(): Promise<OrganizerAnalyticsOverview> {
+    return apiGet<OrganizerAnalyticsOverview>('/admin/analytics/overview');
   },
 };

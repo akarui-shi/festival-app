@@ -4,6 +4,7 @@ import { ArrowRight, CalendarDays, MapPin, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EventCard } from '@/components/EventCard';
 import { LoadingState } from '@/components/StateDisplays';
+import { imageSrc } from '@/lib/image';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { eventService } from '@/services/event-service';
 import type { Event } from '@/types';
@@ -83,7 +84,7 @@ export default function HomePage() {
                 <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
                   <div className="relative aspect-video overflow-hidden">
                     <img
-                      src={upcomingEvent.imageUrl || '/placeholder.svg'}
+                      src={imageSrc(upcomingEvent.coverImageId == null ? null : Number(upcomingEvent.coverImageId))}
                       alt={upcomingEvent.title}
                       className="h-full w-full object-cover"
                     />

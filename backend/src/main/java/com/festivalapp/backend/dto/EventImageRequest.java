@@ -9,8 +9,6 @@ public class EventImageRequest {
 
     private Long imageId;
 
-    private String imageUrl;
-
     private Boolean isCover;
 
     private Integer sortOrder;

@@ -15,7 +15,6 @@ public class OrganizerEventImagesRequest {
     @Setter
     public static class ImageItem {
         private Long imageId;
-        private String imageUrl;
         private Boolean primary;
         private Integer sortOrder;
     }

@@ -2,6 +2,7 @@ package com.festivalapp.backend.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -27,6 +28,6 @@ public class UpdateCurrentUserRequest {
     @Size(max = 32, message = "Телефон не должен превышать 32 символа")
     private String phone;
 
-    @Size(max = 1024, message = "Ссылка на аватар слишком длинная")
-    private String avatarUrl;
+    @Min(value = 1, message = "Некорректный идентификатор изображения")
+    private Long avatarImageId;
 }

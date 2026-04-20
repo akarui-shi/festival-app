@@ -74,8 +74,9 @@ public class User {
     @Column(name = "deleted_at")
     private OffsetDateTime deletedAt;
 
-    @Column(name = "avatar_url")
-    private String avatarUrl;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "avatar_image_id")
+    private Image avatarImage;
 
     @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)

@@ -30,8 +30,6 @@ public class EventCreateRequest {
     @Max(value = 21, message = "Age rating must be <= 21")
     private Integer ageRating;
 
-    private String coverUrl;
-
     private Long venueId;
 
     @Size(max = 500, message = "Venue address is too long")

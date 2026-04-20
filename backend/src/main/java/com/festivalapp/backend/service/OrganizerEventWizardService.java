@@ -224,7 +224,7 @@ public class OrganizerEventWizardService {
         boolean primaryAssigned = false;
         int sortOrder = 0;
         for (OrganizerEventImagesRequest.ImageItem item : items) {
-            Image image = resolveImage(item.getImageId(), item.getImageUrl());
+            Image image = resolveImage(item.getImageId());
             if (image == null) {
                 continue;
             }
@@ -648,9 +648,9 @@ public class OrganizerEventWizardService {
                 if (artist == null) {
                     return null;
                 }
-                String imageUrl = artistImageRepository.findFirstByArtistIdAndPrimaryIsTrueOrderByIdAsc(artist.getId())
+                Long imageId = artistImageRepository.findFirstByArtistIdAndPrimaryIsTrueOrderByIdAsc(artist.getId())
                     .map(ArtistImage::getImage)
-                    .map(Image::getFileUrl)
+                    .map(Image::getId)
                     .orElse(null);
 
                 return OrganizerEventWizardResponse.ArtistItem.builder()
@@ -659,7 +659,7 @@ public class OrganizerEventWizardService {
                     .stageName(artist.getStageName())
                     .description(artist.getDescription())
                     .genre(artist.getGenre())
-                    .imageUrl(imageUrl)
+                    .imageId(imageId)
                     .eventRole(link.getEventRole())
                     .displayOrder(link.getDisplayOrder())
                     .build();
@@ -694,7 +694,6 @@ public class OrganizerEventWizardService {
                 .map(item -> OrganizerEventWizardResponse.ImageItem.builder()
                     .eventImageId(item.getId())
                     .imageId(item.getImage() == null ? null : item.getImage().getId())
-                    .imageUrl(item.getImage() == null ? null : item.getImage().getFileUrl())
                     .primary(item.isPrimary())
                     .sortOrder(item.getSortOrder())
                     .build())
@@ -1034,56 +1033,12 @@ public class OrganizerEventWizardService {
         return value.atZone(ZoneId.systemDefault()).toOffsetDateTime();
     }
 
-    private Image resolveImage(Long imageId, String imageUrl) {
+    private Image resolveImage(Long imageId) {
         if (imageId != null) {
             return imageRepository.findById(imageId)
                 .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
         }
-
-        Long parsedId = extractImageIdFromUrl(imageUrl);
-        if (parsedId != null) {
-            return imageRepository.findById(parsedId)
-                .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
-        }
-
-        if (StringUtils.hasText(imageUrl)) {
-            return imageRepository.findByFileUrl(imageUrl.trim())
-                .orElseGet(() -> imageRepository.save(Image.builder()
-                    .fileName(fileNameFromUrl(imageUrl))
-                    .mimeType("image/*")
-                    .fileSize(0L)
-                    .fileUrl(imageUrl.trim())
-                    .uploadedAt(OffsetDateTime.now())
-                    .build()));
-        }
-
         return null;
-    }
-
-    private Long extractImageIdFromUrl(String imageUrl) {
-        if (!StringUtils.hasText(imageUrl)) {
-            return null;
-        }
-        String normalized = imageUrl.trim();
-        int slash = normalized.lastIndexOf('/');
-        if (slash < 0 || slash == normalized.length() - 1) {
-            return null;
-        }
-        String tail = normalized.substring(slash + 1);
-        try {
-            return Long.parseLong(tail);
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
-    }
-
-    private String fileNameFromUrl(String imageUrl) {
-        String normalized = imageUrl.trim();
-        int slash = normalized.lastIndexOf('/');
-        if (slash < 0 || slash == normalized.length() - 1) {
-            return "image-" + System.nanoTime();
-        }
-        return normalized.substring(slash + 1);
     }
 
     private CategoryResponse toCategoryResponse(Category category) {

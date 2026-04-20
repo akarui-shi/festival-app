@@ -81,7 +81,7 @@ public class ArtistService {
             .stageName(artist.getStageName())
             .description(artist.getDescription())
             .genre(artist.getGenre())
-            .imageUrl(resolveArtistImageUrl(artist.getId()))
+            .imageId(resolveArtistImageId(artist.getId()))
             .events(events)
             .build();
     }
@@ -100,7 +100,7 @@ public class ArtistService {
             .createdAt(OffsetDateTime.now())
             .updatedAt(OffsetDateTime.now())
             .build());
-        applyArtistImage(artist, request.getImageId(), request.getImageUrl());
+        applyArtistImage(artist, request.getImageId());
 
         return toSummary(artist);
     }
@@ -126,8 +126,8 @@ public class ArtistService {
             artist.setGenre(normalize(request.getGenre()));
         }
         artist.setUpdatedAt(OffsetDateTime.now());
-        if (request.getImageId() != null || StringUtils.hasText(request.getImageUrl())) {
-            applyArtistImage(artist, request.getImageId(), request.getImageUrl());
+        if (request.getImageId() != null) {
+            applyArtistImage(artist, request.getImageId());
         }
 
         return toSummary(artistRepository.save(artist));
@@ -190,7 +190,7 @@ public class ArtistService {
                 .map(OffsetDateTime::toLocalDateTime)
                 .sorted()
                 .toList())
-            .coverUrl(resolveEventCoverUrl(event.getId()))
+            .coverImageId(resolveEventCoverImageId(event.getId()))
             .free(priceRange.min() == null || priceRange.min().compareTo(BigDecimal.ZERO) <= 0)
             .minPrice(priceRange.min())
             .maxPrice(priceRange.max())
@@ -252,10 +252,10 @@ public class ArtistService {
         return true;
     }
 
-    private String resolveEventCoverUrl(Long eventId) {
+    private Long resolveEventCoverImageId(Long eventId) {
         return eventImageRepository.findFirstByEventIdAndPrimaryIsTrueOrderBySortOrderAscIdAsc(eventId)
             .map(EventImage::getImage)
-            .map(Image::getFileUrl)
+            .map(Image::getId)
             .orElse(null);
     }
 
@@ -292,12 +292,12 @@ public class ArtistService {
             .stageName(artist.getStageName())
             .description(artist.getDescription())
             .genre(artist.getGenre())
-            .imageUrl(resolveArtistImageUrl(artist.getId()))
+            .imageId(resolveArtistImageId(artist.getId()))
             .build();
     }
 
-    private void applyArtistImage(Artist artist, Long imageId, String imageUrl) {
-        Image image = resolveImage(imageId, imageUrl);
+    private void applyArtistImage(Artist artist, Long imageId) {
+        Image image = resolveImage(imageId);
         if (image == null) {
             return;
         }
@@ -309,40 +309,18 @@ public class ArtistService {
             .build());
     }
 
-    private Image resolveImage(Long imageId, String imageUrl) {
+    private Image resolveImage(Long imageId) {
         if (imageId != null) {
             return imageRepository.findById(imageId)
-                .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
-        }
-        Long parsed = extractImageIdFromUrl(imageUrl);
-        if (parsed != null) {
-            return imageRepository.findById(parsed)
                 .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
         }
         return null;
     }
 
-    private Long extractImageIdFromUrl(String imageUrl) {
-        if (!StringUtils.hasText(imageUrl)) {
-            return null;
-        }
-        String normalized = imageUrl.trim();
-        int slash = normalized.lastIndexOf('/');
-        if (slash < 0 || slash == normalized.length() - 1) {
-            return null;
-        }
-        String tail = normalized.substring(slash + 1);
-        try {
-            return Long.parseLong(tail);
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
-    }
-
-    private String resolveArtistImageUrl(Long artistId) {
+    private Long resolveArtistImageId(Long artistId) {
         return artistImageRepository.findFirstByArtistIdAndPrimaryIsTrueOrderByIdAsc(artistId)
             .map(ArtistImage::getImage)
-            .map(Image::getFileUrl)
+            .map(Image::getId)
             .orElse(null);
     }
 

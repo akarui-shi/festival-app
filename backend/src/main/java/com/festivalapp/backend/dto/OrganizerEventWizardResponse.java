@@ -40,7 +40,6 @@ public class OrganizerEventWizardResponse {
     public static class ImageItem {
         private Long eventImageId;
         private Long imageId;
-        private String imageUrl;
         private Boolean primary;
         private Integer sortOrder;
     }
@@ -53,7 +52,7 @@ public class OrganizerEventWizardResponse {
         private String stageName;
         private String description;
         private String genre;
-        private String imageUrl;
+        private Long imageId;
         private String eventRole;
         private Integer displayOrder;
     }
