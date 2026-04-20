@@ -64,6 +64,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -276,36 +278,66 @@ public class OrganizerEventWizardService {
             ? List.of()
             : request.getArtists();
 
-        List<EventArtist> links = new ArrayList<>();
+        List<Long> artistIds = new ArrayList<>();
         Set<Long> uniqueArtistIds = new HashSet<>();
-
-        int index = 0;
         for (OrganizerEventArtistsRequest.ExistingArtistItem item : existingItems) {
             if (item.getArtistId() == null) {
                 throw new BadRequestException("artistId обязателен для существующего артиста");
             }
-            Artist artist = artistRepository.findByIdAndDeletedAtIsNull(item.getArtistId())
-                .orElseThrow(() -> new ResourceNotFoundException("Artist not found"));
-            if (!uniqueArtistIds.add(artist.getId())) {
+            if (!uniqueArtistIds.add(item.getArtistId())) {
                 throw new BadRequestException("Один и тот же артист не может быть добавлен дважды");
             }
-            links.add(EventArtist.builder()
-                .event(event)
-                .artist(artist)
-                .eventRole(StringUtils.hasText(item.getEventRole()) ? item.getEventRole().trim() : "artist")
-                .displayOrder(item.getDisplayOrder() == null ? index : item.getDisplayOrder())
-                .build());
-            index++;
+            artistIds.add(item.getArtistId());
         }
 
-        eventArtistRepository.deleteByEventId(event.getId());
-        links.stream()
-            .sorted(Comparator.comparing(EventArtist::getDisplayOrder, Comparator.nullsLast(Integer::compareTo)))
-            .forEach(eventArtistRepository::save);
+        Map<Long, Artist> artistsById = artistRepository.findAllById(artistIds).stream()
+            .filter(artist -> artist.getDeletedAt() == null)
+            .collect(Collectors.toMap(Artist::getId, Function.identity()));
+        if (artistsById.size() != artistIds.size()) {
+            throw new ResourceNotFoundException("Artist not found");
+        }
+
+        List<EventArtist> currentLinks = eventArtistRepository.findAllByEventIdOrderByDisplayOrderAscIdAsc(event.getId());
+        Map<Long, EventArtist> currentByArtistId = currentLinks.stream()
+            .filter(link -> link.getArtist() != null && link.getArtist().getId() != null)
+            .collect(Collectors.toMap(link -> link.getArtist().getId(), Function.identity(), (left, right) -> left, LinkedHashMap::new));
+
+        Set<Long> requestedSet = new HashSet<>(artistIds);
+        List<EventArtist> toDelete = currentLinks.stream()
+            .filter(link -> link.getArtist() == null || link.getArtist().getId() == null || !requestedSet.contains(link.getArtist().getId()))
+            .toList();
+        if (!toDelete.isEmpty()) {
+            eventArtistRepository.deleteAllInBatch(toDelete);
+            eventArtistRepository.flush();
+        }
+
+        List<EventArtist> toSave = new ArrayList<>();
+        for (int index = 0; index < artistIds.size(); index++) {
+            Long artistId = artistIds.get(index);
+            EventArtist link = currentByArtistId.get(artistId);
+            if (link == null) {
+                link = EventArtist.builder()
+                    .event(event)
+                    .artist(artistsById.get(artistId))
+                    .eventRole("artist")
+                    .displayOrder(index)
+                    .build();
+            } else {
+                link.setArtist(artistsById.get(artistId));
+                link.setDisplayOrder(index);
+                if (!StringUtils.hasText(link.getEventRole())) {
+                    link.setEventRole("artist");
+                }
+            }
+            toSave.add(link);
+        }
+        if (!toSave.isEmpty()) {
+            eventArtistRepository.saveAll(toSave);
+        }
 
         event.setUpdatedAt(OffsetDateTime.now());
         eventRepository.save(event);
-        adminAuditService.log(actorIdentifier, "EVENT_ARTISTS_UPDATED", "Event", event.getId(), "count=" + links.size());
+        adminAuditService.log(actorIdentifier, "EVENT_ARTISTS_UPDATED", "Event", event.getId(), "count=" + toSave.size());
         return buildWizardState(event);
     }
 
@@ -423,7 +455,7 @@ public class OrganizerEventWizardService {
                     salesEndAt = nowUtc;
                 }
 
-                freeType.setName("Бесплатная регистрация");
+                freeType.setName("Стандарт");
                 freeType.setPrice(BigDecimal.ZERO);
                 freeType.setCurrency("RUB");
                 freeType.setQuota(quota);

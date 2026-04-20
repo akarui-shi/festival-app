@@ -2,10 +2,24 @@ import type { Id, Order, SessionRegistration, Ticket } from '@/types';
 import { apiDelete, apiGet, apiPost } from './api-client';
 
 export const registrationService = {
-  async createRegistration(sessionId: Id, _userId: Id, paymentProvider: 'yookassa' | 'sbp' = 'yookassa'): Promise<Order> {
+  async createRegistration(
+    sessionId: Id,
+    _userId: Id,
+    paymentProvider: 'yookassa' | 'sbp' = 'yookassa',
+    ticketTypeId?: Id,
+    quantity = 1,
+  ): Promise<Order> {
     return apiPost<Order>('/orders', {
       sessionId: Number(sessionId),
       paymentProvider,
+      items: ticketTypeId == null
+        ? undefined
+        : [
+          {
+            ticketTypeId: Number(ticketTypeId),
+            quantity: Math.max(1, Number(quantity) || 1),
+          },
+        ],
     });
   },
 

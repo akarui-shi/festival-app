@@ -29,6 +29,7 @@ import EventFormPage from "./pages/organizer/EventFormPage";
 import EventStatsPage from "./pages/organizer/EventStatsPage";
 import OrganizerAnalytics from "./pages/organizer/OrganizerAnalytics";
 import OrganizerPublications from "./pages/organizer/OrganizerPublications";
+import OrganizerOrganizationPage from "./pages/organizer/OrganizerOrganizationPage";
 
 import { AdminLayout } from "@/layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -37,6 +38,7 @@ import AdminEvents from "./pages/admin/AdminEvents";
 import AdminPublications from "./pages/admin/AdminPublications";
 import AdminReviews from "./pages/admin/AdminReviews";
 import AdminDirectories from "./pages/admin/AdminDirectories";
+import AdminArtists from "./pages/admin/AdminArtists";
 
 import NotFound from "./pages/NotFound";
 
@@ -74,6 +76,7 @@ const App = () => (
                 <Route path="events/create" element={<EventFormPage />} />
                 <Route path="events/:id/edit" element={<EventFormPage />} />
                 <Route path="events/:id/stats" element={<EventStatsPage />} />
+                <Route path="organization" element={<OrganizerOrganizationPage />} />
                 <Route path="analytics" element={<OrganizerAnalytics />} />
                 <Route path="publications" element={<OrganizerPublications />} />
               </Route>
@@ -82,6 +85,7 @@ const App = () => (
                 <Route index element={<AdminDashboard />} />
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="events" element={<AdminEvents />} />
+                <Route path="artists" element={<AdminArtists />} />
                 <Route path="publications" element={<AdminPublications />} />
                 <Route path="comments" element={<AdminReviews />} />
                 <Route path="reviews" element={<Navigate to="/admin/comments" replace />} />

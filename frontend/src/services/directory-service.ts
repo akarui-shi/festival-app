@@ -34,6 +34,8 @@ export const directoryService = {
       address: data.address,
       cityId: data.cityId == null ? undefined : Number(data.cityId),
       capacity: data.capacity,
+      latitude: data.latitude == null ? undefined : Number(data.latitude),
+      longitude: data.longitude == null ? undefined : Number(data.longitude),
     });
   },
 };

@@ -29,6 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.OffsetDateTime;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
@@ -82,7 +84,14 @@ public class AuthService {
             .build();
 
         User savedUser = userRepository.save(user);
-        Role role = resolveRole(requestedRole);
+        RoleName assignedRole = requestedRole;
+        if (requestedRole == RoleName.ROLE_ORGANIZER && request.getOrganizationId() != null) {
+            // User asked to join an existing organization.
+            // Organizer role is granted only after owner/admin approval of the join request.
+            assignedRole = RoleName.ROLE_RESIDENT;
+        }
+
+        Role role = resolveRole(assignedRole);
         UserRole userRole = userRoleRepository.save(UserRole.builder()
             .user(savedUser)
             .role(role)
@@ -176,8 +185,7 @@ public class AuthService {
             .map(userRole -> userRole.getRole().toRoleName().toApiName())
             .collect(Collectors.toSet());
 
-        Optional<OrganizationMember> ownerMembership = organizationMemberRepository
-            .findFirstByUserIdAndOrganizationStatusAndLeftAtIsNull(user.getId(), "владелец");
+        Optional<OrganizationMember> primaryMembership = findPrimaryMembership(user.getId());
 
         return CurrentUserResponse.builder()
             .id(user.getId())
@@ -188,8 +196,33 @@ public class AuthService {
             .lastName(user.getLastName())
             .avatarUrl(user.getAvatarUrl())
             .roles(roles)
-            .organization(ownerMembership.map(this::toOrganizationInfo).orElse(null))
+            .organization(primaryMembership.map(this::toOrganizationInfo).orElse(null))
             .build();
+    }
+
+    private Optional<OrganizationMember> findPrimaryMembership(Long userId) {
+        List<OrganizationMember> memberships = organizationMemberRepository.findAllByUserIdAndLeftAtIsNull(userId);
+        if (memberships.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return memberships.stream()
+            .sorted(Comparator
+                .comparingInt((OrganizationMember item) -> statusPriority(item.getOrganizationStatus()))
+                .thenComparing(OrganizationMember::getJoinedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+            .findFirst();
+    }
+
+    private int statusPriority(String status) {
+        if (status == null) {
+            return 99;
+        }
+        return switch (status.trim().toLowerCase(Locale.ROOT)) {
+            case "владелец" -> 0;
+            case "администратор" -> 1;
+            case "участник" -> 2;
+            default -> 10;
+        };
     }
 
     private CurrentUserResponse.OrganizationInfo toOrganizationInfo(OrganizationMember membership) {

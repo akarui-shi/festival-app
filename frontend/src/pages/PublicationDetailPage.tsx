@@ -45,7 +45,7 @@ export default function PublicationDetailPage() {
   if (error || !pub) return <PublicLayout><ErrorState message={error || 'Не найдено'} /></PublicLayout>;
   const organizationLink = pub.organizationId ? `/organizations/${pub.organizationId}` : null;
   const eventLink = pub.eventId ? `/events/${pub.eventId}` : null;
-  const eventImage = pub.eventImageUrl || pub.imageUrl || '/placeholder.svg';
+  const eventImage = pub.imageUrl || pub.eventImageUrl || '/placeholder.svg';
 
   return (
     <PublicLayout>
@@ -68,7 +68,7 @@ export default function PublicationDetailPage() {
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            {pub.tags.map((tag) => (
+            {(pub.tags || []).map((tag) => (
               <Badge key={tag} variant="secondary">
                 {tag}
               </Badge>

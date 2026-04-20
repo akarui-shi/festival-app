@@ -4,6 +4,7 @@ import com.festivalapp.backend.dto.SessionCreateRequest;
 import com.festivalapp.backend.dto.SessionDetailsResponse;
 import com.festivalapp.backend.dto.SessionRegistrationResponse;
 import com.festivalapp.backend.dto.SessionShortResponse;
+import com.festivalapp.backend.dto.SessionTicketTypeResponse;
 import com.festivalapp.backend.dto.SessionUpdateRequest;
 import com.festivalapp.backend.exception.UnauthorizedException;
 import com.festivalapp.backend.service.SessionService;
@@ -60,6 +61,11 @@ public class SessionController {
     public ResponseEntity<SessionDetailsResponse> getById(@PathVariable Long id,
                                                           @AuthenticationPrincipal UserDetails principal) {
         return ResponseEntity.ok(sessionService.getById(id, extractOptionalUsername(principal)));
+    }
+
+    @GetMapping("/{id}/ticket-types")
+    public ResponseEntity<List<SessionTicketTypeResponse>> getTicketTypes(@PathVariable Long id) {
+        return ResponseEntity.ok(sessionService.getTicketTypes(id));
     }
 
     @PostMapping

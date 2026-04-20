@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { directoryService } from '@/services/directory-service';
+import { yandexMapsService, type YandexAddressSuggestion } from '@/services/yandex-maps-service';
 import { LoadingState } from '@/components/StateDisplays';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { LocationPickerMap } from '@/components/LocationPickerMap';
 import type { Category, City, Venue } from '@/types';
 
 export default function AdminDirectories() {
@@ -15,9 +17,19 @@ export default function AdminDirectories() {
   const [cities, setCities] = useState<City[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newCat, setNewCat] = useState({ name: '', slug: '' });
+  const [newCat, setNewCat] = useState({ name: '' });
   const [newCity, setNewCity] = useState({ name: '', region: '' });
-  const [newVenue, setNewVenue] = useState({ name: '', address: '', cityId: '', capacity: '' });
+  const [newVenue, setNewVenue] = useState({
+    name: '',
+    address: '',
+    cityId: '',
+    capacity: '',
+    latitude: '',
+    longitude: '',
+  });
+  const [venueAddressSuggestions, setVenueAddressSuggestions] = useState<YandexAddressSuggestion[]>([]);
+  const [venueAddressLoading, setVenueAddressLoading] = useState(false);
+  const [venueMapCenter, setVenueMapCenter] = useState<[number, number] | undefined>(undefined);
 
   useEffect(() => {
     Promise.all([directoryService.getCategories(), directoryService.getCities(), directoryService.getVenues()])
@@ -33,10 +45,9 @@ export default function AdminDirectories() {
     if (!newCat.name) return;
     const cat = await directoryService.createCategory({
       name: newCat.name,
-      slug: newCat.slug || newCat.name.toLowerCase(),
     });
     setCategories((prev) => [...prev, cat]);
-    setNewCat({ name: '', slug: '' });
+    setNewCat({ name: '' });
     toast.success('Категория добавлена');
   };
 
@@ -49,12 +60,56 @@ export default function AdminDirectories() {
   };
 
   const addVenue = async () => {
-    if (!newVenue.name || !newVenue.cityId) return;
-    const venue = await directoryService.createVenue({ ...newVenue, capacity: Number(newVenue.capacity) || undefined });
+    if (!newVenue.name || !newVenue.cityId || !newVenue.address.trim()) return;
+    const venue = await directoryService.createVenue({
+      ...newVenue,
+      capacity: Number(newVenue.capacity) || undefined,
+      latitude: newVenue.latitude ? Number(newVenue.latitude) : undefined,
+      longitude: newVenue.longitude ? Number(newVenue.longitude) : undefined,
+    });
     setVenues((prev) => [...prev, venue]);
-    setNewVenue({ name: '', address: '', cityId: '', capacity: '' });
+    setNewVenue({ name: '', address: '', cityId: '', capacity: '', latitude: '', longitude: '' });
+    setVenueAddressSuggestions([]);
     toast.success('Площадка добавлена');
   };
+
+  const selectedVenueCity = cities.find((city) => String(city.id) === newVenue.cityId);
+
+  const searchVenueAddress = async (query: string) => {
+    const normalizedQuery = query.trim();
+    if (!normalizedQuery || !selectedVenueCity) {
+      setVenueAddressSuggestions([]);
+      return;
+    }
+
+    setVenueAddressLoading(true);
+    try {
+      const request = `${selectedVenueCity.name}, ${normalizedQuery}`;
+      const suggestions = await yandexMapsService.searchAddressSuggestions(request, 6);
+      setVenueAddressSuggestions(suggestions);
+    } catch {
+      setVenueAddressSuggestions([]);
+    } finally {
+      setVenueAddressLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedVenueCity) {
+      setVenueMapCenter(undefined);
+      return;
+    }
+
+    yandexMapsService.searchAddressSuggestions(selectedVenueCity.name, 1)
+      .then((results) => {
+        if (results.length > 0) {
+          setVenueMapCenter([results[0].latitude, results[0].longitude]);
+        }
+      })
+      .catch(() => {
+        // ignore map center resolve errors
+      });
+  }, [selectedVenueCity?.id]);
 
   if (loading) return <LoadingState />;
 
@@ -73,21 +128,13 @@ export default function AdminDirectories() {
         </TabsList>
 
         <TabsContent value="categories" className="mt-4 space-y-4">
-          <div className="surface-soft grid gap-3 sm:grid-cols-[1fr_220px_auto] sm:items-end">
+          <div className="surface-soft grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
             <div>
               <Label>Название</Label>
               <Input
                 value={newCat.name}
                 onChange={(event) => setNewCat((prev) => ({ ...prev, name: event.target.value }))}
                 placeholder="Новая категория"
-              />
-            </div>
-            <div>
-              <Label>Slug</Label>
-              <Input
-                value={newCat.slug}
-                onChange={(event) => setNewCat((prev) => ({ ...prev, slug: event.target.value }))}
-                placeholder="slug"
               />
             </div>
             <Button onClick={addCategory} className="gap-1.5">
@@ -101,7 +148,6 @@ export default function AdminDirectories() {
               <div key={category.id} className="surface-row flex items-center gap-3 py-3 text-sm">
                 <span>{category.icon}</span>
                 <span className="font-medium text-foreground">{category.name}</span>
-                <span className="text-muted-foreground">{category.slug}</span>
               </div>
             ))}
           </div>
@@ -154,8 +200,36 @@ export default function AdminDirectories() {
               <Label>Адрес</Label>
               <Input
                 value={newVenue.address}
-                onChange={(event) => setNewVenue((prev) => ({ ...prev, address: event.target.value }))}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setNewVenue((prev) => ({ ...prev, address: value }));
+                  void searchVenueAddress(value);
+                }}
+                placeholder="Начните вводить адрес или выберите точку на карте"
               />
+              {venueAddressLoading && <p className="mt-1 text-xs text-muted-foreground">Поиск адреса...</p>}
+              {venueAddressSuggestions.length > 0 && (
+                <div className="mt-2 max-h-40 space-y-1 overflow-auto rounded-md border border-border bg-background p-1">
+                  {venueAddressSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.id}
+                      type="button"
+                      className="w-full rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted"
+                      onClick={() => {
+                        setNewVenue((prev) => ({
+                          ...prev,
+                          address: suggestion.address,
+                          latitude: String(suggestion.latitude),
+                          longitude: String(suggestion.longitude),
+                        }));
+                        setVenueAddressSuggestions([]);
+                      }}
+                    >
+                      {suggestion.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div>
               <Label>Город</Label>
@@ -179,6 +253,36 @@ export default function AdminDirectories() {
               <Plus className="h-4 w-4" />
               Добавить
             </Button>
+          </div>
+
+          <div className="rounded-xl border border-border bg-background p-3">
+            <p className="mb-2 text-xs text-muted-foreground">
+              Можно указать адрес вручную или кликнуть точку на карте.
+            </p>
+            <LocationPickerMap
+              latitude={newVenue.latitude ? Number(newVenue.latitude) : undefined}
+              longitude={newVenue.longitude ? Number(newVenue.longitude) : undefined}
+              initialCenter={venueMapCenter}
+              onPick={(latitude, longitude) => {
+                setNewVenue((prev) => ({
+                  ...prev,
+                  latitude: String(latitude),
+                  longitude: String(longitude),
+                }));
+
+                yandexMapsService.reverseGeocode(latitude, longitude)
+                  .then((suggestion) => {
+                    if (!suggestion) return;
+                    setNewVenue((prev) => ({
+                      ...prev,
+                      address: suggestion.address || prev.address,
+                    }));
+                  })
+                  .catch(() => {
+                    // ignore reverse geocode errors
+                  });
+              }}
+            />
           </div>
 
           <div className="space-y-2">

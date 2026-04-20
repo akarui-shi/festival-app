@@ -28,6 +28,7 @@ export default function RegisterPage() {
     joinRequestMessage: '',
   });
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [showOrganizationSuggestions, setShowOrganizationSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -37,13 +38,33 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (form.role !== 'ORGANIZER' || form.organizationMode !== 'join') {
+      setShowOrganizationSuggestions(false);
+      setOrganizations([]);
       return;
     }
 
-    organizationService.getOrganizations(form.organizationSearch)
+    const query = form.organizationSearch.trim();
+    if (query.length < 2) {
+      setOrganizations([]);
+      return;
+    }
+
+    organizationService.getOrganizations(query)
       .then((response) => setOrganizations(response))
       .catch(() => setOrganizations([]));
   }, [form.organizationMode, form.organizationSearch, form.role]);
+
+  useEffect(() => {
+    if (form.role !== 'ORGANIZER') {
+      setForm((prev) => ({
+        ...prev,
+        organizationMode: 'create',
+        organizationSearch: '',
+        organizationId: '',
+        joinRequestMessage: '',
+      }));
+    }
+  }, [form.role]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -86,7 +107,11 @@ export default function RegisterPage() {
         form.role === 'ORGANIZER' && form.organizationMode === 'join' ? Number(form.organizationId) : undefined,
         form.role === 'ORGANIZER' && form.organizationMode === 'join' ? form.joinRequestMessage : undefined,
       );
-      toast.success(form.organizationMode === 'join' ? 'Регистрация выполнена, заявка отправлена' : 'Регистрация прошла успешно');
+      toast.success(
+        form.organizationMode === 'join'
+          ? 'Регистрация выполнена. Заявка отправлена владельцу организации на подтверждение.'
+          : 'Регистрация прошла успешно',
+      );
       navigate('/');
     } catch (registerError: any) {
       setError(registerError?.message || 'Не удалось зарегистрироваться');
@@ -218,31 +243,49 @@ export default function RegisterPage() {
 
               {form.role === 'ORGANIZER' && form.organizationMode === 'join' && (
                 <>
-                  <div className="space-y-2">
+                  <div className="relative space-y-2">
                     <Label htmlFor="organizationSearch">Поиск организации</Label>
                     <Input
                       id="organizationSearch"
                       value={form.organizationSearch}
-                      onChange={(event) => updateField('organizationSearch', event.target.value)}
+                      onFocus={() => setShowOrganizationSuggestions(true)}
+                      onChange={(event) => {
+                        updateField('organizationSearch', event.target.value);
+                        updateField('organizationId', '');
+                        setShowOrganizationSuggestions(true);
+                      }}
                       placeholder="Введите название"
                     />
+                    {showOrganizationSuggestions && organizations.length > 0 && (
+                      <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-md border border-border bg-card shadow-lg">
+                        {organizations.map((organization) => (
+                          <button
+                            key={organization.id}
+                            type="button"
+                            className="block w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                            onClick={() => {
+                              updateField('organizationSearch', organization.name);
+                              updateField('organizationId', String(organization.id));
+                              setShowOrganizationSuggestions(false);
+                            }}
+                          >
+                            <p className="font-medium text-foreground">{organization.name}</p>
+                            {organization.description && (
+                              <p className="line-clamp-1 text-xs text-muted-foreground">{organization.description}</p>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {form.organizationSearch.trim().length >= 2 && organizations.length === 0 && (
+                      <p className="text-xs text-muted-foreground">По вашему запросу организации не найдены</p>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="organizationId">Выберите организацию</Label>
-                    <select
-                      id="organizationId"
-                      value={form.organizationId}
-                      onChange={(event) => updateField('organizationId', event.target.value)}
-                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    >
-                      <option value="">Не выбрано</option>
-                      {organizations.map((organization) => (
-                        <option key={organization.id} value={String(organization.id)}>
-                          {organization.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {form.organizationId && (
+                    <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+                      Выбрана организация: {form.organizationSearch}
+                    </p>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="joinRequestMessage">Комментарий к заявке</Label>
                     <Input

@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { LoadingState } from '@/components/StateDisplays';
 import { useAuth } from '@/contexts/AuthContext';
 import { favoriteService } from '@/services/favorite-service';
+import { eventService } from '@/services/event-service';
 import type { Event, Favorite } from '@/types';
 
 function favoriteToEvent(favorite: Favorite): Event {
@@ -23,6 +24,7 @@ function favoriteToEvent(favorite: Favorite): Event {
 export default function FavoritesPage() {
   const { user } = useAuth();
   const [favorites, setFavorites] = useState<Favorite[]>([]);
+  const [eventsById, setEventsById] = useState<Record<string, Event>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,18 +36,41 @@ export default function FavoritesPage() {
 
     favoriteService
       .getMyFavorites(user.id)
-      .then((response) => setFavorites(response))
+      .then(async (response) => {
+        if (!response.length) {
+          setFavorites([]);
+          setEventsById({});
+          return;
+        }
+
+        setFavorites(response);
+        const uniqueEventIds = [...new Set(response.map((item) => String(item.eventId)))];
+        const eventResults = await Promise.allSettled(uniqueEventIds.map((eventId) => eventService.getEventById(eventId)));
+        const nextMap: Record<string, Event> = {};
+
+        eventResults.forEach((result, index) => {
+          if (result.status !== 'fulfilled') return;
+          nextMap[uniqueEventIds[index]] = result.value;
+        });
+
+        setEventsById(nextMap);
+      })
       .catch((error: any) => {
         toast.error(error?.message || 'Не удалось загрузить избранное');
       })
       .finally(() => setLoading(false));
   }, [user]);
 
-  const removeFavorite = async (eventId: string) => {
+  const removeFavorite = async (eventId: string | number) => {
     if (!user) return;
 
     await favoriteService.removeFavorite(user.id, eventId);
-    setFavorites((prev) => prev.filter((favorite) => favorite.eventId !== eventId));
+    setFavorites((prev) => prev.filter((favorite) => String(favorite.eventId) !== String(eventId)));
+    setEventsById((prev) => {
+      const next = { ...prev };
+      delete next[String(eventId)];
+      return next;
+    });
     toast.success('Удалено из избранного');
   };
 
@@ -68,7 +93,7 @@ export default function FavoritesPage() {
             {favorites.map((favorite) => (
               <EventCard
                 key={String(favorite.eventId)}
-                event={favorite.event || favoriteToEvent(favorite)}
+                event={eventsById[String(favorite.eventId)] || favorite.event || favoriteToEvent(favorite)}
                 isFavorite
                 onFavoriteToggle={removeFavorite}
               />

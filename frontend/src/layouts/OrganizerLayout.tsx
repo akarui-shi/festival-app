@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   BarChart3,
+  Building2,
   Calendar,
   ChevronLeft,
   FileText,
@@ -18,6 +19,7 @@ const navItems = [
   { to: '/organizer', label: 'Обзор', icon: LayoutDashboard, end: true },
   { to: '/organizer/events', label: 'Мероприятия', icon: Calendar },
   { to: '/organizer/events/create', label: 'Создать', icon: PlusCircle },
+  { to: '/organizer/organization', label: 'Организация', icon: Building2 },
   { to: '/organizer/analytics', label: 'Аналитика', icon: BarChart3 },
   { to: '/organizer/publications', label: 'Публикации', icon: FileText },
 ];

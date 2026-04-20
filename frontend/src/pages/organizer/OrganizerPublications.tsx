@@ -111,8 +111,8 @@ export default function OrganizerPublications() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Мои публикации</h1>
-          <p className="mt-1 text-muted-foreground">Публикуйте новости и материалы для аудитории</p>
+          <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Публикации организации</h1>
+          <p className="mt-1 text-muted-foreground">Публикуйте новости и материалы по мероприятиям вашей организации</p>
         </div>
         <Button onClick={() => setShowForm((prev) => !prev)} className="gap-1.5" disabled={organizerEvents.length === 0}>
           <Plus className="h-4 w-4" />

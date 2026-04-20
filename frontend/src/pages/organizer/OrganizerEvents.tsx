@@ -46,8 +46,8 @@ export default function OrganizerEvents() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Мои мероприятия</h1>
-          <p className="mt-1 text-muted-foreground">Создавайте, редактируйте и отслеживайте события</p>
+          <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Мероприятия организации</h1>
+          <p className="mt-1 text-muted-foreground">Создавайте, редактируйте и отслеживайте события вашей организации</p>
         </div>
         <Button asChild>
           <Link to="/organizer/events/create" className="gap-1.5">

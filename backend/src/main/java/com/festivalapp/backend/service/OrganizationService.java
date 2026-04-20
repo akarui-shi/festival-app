@@ -3,6 +3,7 @@ package com.festivalapp.backend.service;
 import com.festivalapp.backend.dto.OrganizationJoinRequestCreateRequest;
 import com.festivalapp.backend.dto.OrganizationJoinRequestDecisionRequest;
 import com.festivalapp.backend.dto.OrganizationJoinRequestResponse;
+import com.festivalapp.backend.dto.OrganizationMemberResponse;
 import com.festivalapp.backend.dto.OrganizationPublicResponse;
 import com.festivalapp.backend.dto.OrganizationUpdateRequest;
 import com.festivalapp.backend.entity.Organization;
@@ -55,6 +56,13 @@ public class OrganizationService {
             : organizationRepository.findAllByDeletedAtIsNullOrderByNameAsc();
 
         return organizations.stream().map(this::toPublicResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public OrganizationPublicResponse getPublicOrganization(Long id) {
+        Organization organization = organizationRepository.findByIdAndDeletedAtIsNull(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
+        return toPublicResponse(organization);
     }
 
     @Transactional
@@ -160,6 +168,36 @@ public class OrganizationService {
 
         return organizationJoinRequestRepository.findAllByOrganizationIdOrderByRequestedAtDesc(organizationId).stream()
             .map(this::toResponse)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrganizationMemberResponse> getOrganizationMembers(Long organizationId, String actorIdentifier) {
+        User actor = resolveActor(actorIdentifier);
+        assertCanManageOrganization(actor, organizationId);
+
+        return organizationMemberRepository.findAllByOrganizationIdAndLeftAtIsNull(organizationId).stream()
+            .map(member -> {
+                User user = member.getUser();
+                String firstName = user == null ? null : normalize(user.getFirstName());
+                String lastName = user == null ? null : normalize(user.getLastName());
+                String fullName = String.join(" ",
+                    firstName == null ? "" : firstName,
+                    lastName == null ? "" : lastName
+                ).trim();
+
+                return OrganizationMemberResponse.builder()
+                    .memberId(member.getId())
+                    .userId(user == null ? null : user.getId())
+                    .firstName(firstName)
+                    .lastName(lastName)
+                    .fullName(StringUtils.hasText(fullName) ? fullName : "Без имени")
+                    .email(user == null ? null : user.getEmail())
+                    .phone(user == null ? null : user.getPhone())
+                    .organizationStatus(member.getOrganizationStatus())
+                    .joinedAt(member.getJoinedAt() == null ? null : member.getJoinedAt().toLocalDateTime())
+                    .build();
+            })
             .toList();
     }
 

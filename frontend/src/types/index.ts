@@ -49,7 +49,6 @@ export interface Category {
   id: Id;
   name: string;
   description?: string | null;
-  slug?: string;
   icon?: string;
 }
 
@@ -190,6 +189,18 @@ export interface Session {
   maxParticipants?: number;
   currentParticipants?: number;
   location?: string;
+}
+
+export interface SessionTicketType {
+  id: Id;
+  name: string;
+  price?: number | null;
+  currency?: string | null;
+  quota?: number | null;
+  availableQuota?: number | null;
+  registrationOpen?: boolean | null;
+  salesStartAt?: string | null;
+  salesEndAt?: string | null;
 }
 
 export interface SessionRegistration {

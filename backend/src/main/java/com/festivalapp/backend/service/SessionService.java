@@ -4,6 +4,7 @@ import com.festivalapp.backend.dto.SessionCreateRequest;
 import com.festivalapp.backend.dto.SessionDetailsResponse;
 import com.festivalapp.backend.dto.SessionRegistrationResponse;
 import com.festivalapp.backend.dto.SessionShortResponse;
+import com.festivalapp.backend.dto.SessionTicketTypeResponse;
 import com.festivalapp.backend.dto.SessionUpdateRequest;
 import com.festivalapp.backend.entity.Event;
 import com.festivalapp.backend.entity.OrganizationMember;
@@ -78,6 +79,42 @@ public class SessionService {
         Session session = sessionRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Session not found"));
         return toDetailsResponse(session);
+    }
+
+    @Transactional(readOnly = true)
+    public List<SessionTicketTypeResponse> getTicketTypes(Long sessionId) {
+        Session session = sessionRepository.findById(sessionId)
+            .orElseThrow(() -> new ResourceNotFoundException("Session not found"));
+        List<TicketType> ticketTypes = ticketTypeRepository.findAllBySessionIdOrderByIdAsc(sessionId);
+        OffsetDateTime now = OffsetDateTime.now();
+        long activeTicketsInSession = ticketRepository.countBySessionIdAndStatus(sessionId, "активен");
+        int capacity = session.getSeatLimit() == null ? Integer.MAX_VALUE : session.getSeatLimit();
+        int sessionAvailable = Math.max(0, capacity - (int) activeTicketsInSession);
+
+        return ticketTypes.stream()
+            .map(type -> {
+                long activeTicketsForType = ticketRepository.countBySessionIdAndOrderItemTicketTypeIdAndStatus(sessionId, type.getId(), "активен");
+                int quota = type.getQuota() == null ? Integer.MAX_VALUE : type.getQuota();
+                int quotaAvailable = Math.max(0, quota - (int) activeTicketsForType);
+                int available = Math.max(0, Math.min(sessionAvailable, quotaAvailable));
+
+                boolean withinWindow = (type.getSalesStartAt() == null || !now.isBefore(type.getSalesStartAt()))
+                    && (type.getSalesEndAt() == null || !now.isAfter(type.getSalesEndAt()));
+                boolean open = type.isActive() && withinWindow && available > 0;
+
+                return SessionTicketTypeResponse.builder()
+                    .id(type.getId())
+                    .name(type.getName())
+                    .price(type.getPrice())
+                    .currency(type.getCurrency())
+                    .quota(type.getQuota())
+                    .availableQuota(available)
+                    .registrationOpen(open)
+                    .salesStartAt(type.getSalesStartAt() == null ? null : type.getSalesStartAt().toLocalDateTime())
+                    .salesEndAt(type.getSalesEndAt() == null ? null : type.getSalesEndAt().toLocalDateTime())
+                    .build();
+            })
+            .toList();
     }
 
     @Transactional
