@@ -41,9 +41,6 @@ public class Image {
     @Column(name = "file_size", nullable = false)
     private Long fileSize;
 
-    @Column(name = "file_url", nullable = false)
-    private String fileUrl;
-
     @JdbcTypeCode(SqlTypes.LONGVARBINARY)
     @Column(name = "file_data", columnDefinition = "bytea")
     private byte[] fileData;

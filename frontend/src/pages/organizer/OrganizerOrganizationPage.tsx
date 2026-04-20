@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { organizationService, type OrganizationJoinRequest, type OrganizationMember } from '@/services/organization-service';
 import { fileUploadService } from '@/services/file-upload-service';
+import { imageSrc } from '@/lib/image';
 import type { Organization } from '@/types';
 
 function toDateTimeLabel(value?: string | null): string {
@@ -41,7 +42,7 @@ export default function OrganizerOrganizationPage() {
     contactPhone: '',
     website: '',
     socialLinks: '',
-    logoUrl: '',
+    logoImageId: null as number | null,
   });
 
   const loadPage = async () => {
@@ -68,7 +69,7 @@ export default function OrganizerOrganizationPage() {
         contactPhone: org.contactPhone || '',
         website: org.website || '',
         socialLinks: org.socialLinks || '',
-        logoUrl: org.logoUrl || '',
+        logoImageId: org.logoImageId == null ? null : Number(org.logoImageId),
       });
     } catch (error: any) {
       toast.error(error?.message || 'Не удалось загрузить данные организации');
@@ -110,7 +111,7 @@ export default function OrganizerOrganizationPage() {
         contactPhone: form.contactPhone || null,
         website: form.website || null,
         socialLinks: form.socialLinks || null,
-        logoUrl: form.logoUrl || null,
+        logoImageId: form.logoImageId ?? null,
       });
       setOrganization(updated);
       toast.success('Данные организации обновлены');
@@ -142,7 +143,7 @@ export default function OrganizerOrganizationPage() {
     setUploadingLogo(true);
     try {
       const uploaded = await fileUploadService.uploadImage(file);
-      setForm((prev) => ({ ...prev, logoUrl: uploaded.url }));
+      setForm((prev) => ({ ...prev, logoImageId: uploaded.imageId }));
       toast.success('Логотип загружен');
     } catch (error: any) {
       toast.error(error?.message || 'Не удалось загрузить логотип');
@@ -249,20 +250,20 @@ export default function OrganizerOrganizationPage() {
                   />
                 </label>
               </Button>
-              {form.logoUrl && (
+              {form.logoImageId != null && (
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setForm((prev) => ({ ...prev, logoUrl: '' }))}
+                  onClick={() => setForm((prev) => ({ ...prev, logoImageId: null }))}
                 >
                   Удалить логотип
                 </Button>
               )}
             </div>
-            {form.logoUrl && (
+            {form.logoImageId != null && (
               <div className="mt-2 overflow-hidden rounded-md border border-border bg-muted/20 p-2">
-                <img src={form.logoUrl} alt="Логотип организации" className="h-24 w-24 rounded object-cover" />
+                <img src={imageSrc(form.logoImageId)} alt="Логотип организации" className="h-24 w-24 rounded object-cover" />
               </div>
             )}
             <p className="text-xs text-muted-foreground">

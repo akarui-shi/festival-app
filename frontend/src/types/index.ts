@@ -16,7 +16,7 @@ export interface User {
   firstName?: string | null;
   lastName?: string | null;
   phone?: string | null;
-  avatarUrl?: string | null;
+  avatarImageId?: number | null;
   roles?: string[] | null;
   role?: UserRole;
   organization?: CurrentUserOrganization | null;
@@ -68,7 +68,7 @@ export interface Organization {
   contactPhone?: string | null;
   website?: string | null;
   socialLinks?: string | null;
-  logoUrl?: string | null;
+  logoImageId?: number | null;
 }
 
 export interface Artist {
@@ -77,6 +77,7 @@ export interface Artist {
   stageName?: string | null;
   description?: string | null;
   genre?: string | null;
+  imageId?: number | null;
   events?: Event[] | null;
 }
 
@@ -95,7 +96,7 @@ export interface Venue {
 }
 
 export interface EventImage {
-  imageUrl?: string | null;
+  imageId?: number | null;
   isCover?: boolean | null;
   sortOrder?: number | null;
 }
@@ -118,7 +119,7 @@ export interface Event {
   categories?: Category[] | null;
   nextSessionAt?: string | null;
   sessionDates?: string[] | null;
-  coverUrl?: string | null;
+  coverImageId?: number | null;
   free?: boolean | null;
   minPrice?: number | null;
   maxPrice?: number | null;
@@ -128,8 +129,6 @@ export interface Event {
   eventImages?: EventImage[] | null;
   organization?: Organization | null;
   venue?: Venue | null;
-  imageUrl?: string;
-  imageUrls?: string[];
   categoryId?: Id;
   category?: Category;
   city?: City;
@@ -219,7 +218,7 @@ export interface Favorite {
   eventId: Id;
   title: string;
   shortDescription?: string | null;
-  coverUrl?: string | null;
+  coverImageId?: number | null;
   ageRating?: number | null;
   status?: string | null;
   event?: Event;
@@ -320,8 +319,8 @@ export interface Publication {
   title: string;
   preview?: string | null;
   content?: string | null;
-  imageUrl?: string | null;
-  imageUrls?: string[] | null;
+  imageId?: number | null;
+  imageIds?: number[] | null;
   createdAt?: string | null;
   publishedAt?: string | null;
   status?: PublicationStatus | string | null;
@@ -332,7 +331,7 @@ export interface Publication {
   organizationName?: string | null;
   eventId?: Id | null;
   eventTitle?: string | null;
-  eventImageUrl?: string | null;
+  eventImageId?: number | null;
   id?: Id;
   excerpt?: string;
   author?: User;
@@ -352,6 +351,26 @@ export interface OrganizerAnalyticsOverview {
     activeParticipants?: number | null;
     favorites?: number | null;
     averageRating?: number | null;
+  } | null;
+  visitsByDay?: Array<{
+    date?: string | null;
+    value?: number | null;
+  }> | null;
+  registrationsByDay?: Array<{
+    date?: string | null;
+    value?: number | null;
+  }> | null;
+  trafficSources?: Array<{
+    source?: string | null;
+    visits?: number | null;
+    sharePercent?: number | null;
+  }> | null;
+  metrika?: {
+    enabled?: boolean;
+    configured?: boolean;
+    available?: boolean;
+    message?: string | null;
+    warnings?: string[] | null;
   } | null;
 }
 

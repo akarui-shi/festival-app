@@ -3,20 +3,20 @@ import { ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut } from './api-cl
 
 function normalizePublication(publication: Publication): Publication {
   const normalizedId = publication.publicationId ?? publication.id;
-  const normalizedImageUrls = publication.imageUrls && publication.imageUrls.length > 0
-    ? publication.imageUrls
-    : publication.imageUrl ? [publication.imageUrl] : [];
-  const normalizedImageUrl = publication.imageUrl
-    || normalizedImageUrls[0]
-    || publication.eventImageUrl
+  const normalizedImageIds = publication.imageIds && publication.imageIds.length > 0
+    ? publication.imageIds
+    : publication.imageId ? [publication.imageId] : [];
+  const normalizedImageId = publication.imageId
+    || normalizedImageIds[0]
+    || publication.eventImageId
     || null;
 
   return {
     ...publication,
     publicationId: normalizedId,
     id: normalizedId,
-    imageUrls: normalizedImageUrls,
-    imageUrl: normalizedImageUrl,
+    imageIds: normalizedImageIds,
+    imageId: normalizedImageId,
     preview: publication.preview ?? publication.excerpt ?? null,
     excerpt: publication.excerpt ?? publication.preview ?? null,
     tags: publication.tags ?? [],
@@ -46,8 +46,8 @@ export const publicationService = {
     const response = await apiPost<Publication>('/publications', {
       title: data.title,
       content: data.content,
-      imageUrl: data.imageUrl,
-      imageUrls: data.imageUrls,
+      imageId: data.imageId,
+      imageIds: data.imageIds,
       eventId: data.eventId,
     });
     return normalizePublication(response);
@@ -57,8 +57,8 @@ export const publicationService = {
     const response = await apiPut<Publication>(`/publications/${id}`, {
       title: data.title,
       content: data.content,
-      imageUrl: data.imageUrl,
-      imageUrls: data.imageUrls,
+      imageId: data.imageId,
+      imageIds: data.imageIds,
       eventId: data.eventId,
     });
     return normalizePublication(response);
@@ -97,8 +97,8 @@ export const publicationService = {
       title: current.title,
       content: current.content || '',
       eventId: current.eventId,
-      imageUrl: current.imageUrl,
-      imageUrls: current.imageUrls,
+      imageId: current.imageId,
+      imageIds: current.imageIds,
     });
   },
 };

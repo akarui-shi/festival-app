@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { LoadingState, ErrorState } from '@/components/StateDisplays';
 import { Badge } from '@/components/ui/badge';
+import { imageSrc } from '@/lib/image';
 import { publicationService } from '@/services/publication-service';
 import type { Publication } from '@/types';
 
@@ -45,7 +46,9 @@ export default function PublicationDetailPage() {
   if (error || !pub) return <PublicLayout><ErrorState message={error || 'Не найдено'} /></PublicLayout>;
   const organizationLink = pub.organizationId ? `/organizations/${pub.organizationId}` : null;
   const eventLink = pub.eventId ? `/events/${pub.eventId}` : null;
-  const eventImage = pub.imageUrl || pub.eventImageUrl || '/placeholder.svg';
+  const eventImage = imageSrc(
+    pub.imageId == null ? pub.eventImageId == null ? null : Number(pub.eventImageId) : Number(pub.imageId),
+  );
 
   return (
     <PublicLayout>

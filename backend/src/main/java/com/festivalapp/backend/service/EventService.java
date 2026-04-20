@@ -40,6 +40,7 @@ import com.festivalapp.backend.repository.EventRepository;
 import com.festivalapp.backend.repository.FavoriteRepository;
 import com.festivalapp.backend.repository.ImageRepository;
 import com.festivalapp.backend.repository.OrganizationMemberRepository;
+import com.festivalapp.backend.repository.OrganizationImageRepository;
 import com.festivalapp.backend.repository.OrganizationRepository;
 import com.festivalapp.backend.repository.SessionRepository;
 import com.festivalapp.backend.repository.TicketRepository;
@@ -79,6 +80,7 @@ public class EventService {
     private final CityRepository cityRepository;
     private final VenueRepository venueRepository;
     private final OrganizationRepository organizationRepository;
+    private final OrganizationImageRepository organizationImageRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
     private final UserRepository userRepository;
     private final FavoriteRepository favoriteRepository;
@@ -158,7 +160,7 @@ public class EventService {
             .contactPhone(organization.getContactPhone())
             .website(organization.getWebsite())
             .socialLinks(organization.getSocialLinks())
-            .logoUrl(organization.getLogoUrl())
+            .logoImageId(resolveOrganizationLogoImageId(organization.getId()))
             .build();
     }
 
@@ -397,10 +399,10 @@ public class EventService {
         event.getEventImages().addAll(images);
 
         event.setAgeRating(parseAgeRating(event.getAgeRestriction()));
-        event.setCoverUrl(images.stream().filter(EventImage::isPrimary)
+        event.setCoverImageId(images.stream().filter(EventImage::isPrimary)
             .findFirst()
-            .map(img -> img.getImage() == null ? null : img.getImage().getFileUrl())
-            .orElse(images.stream().findFirst().map(img -> img.getImage() == null ? null : img.getImage().getFileUrl()).orElse(null)));
+            .map(img -> img.getImage() == null ? null : img.getImage().getId())
+            .orElse(images.stream().findFirst().map(img -> img.getImage() == null ? null : img.getImage().getId()).orElse(null)));
 
         event.getSessions().clear();
         event.getSessions().addAll(sessionRepository.findAllByEventIdOrderByStartsAtAsc(event.getId()));
@@ -617,7 +619,7 @@ public class EventService {
                 .map(OffsetDateTime::toLocalDateTime)
                 .sorted()
                 .toList())
-            .coverUrl(event.getCoverUrl())
+            .coverImageId(event.getCoverImageId())
             .free(priceRange.min() == null || priceRange.min().compareTo(BigDecimal.ZERO) <= 0)
             .minPrice(priceRange.min())
             .maxPrice(priceRange.max())
@@ -648,7 +650,7 @@ public class EventService {
             .ageRating(event.getAgeRating())
             .createdAt(event.getCreatedAt() == null ? null : event.getCreatedAt().toLocalDateTime())
             .status(DomainStatusMapper.toEventStatus(event.getStatus()))
-            .coverUrl(event.getCoverUrl())
+            .coverImageId(event.getCoverImageId())
             .eventImages(event.getEventImages().stream().map(this::toEventImageResponse).toList())
             .organization(EventDetailsResponse.OrganizationSummary.builder()
                 .id(event.getOrganization() == null ? null : event.getOrganization().getId())
@@ -700,7 +702,7 @@ public class EventService {
     private EventImageResponse toEventImageResponse(EventImage image) {
         return EventImageResponse.builder()
             .id(image.getId())
-            .imageUrl(image.getImage() == null ? null : image.getImage().getFileUrl())
+            .imageId(image.getImage() == null ? null : image.getImage().getId())
             .isCover(image.isPrimary())
             .sortOrder(image.getSortOrder())
             .build();
@@ -897,7 +899,7 @@ public class EventService {
         boolean primarySelected = false;
         int fallbackOrder = 0;
         for (EventImageRequest imageRequest : imageRequests) {
-            Image image = resolveImage(imageRequest.getImageId(), imageRequest.getImageUrl());
+            Image image = resolveImage(imageRequest.getImageId());
             if (image == null) {
                 continue;
             }
@@ -1060,55 +1062,21 @@ public class EventService {
         return ageRating + "+";
     }
 
-    private Image resolveImage(Long imageId, String imageUrl) {
+    private Image resolveImage(Long imageId) {
         if (imageId != null) {
             return imageRepository.findById(imageId)
                 .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
         }
-
-        if (!StringUtils.hasText(imageUrl)) {
-            return null;
-        }
-
-        Long parsedId = extractImageIdFromUrl(imageUrl);
-        if (parsedId != null) {
-            return imageRepository.findById(parsedId)
-                .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
-        }
-
-        return imageRepository.save(Image.builder()
-            .fileName(fileNameFromUrl(imageUrl))
-            .mimeType("image/*")
-            .fileSize(0L)
-            .fileUrl(imageUrl.trim())
-            .uploadedAt(OffsetDateTime.now())
-            .build());
+        return null;
     }
 
-    private Long extractImageIdFromUrl(String imageUrl) {
-        if (!StringUtils.hasText(imageUrl)) {
+    private Long resolveOrganizationLogoImageId(Long organizationId) {
+        if (organizationId == null) {
             return null;
         }
-        String normalized = imageUrl.trim();
-        int slash = normalized.lastIndexOf('/');
-        if (slash < 0 || slash == normalized.length() - 1) {
-            return null;
-        }
-        String tail = normalized.substring(slash + 1);
-        try {
-            return Long.parseLong(tail);
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
-    }
-
-    private String fileNameFromUrl(String url) {
-        String trimmed = url.trim();
-        int slash = trimmed.lastIndexOf('/');
-        if (slash < 0 || slash == trimmed.length() - 1) {
-            return "image-" + System.nanoTime();
-        }
-        return trimmed.substring(slash + 1);
+        return organizationImageRepository.findFirstByOrganizationIdAndLogoIsTrueOrderByIdAsc(organizationId)
+            .map(orgImage -> orgImage.getImage() == null ? null : orgImage.getImage().getId())
+            .orElse(null);
     }
 
     private String normalizeRequired(String value, String message) {

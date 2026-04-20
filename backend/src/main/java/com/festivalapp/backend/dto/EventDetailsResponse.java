@@ -19,7 +19,7 @@ public class EventDetailsResponse {
     private Integer ageRating;
     private LocalDateTime createdAt;
     private EventStatus status;
-    private String coverUrl;
+    private Long coverImageId;
     private List<EventImageResponse> eventImages;
     private OrganizationSummary organization;
     private VenueResponse venue;

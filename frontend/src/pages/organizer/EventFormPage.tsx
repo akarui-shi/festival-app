@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { LoadingState } from '@/components/StateDisplays';
+import { imageSrc } from '@/lib/image';
 import { LocationPickerMap } from '@/components/LocationPickerMap';
 import { artistService } from '@/services/artist-service';
 import { directoryService } from '@/services/directory-service';
@@ -46,7 +47,6 @@ interface BasicInfoForm {
 
 interface ImageDraft {
   imageId: number;
-  imageUrl: string;
   primary: boolean;
   sortOrder: number;
 }
@@ -129,10 +129,9 @@ function defaultSessionDraft(): SessionDraft {
 }
 
 function mapImage(item: WizardImageItem, index: number): ImageDraft | null {
-  if (item.imageId == null || !item.imageUrl) return null;
+  if (item.imageId == null) return null;
   return {
     imageId: item.imageId,
-    imageUrl: item.imageUrl,
     primary: Boolean(item.primary),
     sortOrder: item.sortOrder ?? index,
   };
@@ -439,7 +438,6 @@ export default function EventFormPage() {
       state = await organizerEventWizardService.updateImages(targetEventId, {
         images: images.map((image, index) => ({
           imageId: image.imageId,
-          imageUrl: image.imageUrl,
           primary: image.primary,
           sortOrder: index,
         })),
@@ -627,7 +625,6 @@ export default function EventFormPage() {
           if (next.some((image) => image.imageId === upload.imageId)) return;
           next.push({
             imageId: upload.imageId,
-            imageUrl: upload.url,
             primary: next.length === 0,
             sortOrder: next.length,
           });
@@ -1032,7 +1029,7 @@ export default function EventFormPage() {
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {images.map((image) => (
                   <div key={image.imageId} className={`rounded-xl border p-3 ${image.primary ? 'border-primary' : 'border-border'}`}>
-                    <img src={image.imageUrl} alt="event" className="h-40 w-full rounded-lg object-cover" />
+                    <img src={imageSrc(image.imageId)} alt="event" className="h-40 w-full rounded-lg object-cover" />
                     <div className="mt-3 flex items-center justify-between gap-2">
                       <Button type="button" variant={image.primary ? 'default' : 'outline'} size="sm" onClick={() => setPrimaryImage(image.imageId)}>
                         <Star className="mr-1 h-4 w-4" />
@@ -1401,7 +1398,7 @@ export default function EventFormPage() {
 
             {images.length > 0 && (
               <div className="overflow-hidden rounded-xl border border-border">
-                <img src={images.find((image) => image.primary)?.imageUrl || images[0].imageUrl} alt="preview" className="h-56 w-full object-cover" />
+                <img src={imageSrc(images.find((image) => image.primary)?.imageId ?? images[0].imageId)} alt="preview" className="h-56 w-full object-cover" />
               </div>
             )}
 

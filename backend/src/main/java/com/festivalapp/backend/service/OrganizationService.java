@@ -92,9 +92,6 @@ public class OrganizationService {
         if (request.getSocialLinks() != null) {
             organization.setSocialLinks(normalize(request.getSocialLinks()));
         }
-        if (request.getLogoUrl() != null) {
-            organization.setLogoUrl(normalize(request.getLogoUrl()));
-        }
         if (request.getLogoImageId() != null) {
             Image logoImage = imageRepository.findById(request.getLogoImageId())
                 .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
@@ -104,7 +101,6 @@ public class OrganizationService {
                 .image(logoImage)
                 .logo(true)
                 .build());
-            organization.setLogoUrl(logoImage.getFileUrl());
         }
         organization.setUpdatedAt(OffsetDateTime.now());
 
@@ -312,6 +308,11 @@ public class OrganizationService {
     }
 
     private OrganizationPublicResponse toPublicResponse(Organization organization) {
+        Long logoImageId = organizationImageRepository.findFirstByOrganizationIdAndLogoIsTrueOrderByIdAsc(organization.getId())
+            .map(OrganizationImage::getImage)
+            .map(Image::getId)
+            .orElse(null);
+
         return OrganizationPublicResponse.builder()
             .id(organization.getId())
             .name(organization.getName())
@@ -321,7 +322,7 @@ public class OrganizationService {
             .contactPhone(organization.getContactPhone())
             .website(organization.getWebsite())
             .socialLinks(organization.getSocialLinks())
-            .logoUrl(organization.getLogoUrl())
+            .logoImageId(logoImageId)
             .build();
     }
 

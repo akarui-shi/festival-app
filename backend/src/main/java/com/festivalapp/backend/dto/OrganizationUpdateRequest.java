@@ -13,6 +13,5 @@ public class OrganizationUpdateRequest {
     private String contactPhone;
     private String website;
     private String socialLinks;
-    private String logoUrl;
     private Long logoImageId;
 }

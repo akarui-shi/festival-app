@@ -2,7 +2,7 @@ import type { Event, EventFilters, Id, Organization, PaginatedResponse } from '@
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut, getAuthToken } from './api-client';
 
 interface EventImagePayload {
-  imageUrl: string;
+  imageId: number;
   isCover?: boolean;
   sortOrder?: number;
 }
@@ -19,7 +19,6 @@ export interface EventUpsertPayload extends Partial<Event> {
   venueName?: string;
   venueContacts?: string;
   venueCapacity?: number;
-  coverUrl?: string;
   eventImages?: EventImagePayload[];
   artistIds?: Array<number | string>;
   newArtistNames?: string[];
@@ -61,7 +60,6 @@ function buildEventPayload(data: EventUpsertPayload) {
     venueName: data.venueName || undefined,
     venueContacts: data.venueContacts || undefined,
     venueCapacity: toNumber(data.venueCapacity),
-    coverUrl: data.coverUrl || undefined,
     eventImages: data.eventImages?.length ? data.eventImages : undefined,
     categoryIds: categoryIds.length ? categoryIds : undefined,
     artistIds: artistIds.length ? artistIds : undefined,

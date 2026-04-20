@@ -14,8 +14,8 @@ public class PublicationDetailsResponse {
     private Long publicationId;
     private String title;
     private String content;
-    private String imageUrl;
-    private List<String> imageUrls;
+    private Long imageId;
+    private List<Long> imageIds;
     private LocalDateTime createdAt;
     private LocalDateTime publishedAt;
     private PublicationStatus status;
@@ -26,5 +26,5 @@ public class PublicationDetailsResponse {
     private String organizationName;
     private Long eventId;
     private String eventTitle;
-    private String eventImageUrl;
+    private Long eventImageId;
 }

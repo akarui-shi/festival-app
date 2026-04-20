@@ -112,7 +112,6 @@ public class FileStorageService {
             .fileName(storedName)
             .mimeType(file.getContentType() == null ? "application/octet-stream" : file.getContentType())
             .fileSize(file.getSize())
-            .fileUrl("")
             .fileData(fileBytes)
             .width(dimensions.width())
             .height(dimensions.height())
@@ -120,9 +119,7 @@ public class FileStorageService {
             .uploadedByUser(resolveUploader(actorIdentifier))
             .build();
 
-        Image saved = imageRepository.save(image);
-        saved.setFileUrl("/api/files/" + saved.getId());
-        return imageRepository.save(saved);
+        return imageRepository.save(image);
     }
 
     private byte[] readBytes(MultipartFile file) {

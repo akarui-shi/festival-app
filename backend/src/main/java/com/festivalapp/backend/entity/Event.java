@@ -89,7 +89,7 @@ public class Event {
     private Integer ageRating;
 
     @Transient
-    private String coverUrl;
+    private Long coverImageId;
 
     @Builder.Default
     @OneToMany(mappedBy = "event")

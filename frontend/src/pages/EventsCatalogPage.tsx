@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { CalendarRange, Search, SlidersHorizontal, Tag, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,57 @@ import { directoryService } from '@/services/directory-service';
 import { favoriteService } from '@/services/favorite-service';
 import type { Category, Event, Id } from '@/types';
 
+interface CatalogFilters {
+  search: string;
+  categoryId: string;
+  dateFrom: string;
+  dateTo: string;
+  participationType: string;
+  priceFrom: string;
+  priceTo: string;
+}
+
+const EMPTY_FILTERS: CatalogFilters = {
+  search: '',
+  categoryId: '',
+  dateFrom: '',
+  dateTo: '',
+  participationType: '',
+  priceFrom: '',
+  priceTo: '',
+};
+
+function parseFilters(searchParams: URLSearchParams): CatalogFilters {
+  return {
+    search: searchParams.get('search') || '',
+    categoryId: searchParams.get('category') || '',
+    dateFrom: searchParams.get('dateFrom') || '',
+    dateTo: searchParams.get('dateTo') || '',
+    participationType: searchParams.get('participationType') || '',
+    priceFrom: searchParams.get('priceFrom') || '',
+    priceTo: searchParams.get('priceTo') || '',
+  };
+}
+
+function normalizeFilters(filters: CatalogFilters): CatalogFilters {
+  return {
+    ...filters,
+    search: filters.search.trim(),
+    priceFrom: filters.priceFrom.trim(),
+    priceTo: filters.priceTo.trim(),
+  };
+}
+
+function sameFilters(a: CatalogFilters, b: CatalogFilters): boolean {
+  return a.search === b.search
+    && a.categoryId === b.categoryId
+    && a.dateFrom === b.dateFrom
+    && a.dateTo === b.dateTo
+    && a.participationType === b.participationType
+    && a.priceFrom === b.priceFrom
+    && a.priceTo === b.priceTo;
+}
+
 export default function EventsCatalogPage() {
   const { user } = useAuth();
   const { selectedCity } = useCity();
@@ -25,14 +76,19 @@ export default function EventsCatalogPage() {
   const [eventsLoading, setEventsLoading] = useState(true);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
 
-  const [search, setSearch] = useState(searchParams.get('search') || '');
-  const [categoryId, setCategoryId] = useState(searchParams.get('category') || '');
-  const [dateFrom, setDateFrom] = useState(searchParams.get('dateFrom') || '');
-  const [dateTo, setDateTo] = useState(searchParams.get('dateTo') || '');
-  const [participationType, setParticipationType] = useState(searchParams.get('participationType') || '');
-  const [priceFrom, setPriceFrom] = useState(searchParams.get('priceFrom') || '');
-  const [priceTo, setPriceTo] = useState(searchParams.get('priceTo') || '');
+  const [draftFilters, setDraftFilters] = useState<CatalogFilters>(() => parseFilters(searchParams));
+  const [appliedFilters, setAppliedFilters] = useState<CatalogFilters>(() => parseFilters(searchParams));
   const [showFilters, setShowFilters] = useState(false);
+
+  const {
+    search,
+    categoryId,
+    dateFrom,
+    dateTo,
+    participationType,
+    priceFrom,
+    priceTo,
+  } = appliedFilters;
 
   useEffect(() => {
     let active = true;
@@ -60,7 +116,7 @@ export default function EventsCatalogPage() {
     eventService
       .getEvents({
         size: 400,
-        search,
+        search: search || undefined,
         categoryId: categoryId || undefined,
         cityId: selectedCity?.id || undefined,
         startDate: dateFrom || undefined,
@@ -82,7 +138,16 @@ export default function EventsCatalogPage() {
     return () => {
       active = false;
     };
-  }, [selectedCity?.id, search, categoryId, dateFrom, dateTo, participationType, priceFrom, priceTo]);
+  }, [
+    selectedCity?.id,
+    search,
+    categoryId,
+    dateFrom,
+    dateTo,
+    participationType,
+    priceFrom,
+    priceTo,
+  ]);
 
   useEffect(() => {
     let active = true;
@@ -113,16 +178,16 @@ export default function EventsCatalogPage() {
   useEffect(() => {
     const nextParams: Record<string, string> = {};
 
-    if (search) nextParams.search = search;
-    if (categoryId) nextParams.category = categoryId;
-    if (dateFrom) nextParams.dateFrom = dateFrom;
-    if (dateTo) nextParams.dateTo = dateTo;
-    if (participationType) nextParams.participationType = participationType;
-    if (priceFrom) nextParams.priceFrom = priceFrom;
-    if (priceTo) nextParams.priceTo = priceTo;
+    if (appliedFilters.search) nextParams.search = appliedFilters.search;
+    if (appliedFilters.categoryId) nextParams.category = appliedFilters.categoryId;
+    if (appliedFilters.dateFrom) nextParams.dateFrom = appliedFilters.dateFrom;
+    if (appliedFilters.dateTo) nextParams.dateTo = appliedFilters.dateTo;
+    if (appliedFilters.participationType) nextParams.participationType = appliedFilters.participationType;
+    if (appliedFilters.priceFrom) nextParams.priceFrom = appliedFilters.priceFrom;
+    if (appliedFilters.priceTo) nextParams.priceTo = appliedFilters.priceTo;
 
     setSearchParams(nextParams, { replace: true });
-  }, [search, categoryId, dateFrom, dateTo, participationType, priceFrom, priceTo, setSearchParams]);
+  }, [appliedFilters, setSearchParams]);
 
   const filteredEvents = useMemo(() => events, [events]);
 
@@ -131,17 +196,52 @@ export default function EventsCatalogPage() {
     ? `${selectedCity.name}${selectedCity.region ? `, ${selectedCity.region}` : ''}`
     : '';
 
-  const hasFilters = Boolean(search || categoryId || dateFrom || dateTo || participationType || priceFrom || priceTo);
+  const hasAppliedFilters = Boolean(
+    appliedFilters.search
+      || appliedFilters.categoryId
+      || appliedFilters.dateFrom
+      || appliedFilters.dateTo
+      || appliedFilters.participationType
+      || appliedFilters.priceFrom
+      || appliedFilters.priceTo,
+  );
+
+  const isDirty = useMemo(
+    () => !sameFilters(draftFilters, appliedFilters),
+    [draftFilters, appliedFilters],
+  );
+
+  const updateDraftFilter = (key: keyof CatalogFilters, value: string) => {
+    setDraftFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const applyFilters = () => {
+    setAppliedFilters(normalizeFilters(draftFilters));
+  };
 
   const clearFilters = () => {
-    setSearch('');
-    setCategoryId('');
-    setDateFrom('');
-    setDateTo('');
-    setParticipationType('');
-    setPriceFrom('');
-    setPriceTo('');
+    setDraftFilters(EMPTY_FILTERS);
+    setAppliedFilters(EMPTY_FILTERS);
   };
+
+  const activeFilterTags = useMemo(() => {
+    const tags: string[] = [];
+    if (appliedFilters.search) tags.push(`Поиск: ${appliedFilters.search}`);
+    if (appliedFilters.categoryId) {
+      const categoryName = categories.find((item) => String(item.id) === appliedFilters.categoryId)?.name;
+      if (categoryName) tags.push(`Категория: ${categoryName}`);
+    }
+    if (appliedFilters.dateFrom || appliedFilters.dateTo) {
+      tags.push(`Дата: ${appliedFilters.dateFrom || '…'} - ${appliedFilters.dateTo || '…'}`);
+    }
+    if (appliedFilters.participationType) {
+      tags.push(appliedFilters.participationType === 'free' ? 'Только бесплатные' : 'Только платные');
+    }
+    if (appliedFilters.priceFrom || appliedFilters.priceTo) {
+      tags.push(`Цена: ${appliedFilters.priceFrom || '0'} - ${appliedFilters.priceTo || '∞'} ₽`);
+    }
+    return tags;
+  }, [appliedFilters, categories]);
 
   const toggleFavorite = async (eventId: Id) => {
     if (!user) {
@@ -196,78 +296,153 @@ export default function EventsCatalogPage() {
           </p>
         </div>
 
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Поиск мероприятий, организаций и артистов…"
-              className="pl-9"
-            />
+        <div className="surface-panel mb-8 space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={draftFilters.search}
+                onChange={(event) => updateDraftFilter('search', event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') applyFilters();
+                }}
+                placeholder="Поиск мероприятий, организаций и артистов…"
+                className="pl-9"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant={isDirty ? 'default' : 'outline'} onClick={applyFilters}>
+                Показать
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-2 sm:hidden"
+                onClick={() => setShowFilters((prev) => !prev)}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                Фильтры
+              </Button>
+            </div>
           </div>
-          <Button
-            variant="outline"
-            className="gap-2 sm:hidden"
-            onClick={() => setShowFilters((prev) => !prev)}
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            Фильтры
-          </Button>
-        </div>
 
-        <div className={`mb-8 space-y-4 ${showFilters ? 'block' : 'hidden sm:block'}`}>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setCategoryId('')}
-              className={`rounded-full border px-3.5 py-1.5 text-sm transition-all ${
-                categoryId === ''
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
-              }`}
-            >
-              Все категории
-            </button>
+          {isDirty && (
+            <p className="text-xs text-warning">
+              Изменения фильтров ещё не применены
+            </p>
+          )}
 
-            {categories.map((category) => (
+          <div className={`space-y-4 ${showFilters ? 'block' : 'hidden sm:block'}`}>
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                key={category.id}
-                onClick={() => setCategoryId(String(category.id))}
+                onClick={() => updateDraftFilter('categoryId', '')}
                 className={`rounded-full border px-3.5 py-1.5 text-sm transition-all ${
-                  categoryId === String(category.id)
+                  draftFilters.categoryId === ''
                     ? 'border-primary bg-primary text-primary-foreground'
                     : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
                 }`}
               >
-                {category.name}
+                Все категории
               </button>
+
+              {categories.map((category) => (
+                <button
+                  type="button"
+                  key={category.id}
+                  onClick={() => updateDraftFilter('categoryId', String(category.id))}
+                  className={`rounded-full border px-3.5 py-1.5 text-sm transition-all ${
+                    draftFilters.categoryId === String(category.id)
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                  }`}
+                >
+                  {category.name}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="space-y-1">
+                <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <CalendarRange className="h-3.5 w-3.5" />
+                  Дата с
+                </label>
+                <Input
+                  type="date"
+                  value={draftFilters.dateFrom}
+                  onChange={(event) => updateDraftFilter('dateFrom', event.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <CalendarRange className="h-3.5 w-3.5" />
+                  Дата по
+                </label>
+                <Input
+                  type="date"
+                  value={draftFilters.dateTo}
+                  onChange={(event) => updateDraftFilter('dateTo', event.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Тип участия</label>
+                <select
+                  value={draftFilters.participationType}
+                  onChange={(event) => updateDraftFilter('participationType', event.target.value)}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">Любой</option>
+                  <option value="free">Бесплатно</option>
+                  <option value="paid">Платно</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Цена от, ₽</label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={draftFilters.priceFrom}
+                  onChange={(event) => updateDraftFilter('priceFrom', event.target.value)}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Цена до, ₽</label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={draftFilters.priceTo}
+                  onChange={(event) => updateDraftFilter('priceTo', event.target.value)}
+                  placeholder="5000"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" onClick={applyFilters}>Применить фильтры</Button>
+              {hasAppliedFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  <X className="mr-1 h-4 w-4" />
+                  Сбросить
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {activeFilterTags.length > 0 && (
+          <div className="mb-6 flex flex-wrap items-center gap-2">
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Tag className="h-3.5 w-3.5" />
+              Активные фильтры:
+            </span>
+            {activeFilterTags.map((tag) => (
+              <span key={tag} className="rounded-full border border-border bg-card px-3 py-1 text-xs text-foreground">
+                {tag}
+              </span>
             ))}
           </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} placeholder="Дата с" />
-            <Input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} placeholder="Дата по" />
-            <select
-              value={participationType}
-              onChange={(event) => setParticipationType(event.target.value)}
-              className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="">Тип участия</option>
-              <option value="free">Бесплатно</option>
-              <option value="paid">Платно</option>
-            </select>
-            <Input type="number" min={0} value={priceFrom} onChange={(event) => setPriceFrom(event.target.value)} placeholder="Цена от" />
-            <Input type="number" min={0} value={priceTo} onChange={(event) => setPriceTo(event.target.value)} placeholder="Цена до" />
-          </div>
-
-          {hasFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 text-muted-foreground">
-              Сбросить фильтры
-            </Button>
-          )}
-        </div>
+        )}
 
         {filteredEvents.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

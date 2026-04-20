@@ -28,7 +28,7 @@ public class EventShortResponse {
     private List<CategoryResponse> categories;
     private LocalDateTime nextSessionAt;
     private List<LocalDateTime> sessionDates;
-    private String coverUrl;
+    private Long coverImageId;
     private Boolean free;
     private BigDecimal minPrice;
     private BigDecimal maxPrice;

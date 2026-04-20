@@ -5,6 +5,7 @@ import { PublicLayout } from '@/layouts/PublicLayout';
 import { EventCard } from '@/components/EventCard';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState, LoadingState } from '@/components/StateDisplays';
+import { imageSrc } from '@/lib/image';
 import { eventService } from '@/services/event-service';
 import { publicationService } from '@/services/publication-service';
 import type { Event, Organization, Publication } from '@/types';
@@ -72,8 +73,8 @@ export default function OrganizationPage() {
 
         <section className="rounded-2xl border border-border bg-card p-6 shadow-card sm:p-8">
           <div className="flex items-start gap-4">
-            {organization.logoUrl ? (
-              <img src={organization.logoUrl} alt={organization.name} className="h-12 w-12 rounded-xl object-cover" />
+            {organization.logoImageId != null ? (
+              <img src={imageSrc(Number(organization.logoImageId))} alt={organization.name} className="h-12 w-12 rounded-xl object-cover" />
             ) : (
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
                 <Building2 className="h-6 w-6 text-primary" />

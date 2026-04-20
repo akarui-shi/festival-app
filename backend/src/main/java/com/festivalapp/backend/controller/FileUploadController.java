@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @RestController
 @RequestMapping("/api/files")
@@ -84,16 +83,9 @@ public class FileUploadController {
     }
 
     private ResponseEntity<FileUploadResponse> buildUploadResponse(Image image) {
-        String relativePath = "/api/files/" + image.getId();
-        String fileUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
-            .path(relativePath)
-            .toUriString();
-
         FileUploadResponse response = FileUploadResponse.builder()
             .imageId(image.getId())
             .fileName(image.getFileName())
-            .relativePath(relativePath)
-            .url(fileUrl)
             .size(image.getFileSize() == null ? 0L : image.getFileSize())
             .contentType(image.getMimeType())
             .build();

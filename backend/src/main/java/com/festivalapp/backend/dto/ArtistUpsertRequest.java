@@ -19,5 +19,4 @@ public class ArtistUpsertRequest {
 
     private Long imageId;
 
-    private String imageUrl;
 }

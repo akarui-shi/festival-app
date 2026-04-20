@@ -19,11 +19,11 @@ public class PublicationShortResponse {
     private PublicationStatus status;
     private String moderationStatus;
     private String authorName;
-    private String imageUrl;
-    private List<String> imageUrls;
+    private Long imageId;
+    private List<Long> imageIds;
     private Long organizationId;
     private String organizationName;
     private Long eventId;
     private String eventTitle;
-    private String eventImageUrl;
+    private Long eventImageId;
 }

@@ -8,7 +8,7 @@ import lombok.Getter;
 public class EventImageResponse {
 
     private Long id;
-    private String imageUrl;
+    private Long imageId;
     private boolean isCover;
     private Integer sortOrder;
 }

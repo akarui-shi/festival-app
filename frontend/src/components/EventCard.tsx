@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Building2, CalendarDays, Clock, Heart, MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { imageSrc } from '@/lib/image';
 import type { Event, Id } from '@/types';
 
 interface EventCardProps {
@@ -86,7 +87,7 @@ function toShortAddress(address?: string): string {
 
 export function EventCard({ event, onFavoriteToggle, isFavorite }: EventCardProps) {
   const fallbackImage = '/placeholder-event.svg';
-  const preferredImage = event.coverUrl || event.imageUrl || fallbackImage;
+  const preferredImage = imageSrc(event.coverImageId == null ? null : Number(event.coverImageId), fallbackImage);
   const [image, setImage] = useState(preferredImage);
 
   useEffect(() => {

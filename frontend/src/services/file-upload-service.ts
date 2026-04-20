@@ -3,8 +3,6 @@ import { apiPost } from './api-client';
 interface FileUploadResponse {
   imageId: number;
   fileName: string;
-  relativePath: string;
-  url: string;
   size: number;
   contentType: string;
 }

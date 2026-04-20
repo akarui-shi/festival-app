@@ -17,7 +17,6 @@ export interface WizardValidationIssue {
 export interface WizardImageItem {
   eventImageId?: number | null;
   imageId?: number | null;
-  imageUrl?: string | null;
   primary?: boolean | null;
   sortOrder?: number | null;
 }
@@ -28,7 +27,7 @@ export interface WizardArtistItem {
   stageName?: string | null;
   description?: string | null;
   genre?: string | null;
-  imageUrl?: string | null;
+  imageId?: number | null;
 }
 
 export interface WizardTicketTypeItem {
@@ -99,7 +98,6 @@ export interface WizardCategoriesPayload {
 export interface WizardImagesPayload {
   images: Array<{
     imageId?: number;
-    imageUrl?: string;
     primary?: boolean;
     sortOrder?: number;
   }>;
