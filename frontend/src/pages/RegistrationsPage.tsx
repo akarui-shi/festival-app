@@ -9,20 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { registrationService } from '@/services/registration-service';
+import { getRegistrationStatusBadge, isRegistrationActive } from '@/lib/statuses';
 import type { Id, Ticket } from '@/types';
-
-const statusLabels: Record<string, { label: string; className: string }> = {
-  ACTIVE: { label: 'Активен', className: 'bg-primary/10 text-primary' },
-  USED: { label: 'Использован', className: 'bg-info/10 text-info' },
-  RETURNED: { label: 'Возвращён', className: 'bg-destructive/10 text-destructive' },
-  active: { label: 'Активен', className: 'bg-primary/10 text-primary' },
-  used: { label: 'Использован', className: 'bg-info/10 text-info' },
-  returned: { label: 'Возвращён', className: 'bg-destructive/10 text-destructive' },
-  'активен': { label: 'Активен', className: 'bg-primary/10 text-primary' },
-  'использован': { label: 'Использован', className: 'bg-info/10 text-info' },
-  'возвращён': { label: 'Возвращён', className: 'bg-destructive/10 text-destructive' },
-  'ожидает_оплаты': { label: 'Ожидает оплаты', className: 'bg-warning/10 text-warning' },
-};
 
 export default function RegistrationsPage() {
   const { user } = useAuth();
@@ -72,12 +60,9 @@ export default function RegistrationsPage() {
             </div>
           </>
         ) : (
-            <div className="mt-8 space-y-4">
+          <div className="mt-8 space-y-4">
             {tickets.map((ticket) => {
-              const status = statusLabels[ticket.status || ''] || {
-                label: ticket.status || 'Неизвестно',
-                className: 'bg-muted text-muted-foreground',
-              };
+              const status = getRegistrationStatusBadge(ticket.status);
 
               return (
                 <div
@@ -112,7 +97,7 @@ export default function RegistrationsPage() {
                     <div className="flex items-center gap-3">
                       <Badge className={status.className}>{status.label}</Badge>
 
-                      {ticket.orderId && (ticket.status === 'ACTIVE' || ticket.status === 'active' || ticket.status === 'активен') && (
+                      {ticket.orderId && isRegistrationActive(ticket.status) && (
                         <Button
                           variant="ghost"
                           size="sm"

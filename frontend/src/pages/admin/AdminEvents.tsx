@@ -7,17 +7,8 @@ import { LoadingState } from '@/components/StateDisplays';
 import { EmptyState } from '@/components/EmptyState';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { getEventStatusBadge } from '@/lib/statuses';
 import type { Event, EventStatus } from '@/types';
-
-const statusMap: Record<string, { label: string; cls: string }> = {
-  DRAFT: { label: 'Черновик', cls: 'bg-muted text-muted-foreground' },
-  PENDING: { label: 'На модерации', cls: 'bg-warning/10 text-warning' },
-  PENDING_APPROVAL: { label: 'На модерации', cls: 'bg-warning/10 text-warning' },
-  PUBLISHED: { label: 'Опубликовано', cls: 'bg-success/10 text-success' },
-  REJECTED: { label: 'Отклонено', cls: 'bg-destructive/10 text-destructive' },
-  CANCELLED: { label: 'Отменено', cls: 'bg-muted text-muted-foreground' },
-  ARCHIVED: { label: 'Отменено', cls: 'bg-muted text-muted-foreground' },
-};
 
 export default function AdminEvents() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -51,7 +42,7 @@ export default function AdminEvents() {
 
       <div className="space-y-3">
         {events.map((event) => {
-          const status = statusMap[event.status || 'PENDING'];
+          const status = getEventStatusBadge(event.status || 'PENDING', event.moderationStatus);
           return (
             <div
               key={event.id}
@@ -60,7 +51,7 @@ export default function AdminEvents() {
               <div className="flex-1">
                 <div className="mb-1 flex items-center gap-2">
                   <span className="font-medium text-foreground">{event.title}</span>
-                  <Badge className={`${status.cls} border-0 text-xs`}>{status.label}</Badge>
+                  <Badge className={`${status.className} border-0 text-xs`}>{status.label}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {event.categories?.[0]?.name || 'Категория не указана'} · {event.cityName || 'Город не указан'}
