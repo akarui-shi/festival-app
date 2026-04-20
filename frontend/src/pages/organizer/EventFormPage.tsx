@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, Loader2, Plus, Star, Trash2, Upload } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Building2, CalendarDays, CheckCircle2, Clock3, Image as ImageIcon, Loader2, MapPin, Plus, Star, Tag, Ticket, Trash2, Upload, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import {
   type WizardImageItem,
   type WizardSessionItem,
   type WizardTicketTypeItem,
+  type WizardValidationIssue,
 } from '@/services/organizer-event-wizard-service';
 import { yandexMapsService, type YandexAddressSuggestion } from '@/services/yandex-maps-service';
 import type { Artist, Category, City, Venue } from '@/types';
@@ -37,6 +38,14 @@ const WIZARD_STEPS = [
 type StepIndex = 0 | 1 | 2 | 3 | 4 | 5;
 
 const AGE_OPTIONS = ['', '0+', '6+', '12+', '16+', '18+'] as const;
+
+const WIZARD_STEP_LABELS: Record<string, string> = {
+  step_1: 'Основная информация',
+  step_2: 'Фотографии',
+  step_3: 'Артисты',
+  step_4: 'Сеансы',
+  step_5: 'Билеты',
+};
 
 interface BasicInfoForm {
   title: string;
@@ -99,11 +108,11 @@ function currentLocalDateTimeValue(): string {
   return local.toISOString().slice(0, 16);
 }
 
-function defaultTicketType(sessionStartsAt?: string): TicketTypeDraft {
+function defaultTicketType(sessionStartsAt?: string, quota = '100'): TicketTypeDraft {
   return {
     name: 'Стандарт',
     price: '500',
-    quota: '100',
+    quota,
     salesStartAt: currentLocalDateTimeValue(),
     salesEndAt: sessionStartsAt || '',
   };
@@ -180,6 +189,44 @@ function normalize(value: string): string {
   return value.trim().toLowerCase();
 }
 
+function safePositiveInt(value?: string | number | null): number | null {
+  if (value == null || value === '') return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  const rounded = Math.floor(parsed);
+  return rounded > 0 ? rounded : null;
+}
+
+function getSessionSeatLimit(session: SessionDraft): number | null {
+  return safePositiveInt(session.seatLimit);
+}
+
+function getSessionTicketQuotaTotal(session: SessionDraft): number {
+  return session.ticketTypes.reduce((sum, ticketType) => {
+    const quota = safePositiveInt(ticketType.quota);
+    return sum + (quota ?? 0);
+  }, 0);
+}
+
+function formatDateTime(value?: string | null): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value.replace('T', ' ');
+  }
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function formatMoney(value: number): string {
+  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value);
+}
+
 export default function EventFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -213,6 +260,7 @@ export default function EventFormPage() {
   const [expandedSessionLocalId, setExpandedSessionLocalId] = useState<string | null>(null);
   const [hasArtists, setHasArtists] = useState(false);
   const [isFreeEvent, setIsFreeEvent] = useState(true);
+  const [previewImageId, setPreviewImageId] = useState<number | null>(null);
   const isFreeInitializedRef = useRef(false);
 
   const [addressSuggestionsBySession, setAddressSuggestionsBySession] = useState<Record<string, YandexAddressSuggestion[]>>({});
@@ -353,6 +401,81 @@ export default function EventFormPage() {
       .slice(0, 40);
   }, [artistSearch, artistsCatalog]);
 
+  const orderedPreviewImages = useMemo(
+    () => [...images].sort((a, b) => a.sortOrder - b.sortOrder),
+    [images],
+  );
+
+  const selectedPreviewImage = useMemo(() => {
+    if (orderedPreviewImages.length === 0) return null;
+    if (previewImageId != null) {
+      const found = orderedPreviewImages.find((image) => image.imageId === previewImageId);
+      if (found) return found;
+    }
+    return orderedPreviewImages.find((image) => image.primary) ?? orderedPreviewImages[0];
+  }, [orderedPreviewImages, previewImageId]);
+
+  useEffect(() => {
+    if (orderedPreviewImages.length === 0) {
+      if (previewImageId != null) setPreviewImageId(null);
+      return;
+    }
+    if (previewImageId == null || !orderedPreviewImages.some((image) => image.imageId === previewImageId)) {
+      const fallback = orderedPreviewImages.find((image) => image.primary)?.imageId ?? orderedPreviewImages[0].imageId;
+      setPreviewImageId(fallback);
+    }
+  }, [orderedPreviewImages, previewImageId]);
+
+  const selectedCategories = useMemo(
+    () => categories.filter((category) => categoryIds.includes(Number(category.id))),
+    [categories, categoryIds],
+  );
+
+  const selectedArtistsDetailed = useMemo(() => (
+    existingArtists
+      .map((selected) => artistsCatalog.find((artist) => Number(artist.id) === selected.artistId))
+      .filter((artist): artist is Artist => Boolean(artist))
+  ), [existingArtists, artistsCatalog]);
+
+  const previewPriceStats = useMemo(() => {
+    const prices = sessions
+      .flatMap((session) => session.ticketTypes)
+      .map((ticketType) => Number(ticketType.price))
+      .filter((value) => Number.isFinite(value) && value >= 0);
+    if (prices.length === 0) {
+      return { min: null as number | null, max: null as number | null };
+    }
+    return { min: Math.min(...prices), max: Math.max(...prices) };
+  }, [sessions]);
+
+  const previewTotals = useMemo(() => {
+    const sessionsCount = sessions.length;
+    const artistsCount = selectedArtistsDetailed.length;
+    const ticketTypesCount = sessions.reduce((sum, session) => sum + session.ticketTypes.length, 0);
+    const seatLimitTotal = sessions.reduce((sum, session) => {
+      const seatLimit = getSessionSeatLimit(session);
+      return sum + (seatLimit ?? 0);
+    }, 0);
+    const ticketQuotaTotal = sessions.reduce((sum, session) => sum + getSessionTicketQuotaTotal(session), 0);
+    return {
+      sessionsCount,
+      artistsCount,
+      ticketTypesCount,
+      seatLimitTotal,
+      ticketQuotaTotal,
+    };
+  }, [sessions, selectedArtistsDetailed.length]);
+
+  const validationIssuesByStep = useMemo(() => {
+    const grouped = new Map<string, WizardValidationIssue[]>();
+    for (const issue of wizardState?.validationIssues || []) {
+      const list = grouped.get(issue.step) || [];
+      list.push(issue);
+      grouped.set(issue.step, list);
+    }
+    return Array.from(grouped.entries());
+  }, [wizardState?.validationIssues]);
+
   const markDirty = () => setDirty(true);
 
   const ensureEventExists = useCallback(async (): Promise<number> => {
@@ -399,7 +522,8 @@ export default function EventFormPage() {
     if (targetStep === 4) {
       if (isFreeEvent) return null;
 
-      for (const session of sessions) {
+      for (let sessionIndex = 0; sessionIndex < sessions.length; sessionIndex += 1) {
+        const session = sessions[sessionIndex];
         if (!session.id) return 'Сначала сохраните шаг с сеансами';
         if (session.ticketTypes.length === 0) return 'Добавьте хотя бы один тип билета для каждого сеанса';
 
@@ -408,9 +532,17 @@ export default function EventFormPage() {
           const quota = Number(ticketType.quota);
           if (!ticketType.name.trim()) return 'Название билета обязательно';
           if (!Number.isFinite(price) || price <= 0) return 'Для платного мероприятия цена билета должна быть > 0';
-          if (!Number.isFinite(quota) || quota <= 0) return 'Квота билета должна быть > 0';
+          if (!Number.isFinite(quota) || quota <= 0) return 'Количество билетов должно быть > 0';
           if (ticketType.salesStartAt && ticketType.salesEndAt && ticketType.salesEndAt < ticketType.salesStartAt) {
             return 'sales_end_at не может быть раньше sales_start_at';
+          }
+        }
+
+        const seatLimit = getSessionSeatLimit(session);
+        if (seatLimit != null) {
+          const totalQuota = getSessionTicketQuotaTotal(session);
+          if (totalQuota > seatLimit) {
+            return `Сеанс ${sessionIndex + 1}: сумма квот билетов (${totalQuota}) больше лимита мест (${seatLimit})`;
           }
         }
       }
@@ -873,7 +1005,17 @@ export default function EventFormPage() {
   const addTicketType = (sessionLocalId: string) => {
     setSessions((prev) => prev.map((session) => {
       if (session.localId !== sessionLocalId) return session;
-      return { ...session, ticketTypes: [...session.ticketTypes, defaultTicketType(session.startsAt)] };
+      const seatLimit = getSessionSeatLimit(session);
+      const usedQuota = getSessionTicketQuotaTotal(session);
+      const remaining = seatLimit == null ? null : seatLimit - usedQuota;
+
+      if (remaining != null && remaining <= 0) {
+        toast.error('Лимит мест сеанса уже полностью распределен по билетам');
+        return session;
+      }
+
+      const defaultQuota = remaining == null ? '100' : String(remaining);
+      return { ...session, ticketTypes: [...session.ticketTypes, defaultTicketType(session.startsAt, defaultQuota)] };
     }));
     markDirty();
   };
@@ -881,10 +1023,33 @@ export default function EventFormPage() {
   const updateTicketType = (sessionLocalId: string, index: number, patch: Partial<TicketTypeDraft>) => {
     setSessions((prev) => prev.map((session) => {
       if (session.localId !== sessionLocalId) return session;
+
+      let nextPatch = patch;
+      const seatLimit = getSessionSeatLimit(session);
+      if (seatLimit != null && patch.quota !== undefined) {
+        const desiredQuota = safePositiveInt(patch.quota);
+        if (desiredQuota != null) {
+          const sumOther = session.ticketTypes.reduce((sum, ticketType, ticketIndex) => {
+            if (ticketIndex === index) return sum;
+            const quota = safePositiveInt(ticketType.quota);
+            return sum + (quota ?? 0);
+          }, 0);
+          const allowedForCurrent = seatLimit - sumOther;
+          if (allowedForCurrent <= 0) {
+            toast.error('Для этого сеанса не осталось свободных мест в квотах');
+            return session;
+          }
+          if (desiredQuota > allowedForCurrent) {
+            nextPatch = { ...patch, quota: String(allowedForCurrent) };
+            toast.error(`Можно указать не больше ${allowedForCurrent} мест для этого типа билета`);
+          }
+        }
+      }
+
       return {
         ...session,
         ticketTypes: session.ticketTypes.map((ticketType, ticketIndex) => (
-          ticketIndex === index ? { ...ticketType, ...patch } : ticketType
+          ticketIndex === index ? { ...ticketType, ...nextPatch } : ticketType
         )),
       };
     }));
@@ -1330,117 +1495,344 @@ export default function EventFormPage() {
               <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
                 Для бесплатного мероприятия типы билетов добавлять не нужно.
               </p>
-            ) : sessions.map((session, sessionIndex) => (
-              <div key={session.localId} className="space-y-3 rounded-xl border border-border p-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold">Сеанс {sessionIndex + 1} {session.startsAt ? `(${session.startsAt.replace('T', ' ')})` : ''}</p>
-                  <Button type="button" variant="outline" size="sm" onClick={() => addTicketType(session.localId)}>
-                    <Plus className="mr-1 h-4 w-4" /> Добавить тип билета
-                  </Button>
-                </div>
+            ) : sessions.map((session, sessionIndex) => {
+              const seatLimit = getSessionSeatLimit(session);
+              const totalQuota = getSessionTicketQuotaTotal(session);
+              const remainingQuota = seatLimit == null ? null : seatLimit - totalQuota;
 
-                {session.ticketTypes.map((ticketType, ticketIndex) => (
-                  <div key={`${session.localId}-ticket-${ticketIndex}`} className="rounded-lg border border-border p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <p className="text-sm font-medium">Тип билета {ticketIndex + 1}</p>
-                      <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => removeTicketType(session.localId, ticketIndex)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                      <div>
-                        <Label>Название типа билета *</Label>
-                        <Input value={ticketType.name} onChange={(event) => updateTicketType(session.localId, ticketIndex, { name: event.target.value })} placeholder="Например: Стандарт" />
-                      </div>
-                      <div>
-                        <Label>Цена, RUB *</Label>
-                        <Input type="number" min={0} value={ticketType.price} onChange={(event) => updateTicketType(session.localId, ticketIndex, { price: event.target.value })} placeholder="Например: 1200" />
-                      </div>
-                      <div>
-                        <Label>Количество мест *</Label>
-                        <Input type="number" min={1} value={ticketType.quota} onChange={(event) => updateTicketType(session.localId, ticketIndex, { quota: event.target.value })} placeholder="Например: 150" />
-                      </div>
-                      <div>
-                        <Label>Начало продаж</Label>
-                        <Input type="datetime-local" value={ticketType.salesStartAt} onChange={(event) => updateTicketType(session.localId, ticketIndex, { salesStartAt: event.target.value })} />
-                      </div>
-                      <div>
-                        <Label>Окончание продаж</Label>
-                        <Input type="datetime-local" value={ticketType.salesEndAt} onChange={(event) => updateTicketType(session.localId, ticketIndex, { salesEndAt: event.target.value })} />
-                      </div>
-                    </div>
+              return (
+                <div key={session.localId} className="space-y-3 rounded-xl border border-border p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold">Сеанс {sessionIndex + 1} {session.startsAt ? `(${session.startsAt.replace('T', ' ')})` : ''}</p>
+                    <Button type="button" variant="outline" size="sm" onClick={() => addTicketType(session.localId)}>
+                      <Plus className="mr-1 h-4 w-4" /> Добавить тип билета
+                    </Button>
                   </div>
-                ))}
-              </div>
-            ))}
+
+                  <div className="rounded-lg border border-dashed border-border bg-muted/30 p-2 text-xs text-muted-foreground">
+                    {seatLimit == null ? (
+                      <p>Лимит мест сеанса не указан. Укажите лимит на шаге «Сеансы», чтобы контролировать сумму мест по билетам.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-x-4 gap-y-1">
+                        <p>Лимит мест: <span className="font-semibold text-foreground">{seatLimit}</span></p>
+                        <p>Распределено по билетам: <span className="font-semibold text-foreground">{totalQuota}</span></p>
+                        <p className={remainingQuota != null && remainingQuota < 0 ? 'font-semibold text-destructive' : ''}>
+                          Осталось: {remainingQuota}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {session.ticketTypes.map((ticketType, ticketIndex) => {
+                    const quotaUsedByOthers = session.ticketTypes.reduce((sum, item, idx) => {
+                      if (idx === ticketIndex) return sum;
+                      const quota = safePositiveInt(item.quota);
+                      return sum + (quota ?? 0);
+                    }, 0);
+                    const maxForThisTicket = seatLimit == null ? undefined : Math.max(seatLimit - quotaUsedByOthers, 1);
+
+                    return (
+                      <div key={`${session.localId}-ticket-${ticketIndex}`} className="rounded-lg border border-border p-3">
+                        <div className="mb-2 flex items-center justify-between">
+                          <p className="text-sm font-medium">Тип билета {ticketIndex + 1}</p>
+                          <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => removeTicketType(session.localId, ticketIndex)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          <div>
+                            <Label>Название типа билета *</Label>
+                            <Input value={ticketType.name} onChange={(event) => updateTicketType(session.localId, ticketIndex, { name: event.target.value })} placeholder="Например: Стандарт" />
+                          </div>
+                          <div>
+                            <Label>Цена, RUB *</Label>
+                            <Input type="number" min={0} value={ticketType.price} onChange={(event) => updateTicketType(session.localId, ticketIndex, { price: event.target.value })} placeholder="Например: 1200" />
+                          </div>
+                          <div>
+                            <Label>Количество мест *</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={maxForThisTicket}
+                              value={ticketType.quota}
+                              onChange={(event) => updateTicketType(session.localId, ticketIndex, { quota: event.target.value })}
+                              placeholder="Например: 150"
+                            />
+                            {maxForThisTicket != null && (
+                              <p className="mt-1 text-xs text-muted-foreground">Максимум для этого типа: {maxForThisTicket}</p>
+                            )}
+                          </div>
+                          <div>
+                            <Label>Начало продаж</Label>
+                            <Input type="datetime-local" value={ticketType.salesStartAt} onChange={(event) => updateTicketType(session.localId, ticketIndex, { salesStartAt: event.target.value })} />
+                          </div>
+                          <div>
+                            <Label>Окончание продаж</Label>
+                            <Input type="datetime-local" value={ticketType.salesEndAt} onChange={(event) => updateTicketType(session.localId, ticketIndex, { salesEndAt: event.target.value })} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
           </div>
         )}
 
         {step === 5 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="font-heading text-2xl">Шаг 6. Предпросмотр</h2>
-              <Button type="button" variant="outline" size="sm" onClick={async () => {
-                setSaving(true);
-                try {
-                  await refreshPreview();
-                  toast.success('Предпросмотр обновлен');
-                } catch {
-                  toast.error('Не удалось обновить предпросмотр');
-                } finally {
-                  setSaving(false);
-                }
-              }}>
-                Обновить
-              </Button>
-            </div>
-
-            {images.length > 0 && (
-              <div className="overflow-hidden rounded-xl border border-border">
-                <img src={imageSrc(images.find((image) => image.primary)?.imageId ?? images[0].imageId)} alt="preview" className="h-56 w-full object-cover" />
+              <div>
+                <h2 className="font-heading text-2xl">Шаг 6. Предпросмотр</h2>
+                <p className="text-sm text-muted-foreground">
+                  Проверьте, как мероприятие будет выглядеть перед отправкой на модерацию
+                </p>
               </div>
-            )}
-
-            <div className="space-y-2 rounded-xl border border-border p-3 text-sm">
-              <p><span className="font-semibold">Организация:</span> {wizardState?.organizationName || organizations[0]?.name || '—'}</p>
-              <p><span className="font-semibold">Город:</span> {wizardState?.cityName || '—'}</p>
-              <p><span className="font-semibold">Заголовок:</span> {basicInfo.title || '—'}</p>
-              <p><span className="font-semibold">Возраст:</span> {basicInfo.ageRestriction || '—'}</p>
-              <p><span className="font-semibold">Категорий:</span> {categoryIds.length}</p>
-              <p><span className="font-semibold">Артистов:</span> {existingArtists.length}</p>
-              <p><span className="font-semibold">Сеансов:</span> {sessions.length}</p>
-              <p><span className="font-semibold">Формат участия:</span> {isFreeEvent ? 'Бесплатное мероприятие' : 'Платное мероприятие'}</p>
+              <div className="flex items-center gap-2">
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${isFreeEvent ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                  {isFreeEvent ? 'Бесплатное' : 'Платное'}
+                </span>
+                <Button type="button" variant="outline" size="sm" onClick={async () => {
+                  setSaving(true);
+                  try {
+                    await refreshPreview();
+                    toast.success('Предпросмотр обновлен');
+                  } catch {
+                    toast.error('Не удалось обновить предпросмотр');
+                  } finally {
+                    setSaving(false);
+                  }
+                }}>
+                  Обновить
+                </Button>
+              </div>
             </div>
 
-            <div className="space-y-2 rounded-xl border border-border p-3">
+            <div className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-card">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <ImageIcon className="h-4 w-4" />
+                <span>Галерея мероприятия</span>
+              </div>
+              {selectedPreviewImage ? (
+                <>
+                  <div className="overflow-hidden rounded-xl border border-border">
+                    <img
+                      src={imageSrc(selectedPreviewImage.imageId)}
+                      alt={basicInfo.title || 'Изображение мероприятия'}
+                      className="h-72 w-full object-cover"
+                    />
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {orderedPreviewImages.map((image, index) => (
+                      <button
+                        key={`preview-image-${image.imageId}-${index}`}
+                        type="button"
+                        className={`relative h-20 w-28 flex-shrink-0 overflow-hidden rounded-lg border ${selectedPreviewImage.imageId === image.imageId ? 'border-primary ring-2 ring-primary/30' : 'border-border'}`}
+                        onClick={() => setPreviewImageId(image.imageId)}
+                      >
+                        <img src={imageSrc(image.imageId)} alt={`Фото ${index + 1}`} className="h-full w-full object-cover" />
+                        {image.primary && (
+                          <span className="absolute left-1 top-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">
+                            Главное
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-xl border border-dashed border-border bg-muted/40 p-6 text-sm text-muted-foreground">
+                  Фотографии еще не добавлены
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-3">
+              <div className="space-y-4 xl:col-span-2">
+                <div className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-card">
+                  <h3 className="font-heading text-xl">{basicInfo.title || 'Без названия'}</h3>
+
+                  <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                    <p className="inline-flex items-center gap-2"><Building2 className="h-4 w-4" /> {wizardState?.organizationName || organizations[0]?.name || 'Организация не выбрана'}</p>
+                    <p className="inline-flex items-center gap-2"><MapPin className="h-4 w-4" /> {wizardState?.cityName || 'Город будет определен по сеансам'}</p>
+                    <p className="inline-flex items-center gap-2"><Tag className="h-4 w-4" /> Возраст: {basicInfo.ageRestriction || 'не указано'}</p>
+                    <p className="inline-flex items-center gap-2"><Users className="h-4 w-4" /> Артистов: {previewTotals.artistsCount}</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Короткое описание</p>
+                    <p className="rounded-lg bg-muted/40 p-3 text-sm">{basicInfo.shortDescription || 'Не заполнено'}</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Полное описание</p>
+                    <p className="rounded-lg bg-muted/40 p-3 text-sm whitespace-pre-line">{basicInfo.fullDescription || 'Не заполнено'}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-card">
+                  <p className="text-sm font-semibold">Категории</p>
+                  {selectedCategories.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedCategories.map((category) => (
+                        <span key={`preview-category-${category.id}`} className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                          {category.name}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Категории не выбраны</p>
+                  )}
+                </div>
+
+                <div className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-card">
+                  <p className="text-sm font-semibold">Артисты</p>
+                  {selectedArtistsDetailed.length > 0 ? (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {selectedArtistsDetailed.map((artist) => (
+                        <div key={`preview-artist-${artist.id}`} className="rounded-lg border border-border bg-muted/30 p-2">
+                          <p className="text-sm font-semibold">{artist.name}</p>
+                          <p className="text-xs text-muted-foreground">{artist.stageName || artist.genre || 'Информация об артисте'}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Артисты не добавлены</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="rounded-2xl border border-border bg-card p-4 shadow-card">
+                  <p className="mb-3 text-sm font-semibold">Краткая сводка</p>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="rounded-lg bg-muted/40 p-2">
+                      <p className="text-xs text-muted-foreground">Фотографий</p>
+                      <p className="font-semibold">{orderedPreviewImages.length}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/40 p-2">
+                      <p className="text-xs text-muted-foreground">Сеансов</p>
+                      <p className="font-semibold">{previewTotals.sessionsCount}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/40 p-2">
+                      <p className="text-xs text-muted-foreground">Типов билетов</p>
+                      <p className="font-semibold">{isFreeEvent ? 'Авто' : previewTotals.ticketTypesCount}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/40 p-2">
+                      <p className="text-xs text-muted-foreground">Категорий</p>
+                      <p className="font-semibold">{selectedCategories.length}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/40 p-2">
+                      <p className="text-xs text-muted-foreground">Лимит мест</p>
+                      <p className="font-semibold">{previewTotals.seatLimitTotal > 0 ? previewTotals.seatLimitTotal : '—'}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/40 p-2">
+                      <p className="text-xs text-muted-foreground">Количество билетов</p>
+                      <p className="font-semibold">{isFreeEvent ? 'Авто' : previewTotals.ticketQuotaTotal}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-border bg-card p-4 shadow-card">
+                  <p className="mb-2 text-sm font-semibold">Цены</p>
+                  {isFreeEvent ? (
+                    <p className="rounded-lg bg-emerald-100 p-2 text-sm font-semibold text-emerald-800">
+                      Бесплатное мероприятие
+                    </p>
+                  ) : previewPriceStats.min != null && previewPriceStats.max != null ? (
+                    <div className="space-y-1 rounded-lg bg-muted/40 p-2 text-sm">
+                      <p>Минимальная цена: <span className="font-semibold">{formatMoney(previewPriceStats.min)} ₽</span></p>
+                      <p>Максимальная цена: <span className="font-semibold">{formatMoney(previewPriceStats.max)} ₽</span></p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Цены будут рассчитаны после добавления билетов</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-card">
               <p className="text-sm font-semibold">Сеансы и билеты</p>
               {sessions.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Сеансы пока не добавлены</p>
-              ) : sessions.map((session, index) => (
-                <div key={session.localId} className="rounded-md border border-border p-2 text-sm">
-                  <p className="font-semibold">Сеанс #{index + 1}</p>
-                  <p>{session.sessionTitle || 'Без названия'}</p>
-                  <p>{session.startsAt ? session.startsAt.replace('T', ' ') : '—'} {session.endsAt ? `— ${session.endsAt.replace('T', ' ')}` : ''}</p>
-                  <p>{session.manualAddress || 'Адрес не указан'}</p>
-                  <p className="text-xs text-muted-foreground">Билетов: {session.ticketTypes.length}</p>
-                </div>
-              ))}
+              ) : sessions.map((session, index) => {
+                const seatLimit = getSessionSeatLimit(session);
+                const totalQuota = getSessionTicketQuotaTotal(session);
+                const remaining = seatLimit == null ? null : seatLimit - totalQuota;
+
+                return (
+                  <div key={session.localId} className="space-y-2 rounded-xl border border-border bg-muted/20 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold">Сеанс #{index + 1}: {session.sessionTitle || 'Без названия'}</p>
+                      <p className="text-xs text-muted-foreground">{session.locationMode === 'venue' ? 'На площадке' : 'По адресу'}</p>
+                    </div>
+
+                    <div className="grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
+                      <p className="inline-flex items-center gap-2"><CalendarDays className="h-4 w-4" /> {formatDateTime(session.startsAt)}</p>
+                      <p className="inline-flex items-center gap-2"><Clock3 className="h-4 w-4" /> До {formatDateTime(session.endsAt)}</p>
+                      <p className="sm:col-span-2 inline-flex items-center gap-2"><MapPin className="h-4 w-4" /> {session.manualAddress || 'Адрес не указан'}</p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <span className="rounded-full bg-muted px-2.5 py-1">Лимит: {seatLimit ?? '—'}</span>
+                      <span className="rounded-full bg-muted px-2.5 py-1">Количество билетов: {isFreeEvent ? 'Авто' : totalQuota}</span>
+                      {remaining != null && (
+                        <span className={`rounded-full px-2.5 py-1 ${remaining < 0 ? 'bg-destructive/10 text-destructive' : 'bg-muted'}`}>
+                          Осталось: {remaining}
+                        </span>
+                      )}
+                    </div>
+
+                    {!isFreeEvent && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Типы билетов</p>
+                        {session.ticketTypes.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">Типы билетов не добавлены</p>
+                        ) : (
+                          <div className="space-y-1">
+                            {session.ticketTypes.map((ticketType, ticketIndex) => (
+                              <div key={`${session.localId}-preview-ticket-${ticketIndex}`} className="grid gap-1 rounded-md border border-border bg-background p-2 text-sm sm:grid-cols-5">
+                                <p className="font-medium sm:col-span-2">{ticketType.name || `Тип ${ticketIndex + 1}`}</p>
+                                <p className="inline-flex items-center gap-1"><Ticket className="h-3.5 w-3.5" /> {formatMoney(Number(ticketType.price || 0))} ₽</p>
+                                <p>Количество: {ticketType.quota || '—'}</p>
+                                <p className="text-xs text-muted-foreground">{formatDateTime(ticketType.salesStartAt)} - {formatDateTime(ticketType.salesEndAt)}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
-            <div className="space-y-2 rounded-xl border border-border p-3">
+            <div className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-card">
               <p className="text-sm font-semibold">Результат валидации</p>
               {(wizardState?.validationIssues || []).length === 0 ? (
-                <p className="inline-flex items-center gap-2 text-sm text-green-600">
+                <p className="inline-flex items-center gap-2 rounded-lg bg-emerald-100 px-3 py-2 text-sm font-semibold text-emerald-800">
                   <CheckCircle2 className="h-4 w-4" />
                   Обязательные требования выполнены
                 </p>
               ) : (
-                <div className="space-y-1">
-                  {(wizardState?.validationIssues || []).map((issue) => (
-                    <p key={`${issue.code}-${issue.step}`} className="text-sm text-destructive">
-                      [{issue.step}] {issue.message}
-                    </p>
+                <div className="space-y-2">
+                  <p className="inline-flex items-center gap-2 text-sm font-semibold text-destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    Найдены проблемы перед отправкой на модерацию
+                  </p>
+                  {validationIssuesByStep.map(([stepCode, issues]) => (
+                    <div key={`issues-${stepCode}`} className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+                      <p className="mb-1 text-sm font-semibold">{WIZARD_STEP_LABELS[stepCode] || stepCode}</p>
+                      <div className="space-y-1">
+                        {(issues || []).map((issue) => (
+                          <p key={`${issue.code}-${issue.step}`} className="text-sm text-destructive">
+                            • {issue.message}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
