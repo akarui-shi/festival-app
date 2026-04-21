@@ -128,6 +128,9 @@ public class GlobalExceptionHandler {
         if (normalized.contains("events_status_check")) {
             return buildResponse(HttpStatus.BAD_REQUEST, "Не удалось сохранить мероприятие: некорректный статус");
         }
+        if (normalized.contains("chk_events_moderation_status")) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Не удалось сохранить мероприятие: некорректный статус модерации");
+        }
         if (normalized.contains("publications_status_check")) {
             return buildResponse(HttpStatus.BAD_REQUEST, "Не удалось сохранить публикацию: обновите страницу и попробуйте снова");
         }
