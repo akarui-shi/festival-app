@@ -70,6 +70,7 @@ export interface Organization {
   website?: string | null;
   socialLinks?: string | null;
   logoImageId?: number | null;
+  coverImageId?: number | null;
 }
 
 export interface Artist {

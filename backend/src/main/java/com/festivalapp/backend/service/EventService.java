@@ -40,7 +40,6 @@ import com.festivalapp.backend.repository.EventRepository;
 import com.festivalapp.backend.repository.FavoriteRepository;
 import com.festivalapp.backend.repository.ImageRepository;
 import com.festivalapp.backend.repository.OrganizationMemberRepository;
-import com.festivalapp.backend.repository.OrganizationImageRepository;
 import com.festivalapp.backend.repository.OrganizationRepository;
 import com.festivalapp.backend.repository.SessionRepository;
 import com.festivalapp.backend.repository.TicketRepository;
@@ -82,7 +81,6 @@ public class EventService {
     private final CityRepository cityRepository;
     private final VenueRepository venueRepository;
     private final OrganizationRepository organizationRepository;
-    private final OrganizationImageRepository organizationImageRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
     private final UserRepository userRepository;
     private final FavoriteRepository favoriteRepository;
@@ -162,7 +160,8 @@ public class EventService {
             .contactPhone(organization.getContactPhone())
             .website(organization.getWebsite())
             .socialLinks(organization.getSocialLinks())
-            .logoImageId(resolveOrganizationLogoImageId(organization.getId()))
+            .logoImageId(organization.getLogoImage() == null ? null : organization.getLogoImage().getId())
+            .coverImageId(organization.getCoverImage() == null ? null : organization.getCoverImage().getId())
             .build();
     }
 
@@ -1102,15 +1101,6 @@ public class EventService {
                 .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
         }
         return null;
-    }
-
-    private Long resolveOrganizationLogoImageId(Long organizationId) {
-        if (organizationId == null) {
-            return null;
-        }
-        return organizationImageRepository.findFirstByOrganizationIdAndLogoIsTrueOrderByIdAsc(organizationId)
-            .map(orgImage -> orgImage.getImage() == null ? null : orgImage.getImage().getId())
-            .orElse(null);
     }
 
     private String normalizeRequired(String value, String message) {

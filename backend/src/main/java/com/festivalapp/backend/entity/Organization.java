@@ -52,6 +52,14 @@ public class Organization {
     @Column(name = "social_links")
     private String socialLinks;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "logo_image_id")
+    private Image logoImage;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cover_image_id")
+    private Image coverImage;
+
     @Column(name = "moderation_status", nullable = false)
     private String moderationStatus;
 

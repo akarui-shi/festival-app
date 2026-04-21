@@ -14,4 +14,5 @@ public class OrganizationUpdateRequest {
     private String website;
     private String socialLinks;
     private Long logoImageId;
+    private Long coverImageId;
 }

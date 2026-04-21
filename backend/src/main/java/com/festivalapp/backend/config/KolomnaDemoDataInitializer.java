@@ -26,7 +26,6 @@ import com.festivalapp.backend.repository.EventImageRepository;
 import com.festivalapp.backend.repository.EventRepository;
 import com.festivalapp.backend.repository.ImageRepository;
 import com.festivalapp.backend.repository.OrganizationMemberRepository;
-import com.festivalapp.backend.repository.OrganizationImageRepository;
 import com.festivalapp.backend.repository.OrganizationRepository;
 import com.festivalapp.backend.repository.RoleRepository;
 import com.festivalapp.backend.repository.SessionRepository;
@@ -73,7 +72,6 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
     private final UserRoleRepository userRoleRepository;
     private final OrganizationRepository organizationRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
-    private final OrganizationImageRepository organizationImageRepository;
     private final EventRepository eventRepository;
     private final EventCategoryRepository eventCategoryRepository;
     private final EventImageRepository eventImageRepository;
@@ -114,12 +112,18 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
         ensureOrganizationMember(organizer, organization, "владелец", now);
 
         Image organizationLogo = ensureImage("org-logo", "kolomna-logo.svg", organizer, now);
-        if (organizationImageRepository.findFirstByOrganizationIdAndLogoIsTrueOrderByIdAsc(organization.getId()).isEmpty()) {
-            organizationImageRepository.save(com.festivalapp.backend.entity.OrganizationImage.builder()
-                .organization(organization)
-                .image(organizationLogo)
-                .logo(true)
-                .build());
+        boolean organizationUpdated = false;
+        if (organization.getLogoImage() == null) {
+            organization.setLogoImage(organizationLogo);
+            organizationUpdated = true;
+        }
+        if (organization.getCoverImage() == null) {
+            organization.setCoverImage(organizationLogo);
+            organizationUpdated = true;
+        }
+        if (organizationUpdated) {
+            organization.setUpdatedAt(now);
+            organizationRepository.save(organization);
         }
 
         Map<String, Category> categories = ensureCategories();

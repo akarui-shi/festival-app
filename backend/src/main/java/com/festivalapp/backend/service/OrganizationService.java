@@ -6,20 +6,18 @@ import com.festivalapp.backend.dto.OrganizationJoinRequestResponse;
 import com.festivalapp.backend.dto.OrganizationMemberResponse;
 import com.festivalapp.backend.dto.OrganizationPublicResponse;
 import com.festivalapp.backend.dto.OrganizationUpdateRequest;
+import com.festivalapp.backend.entity.Image;
 import com.festivalapp.backend.entity.Organization;
-import com.festivalapp.backend.entity.OrganizationImage;
 import com.festivalapp.backend.entity.OrganizationJoinRequest;
 import com.festivalapp.backend.entity.OrganizationMember;
 import com.festivalapp.backend.entity.Role;
 import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.entity.UserRole;
-import com.festivalapp.backend.entity.Image;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
 import com.festivalapp.backend.repository.OrganizationJoinRequestRepository;
 import com.festivalapp.backend.repository.OrganizationMemberRepository;
-import com.festivalapp.backend.repository.OrganizationImageRepository;
 import com.festivalapp.backend.repository.OrganizationRepository;
 import com.festivalapp.backend.repository.RoleRepository;
 import com.festivalapp.backend.repository.ImageRepository;
@@ -32,7 +30,6 @@ import org.springframework.util.StringUtils;
 
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -42,7 +39,6 @@ public class OrganizationService {
     private final OrganizationRepository organizationRepository;
     private final OrganizationJoinRequestRepository organizationJoinRequestRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
-    private final OrganizationImageRepository organizationImageRepository;
     private final ImageRepository imageRepository;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -93,14 +89,10 @@ public class OrganizationService {
             organization.setSocialLinks(normalize(request.getSocialLinks()));
         }
         if (request.getLogoImageId() != null) {
-            Image logoImage = imageRepository.findById(request.getLogoImageId())
-                .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
-            organizationImageRepository.deleteByOrganizationId(organization.getId());
-            organizationImageRepository.save(OrganizationImage.builder()
-                .organization(organization)
-                .image(logoImage)
-                .logo(true)
-                .build());
+            organization.setLogoImage(resolveImageOrNull(request.getLogoImageId()));
+        }
+        if (request.getCoverImageId() != null) {
+            organization.setCoverImage(resolveImageOrNull(request.getCoverImageId()));
         }
         organization.setUpdatedAt(OffsetDateTime.now());
 
@@ -308,11 +300,6 @@ public class OrganizationService {
     }
 
     private OrganizationPublicResponse toPublicResponse(Organization organization) {
-        Long logoImageId = organizationImageRepository.findFirstByOrganizationIdAndLogoIsTrueOrderByIdAsc(organization.getId())
-            .map(OrganizationImage::getImage)
-            .map(Image::getId)
-            .orElse(null);
-
         return OrganizationPublicResponse.builder()
             .id(organization.getId())
             .name(organization.getName())
@@ -322,7 +309,8 @@ public class OrganizationService {
             .contactPhone(organization.getContactPhone())
             .website(organization.getWebsite())
             .socialLinks(organization.getSocialLinks())
-            .logoImageId(logoImageId)
+            .logoImageId(organization.getLogoImage() == null ? null : organization.getLogoImage().getId())
+            .coverImageId(organization.getCoverImage() == null ? null : organization.getCoverImage().getId())
             .build();
     }
 
@@ -352,5 +340,13 @@ public class OrganizationService {
             return null;
         }
         return value.trim();
+    }
+
+    private Image resolveImageOrNull(Long imageId) {
+        if (imageId == null || imageId <= 0) {
+            return null;
+        }
+        return imageRepository.findById(imageId)
+            .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
     }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Building2, Calendar, Link2, User } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar, Link2 } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { LoadingState, ErrorState } from '@/components/StateDisplays';
@@ -26,6 +26,7 @@ function formatPublishedDate(value?: string): string {
 export default function PublicationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [pub, setPub] = useState<Publication | null>(null);
+  const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -34,6 +35,10 @@ export default function PublicationDetailPage() {
     publicationService.getPublicationById(id)
       .then((publication) => {
         setPub(publication);
+        const firstImageId = publication.imageIds && publication.imageIds.length > 0
+          ? Number(publication.imageIds[0])
+          : publication.imageId != null ? Number(publication.imageId) : null;
+        setSelectedImageId(firstImageId);
         setLoading(false);
       })
       .catch(() => {
@@ -46,9 +51,13 @@ export default function PublicationDetailPage() {
   if (error || !pub) return <PublicLayout><ErrorState message={error || 'Не найдено'} /></PublicLayout>;
   const organizationLink = pub.organizationId ? `/organizations/${pub.organizationId}` : null;
   const eventLink = pub.eventId ? `/events/${pub.eventId}` : null;
-  const eventImage = imageSrc(
-    pub.imageId == null ? pub.eventImageId == null ? null : Number(pub.eventImageId) : Number(pub.imageId),
-  );
+  const publicationImageIds = pub.imageIds && pub.imageIds.length > 0
+    ? pub.imageIds.map((value) => Number(value)).filter((value) => Number.isFinite(value))
+    : pub.imageId != null ? [Number(pub.imageId)] : [];
+  const mainImageId = publicationImageIds.find((imageId) => imageId === selectedImageId)
+    ?? publicationImageIds[0]
+    ?? (pub.eventImageId == null ? null : Number(pub.eventImageId));
+  const eventImage = imageSrc(mainImageId);
 
   return (
     <PublicLayout>
@@ -69,6 +78,20 @@ export default function PublicationDetailPage() {
               className="aspect-[16/9] w-full object-cover"
             />
           </div>
+          {publicationImageIds.length > 1 && (
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {publicationImageIds.map((imageId) => (
+                <button
+                  key={imageId}
+                  type="button"
+                  onClick={() => setSelectedImageId(imageId)}
+                  className={`overflow-hidden rounded-lg border ${mainImageId === imageId ? 'border-primary' : 'border-border'}`}
+                >
+                  <img src={imageSrc(imageId)} alt="Фото публикации" className="h-20 w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="mt-4 flex flex-wrap gap-2">
             {(pub.tags || []).map((tag) => (

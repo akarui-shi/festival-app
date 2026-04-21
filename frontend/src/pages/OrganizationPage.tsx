@@ -72,11 +72,20 @@ export default function OrganizationPage() {
         </Link>
 
         <section className="rounded-2xl border border-border bg-card p-6 shadow-card sm:p-8">
+          {organization.coverImageId != null && (
+            <div className="mb-5 overflow-hidden rounded-xl border border-border">
+              <img
+                src={imageSrc(Number(organization.coverImageId))}
+                alt={`Обложка организации ${organization.name}`}
+                className="h-52 w-full object-cover"
+              />
+            </div>
+          )}
           <div className="flex items-start gap-4">
             {organization.logoImageId != null ? (
-              <img src={imageSrc(Number(organization.logoImageId))} alt={organization.name} className="h-12 w-12 rounded-xl object-cover" />
+              <img src={imageSrc(Number(organization.logoImageId))} alt={organization.name} className="h-14 w-14 rounded-xl object-cover" />
             ) : (
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
                 <Building2 className="h-6 w-6 text-primary" />
               </div>
             )}
