@@ -53,7 +53,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -70,6 +69,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class OrganizerEventWizardService {
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Europe/Moscow");
 
     private final EventRepository eventRepository;
     private final EventCategoryRepository eventCategoryRepository;
@@ -615,8 +615,8 @@ public class OrganizerEventWizardService {
             .map(session -> OrganizerEventWizardResponse.SessionItem.builder()
                 .sessionId(session.getId())
                 .sessionTitle(session.getSessionTitle())
-                .startsAt(session.getStartsAt() == null ? null : session.getStartsAt().toLocalDateTime())
-                .endsAt(session.getEndsAt() == null ? null : session.getEndsAt().toLocalDateTime())
+                .startsAt(toBusinessLocal(session.getStartsAt()))
+                .endsAt(toBusinessLocal(session.getEndsAt()))
                 .venueId(session.getVenue() == null ? null : session.getVenue().getId())
                 .venueName(session.getVenue() == null ? null : session.getVenue().getName())
                 .manualAddress(session.getVenue() == null ? session.getManualAddress() : session.getVenue().getAddress())
@@ -640,8 +640,8 @@ public class OrganizerEventWizardService {
                         .price(type.getPrice())
                         .currency(type.getCurrency())
                         .quota(type.getQuota())
-                        .salesStartAt(type.getSalesStartAt() == null ? null : type.getSalesStartAt().toLocalDateTime())
-                        .salesEndAt(type.getSalesEndAt() == null ? null : type.getSalesEndAt().toLocalDateTime())
+                        .salesStartAt(toBusinessLocal(type.getSalesStartAt()))
+                        .salesEndAt(toBusinessLocal(type.getSalesEndAt()))
                         .build())
                     .toList())
                 .build())
@@ -838,7 +838,7 @@ public class OrganizerEventWizardService {
             return session.getSessionTitle().trim();
         }
         if (session.getStartsAt() != null) {
-            return "сеанс " + session.getStartsAt().toLocalDateTime();
+            return "сеанс " + toBusinessLocal(session.getStartsAt());
         }
         return "сеанс #" + session.getId();
     }
@@ -1058,7 +1058,14 @@ public class OrganizerEventWizardService {
     }
 
     private OffsetDateTime toSystemOffset(LocalDateTime value) {
-        return value.atZone(ZoneId.systemDefault()).toOffsetDateTime();
+        return value.atZone(BUSINESS_ZONE).toOffsetDateTime();
+    }
+
+    private LocalDateTime toBusinessLocal(OffsetDateTime value) {
+        if (value == null) {
+            return null;
+        }
+        return value.atZoneSameInstant(BUSINESS_ZONE).toLocalDateTime();
     }
 
     private Image resolveImage(Long imageId) {

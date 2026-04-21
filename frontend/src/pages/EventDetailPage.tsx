@@ -30,13 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { eventService } from '@/services/event-service';
@@ -45,6 +39,7 @@ import { reviewService } from '@/services/review-service';
 import { registrationService } from '@/services/registration-service';
 import { favoriteService } from '@/services/favorite-service';
 import type { Event, Id, Review, Session, SessionTicketType } from '@/types';
+import type { RegistrationItemInput } from '@/services/registration-service';
 
 function formatDate(value?: string): string {
   if (!value) return 'Дата уточняется';
@@ -138,7 +133,7 @@ export default function EventDetailPage() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [ticketTypesBySession, setTicketTypesBySession] = useState<Record<string, SessionTicketType[]>>({});
   const [ticketDialogSessionId, setTicketDialogSessionId] = useState<string | null>(null);
-  const [selectedTicketTypeId, setSelectedTicketTypeId] = useState<string>('');
+  const [selectedTicketQuantities, setSelectedTicketQuantities] = useState<Record<string, number>>({});
   const [registeringSessionId, setRegisteringSessionId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -156,7 +151,7 @@ export default function EventDetailPage() {
         setSelectedSessionId(sessionsResponse.length > 0 ? String(sessionsResponse[0].id) : null);
         setTicketTypesBySession({});
         setTicketDialogSessionId(null);
-        setSelectedTicketTypeId('');
+        setSelectedTicketQuantities({});
         setActiveImageIndex(0);
         setReviews(reviewsResponse);
       })
@@ -209,7 +204,7 @@ export default function EventDetailPage() {
     toast.success('Добавлено в избранное');
   };
 
-  const registerForSession = async (sessionId: Id, ticketTypeId?: Id) => {
+  const registerForSession = async (sessionId: Id, items?: RegistrationItemInput[]) => {
     if (!user || !isResident) {
       toast.error('Запись доступна только жителям');
       return;
@@ -217,7 +212,7 @@ export default function EventDetailPage() {
 
     try {
       setRegisteringSessionId(String(sessionId));
-      const order = await registrationService.createRegistration(sessionId, user.id, 'yookassa', ticketTypeId);
+      const order = await registrationService.createRegistration(sessionId, user.id, 'yookassa', items);
       if (order.requiresPayment && order.paymentUrl) {
         toast.info('Перенаправляем в платёжный шлюз...');
         window.location.assign(order.paymentUrl);
@@ -270,13 +265,12 @@ export default function EventDetailPage() {
         return;
       }
 
-      if (openTypes.length === 1) {
-        await registerForSession(session.id, openTypes[0].id);
-        return;
-      }
-
       setTicketDialogSessionId(String(session.id));
-      setSelectedTicketTypeId(String(openTypes[0].id));
+      const initialQuantities: Record<string, number> = {};
+      openTypes.forEach((type, index) => {
+        initialQuantities[String(type.id)] = index === 0 ? 1 : 0;
+      });
+      setSelectedTicketQuantities(initialQuantities);
     } catch (e: any) {
       toast.error(e?.message || 'Не удалось загрузить типы билетов');
     }
@@ -358,6 +352,17 @@ export default function EventDetailPage() {
   const ticketDialogTypes = ticketDialogSessionId
     ? (ticketTypesBySession[ticketDialogSessionId] || []).filter((type) => type.registrationOpen ?? true)
     : [];
+  const ticketSelectionItems = ticketDialogTypes
+    .map((type) => {
+      const quantity = Math.max(0, Number(selectedTicketQuantities[String(type.id)] || 0));
+      const available = Math.max(0, Number(type.availableQuota ?? 0));
+      return {
+        ticketTypeId: type.id,
+        quantity: Math.min(quantity, available),
+      };
+    })
+    .filter((item) => item.quantity > 0);
+  const ticketSelectionTotal = ticketSelectionItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <PublicLayout>
@@ -706,50 +711,79 @@ export default function EventDetailPage() {
       <Dialog open={Boolean(ticketDialogSessionId)} onOpenChange={(open) => {
         if (!open) {
           setTicketDialogSessionId(null);
-          setSelectedTicketTypeId('');
+          setSelectedTicketQuantities({});
         }
       }}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Выберите тип билета</DialogTitle>
+            <DialogTitle>Выберите билеты</DialogTitle>
             <DialogDescription>
               {ticketDialogSession
                 ? `Сеанс ${formatDate(ticketDialogSession.startAt)} ${formatTime(ticketDialogSession.startAt)}`
-                : 'Выберите подходящий билет для регистрации'}
+                : 'Выберите подходящие билеты для регистрации'}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2">
-            <Select value={selectedTicketTypeId} onValueChange={setSelectedTicketTypeId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Выберите билет" />
-              </SelectTrigger>
-              <SelectContent>
-                {ticketDialogTypes.map((ticketType) => (
-                  <SelectItem key={ticketType.id} value={String(ticketType.id)}>
-                    {ticketType.name} - {Number(ticketType.price || 0).toLocaleString('ru-RU')} {ticketType.currency || 'RUB'}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="space-y-3">
+            {ticketDialogTypes.map((ticketType) => {
+              const key = String(ticketType.id);
+              const maxAvailable = Math.max(0, Number(ticketType.availableQuota ?? 0));
+              const currentQuantity = Math.min(
+                Math.max(0, Number(selectedTicketQuantities[key] ?? 0)),
+                maxAvailable,
+              );
+
+              return (
+                <div key={ticketType.id} className="rounded-lg border border-border p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{ticketType.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {Number(ticketType.price || 0).toLocaleString('ru-RU')} {ticketType.currency || 'RUB'}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">Доступно: {maxAvailable}</p>
+                    </div>
+                    <div className="w-28">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={maxAvailable}
+                        value={currentQuantity}
+                        onChange={(event) => {
+                          const raw = Number(event.target.value);
+                          const nextValue = Number.isFinite(raw)
+                            ? Math.min(Math.max(0, Math.floor(raw)), maxAvailable)
+                            : 0;
+                          setSelectedTicketQuantities((prev) => ({
+                            ...prev,
+                            [key]: nextValue,
+                          }));
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            <p className="text-sm text-muted-foreground">Всего билетов: {ticketSelectionTotal}</p>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => {
               setTicketDialogSessionId(null);
-              setSelectedTicketTypeId('');
+              setSelectedTicketQuantities({});
             }}
             >
               Отмена
             </Button>
             <Button
-              disabled={!ticketDialogSession || !selectedTicketTypeId || registeringSessionId === String(ticketDialogSession?.id)}
+              disabled={!ticketDialogSession || ticketSelectionTotal <= 0 || registeringSessionId === String(ticketDialogSession?.id)}
               onClick={async () => {
-                if (!ticketDialogSession || !selectedTicketTypeId) return;
-                await registerForSession(ticketDialogSession.id, selectedTicketTypeId);
+                if (!ticketDialogSession || ticketSelectionTotal <= 0) return;
+                await registerForSession(ticketDialogSession.id, ticketSelectionItems);
                 setTicketDialogSessionId(null);
-                setSelectedTicketTypeId('');
+                setSelectedTicketQuantities({});
               }}
             >
               Продолжить
