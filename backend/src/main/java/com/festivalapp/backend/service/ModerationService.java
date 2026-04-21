@@ -85,11 +85,10 @@ public class ModerationService {
         Event event = eventRepository.findByIdAndDeletedAtIsNull(eventId)
             .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
 
-        event.setModerationStatus("одобрено".equals(decision) ? "одобрено" : "отклонено");
         if ("одобрено".equals(decision)) {
             event.setStatus("опубликовано");
         } else {
-            event.setStatus("отменено");
+            event.setStatus("отклонено");
         }
         event.setUpdatedAt(OffsetDateTime.now());
         eventRepository.save(event);

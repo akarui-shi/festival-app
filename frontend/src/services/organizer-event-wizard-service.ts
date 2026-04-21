@@ -61,7 +61,6 @@ export interface WizardSessionItem {
 export interface OrganizerWizardState {
   eventId: number;
   status?: string | null;
-  moderationStatus?: string | null;
   free?: boolean | null;
   organizationId?: number | null;
   organizationName?: string | null;

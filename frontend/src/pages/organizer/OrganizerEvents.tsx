@@ -79,7 +79,7 @@ export default function OrganizerEvents() {
       ) : (
         <div className="space-y-3">
           {events.map((event) => {
-            const status = getEventStatusBadge(event.status, event.moderationStatus);
+            const status = getEventStatusBadge(event.status);
             const categoryLabel = event.categories?.[0]?.name || event.category?.name || 'Категория не указана';
             const cityLabel = event.cityName || event.city?.name || 'Город не указан';
             const sessionsCount = Number(event.sessionsCount ?? event.sessionDates?.length ?? 0);

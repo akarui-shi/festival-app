@@ -73,9 +73,6 @@ public class Event {
     @Column(nullable = false)
     private String status;
 
-    @Column(name = "moderation_status", nullable = false)
-    private String moderationStatus;
-
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 

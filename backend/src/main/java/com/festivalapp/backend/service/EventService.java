@@ -287,7 +287,6 @@ public class EventService {
             .startsAt(now)
             .endsAt(now.plusHours(2))
             .status("черновик")
-            .moderationStatus("черновик")
             .createdAt(now)
             .updatedAt(now)
             .build();
@@ -365,7 +364,13 @@ public class EventService {
     public List<EventShortResponse> getAllForAdmin(EventStatus status) {
         return eventRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc().stream()
             .map(this::hydrateEvent)
-            .filter(event -> status == null || DomainStatusMapper.toEventStatus(event.getStatus()) == status)
+            .filter(event -> {
+                EventStatus resolved = DomainStatusMapper.toEventStatus(event.getStatus());
+                if (resolved == EventStatus.DRAFT) {
+                    return false;
+                }
+                return status == null || resolved == status;
+            })
             .map(this::toShortResponse)
             .toList();
     }
@@ -373,7 +378,7 @@ public class EventService {
     @Transactional
     public EventShortResponse updateStatusByAdmin(Long eventId, EventStatus status) {
         Event event = loadEvent(eventId);
-        event.setStatus(DomainStatusMapper.toEventDbStatus(status));
+        event.setStatus(DomainStatusMapper.toEventDbStatus(status == null ? EventStatus.DRAFT : status));
         event.setUpdatedAt(OffsetDateTime.now());
         return toShortResponse(hydrateEvent(eventRepository.save(event)));
     }
@@ -616,7 +621,6 @@ public class EventService {
             .ageRating(event.getAgeRating())
             .createdAt(event.getCreatedAt() == null ? null : event.getCreatedAt().toLocalDateTime())
             .status(DomainStatusMapper.toEventStatus(event.getStatus()))
-            .moderationStatus(event.getModerationStatus())
             .organizationId(event.getOrganization() == null ? null : event.getOrganization().getId())
             .organizationName(event.getOrganization() == null ? null : event.getOrganization().getName())
             .venueId(mainSession != null && mainSession.getVenue() != null ? mainSession.getVenue().getId() : null)
@@ -1042,7 +1046,13 @@ public class EventService {
             if ("опубликовано".equalsIgnoreCase(raw)) {
                 return EventStatus.PUBLISHED;
             }
-            if ("черновик".equalsIgnoreCase(raw) || "на_рассмотрении".equalsIgnoreCase(raw)) {
+            if ("черновик".equalsIgnoreCase(raw)) {
+                return EventStatus.DRAFT;
+            }
+            if ("на_рассмотрении".equalsIgnoreCase(raw)
+                || "pending".equalsIgnoreCase(raw)
+                || "pending_approval".equalsIgnoreCase(raw)
+                || "on_moderation".equalsIgnoreCase(raw)) {
                 return EventStatus.PENDING_APPROVAL;
             }
             if ("отклонено".equalsIgnoreCase(raw) || "отменено".equalsIgnoreCase(raw)) {

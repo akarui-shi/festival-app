@@ -14,22 +14,25 @@ public final class DomainStatusMapper {
             return "черновик";
         }
         return switch (status) {
+            case DRAFT -> "черновик";
+            case PENDING_APPROVAL -> "на_рассмотрении";
             case PUBLISHED -> "опубликовано";
             case ARCHIVED -> "завершено";
-            case REJECTED -> "отменено";
-            case PENDING_APPROVAL -> "черновик";
+            case REJECTED -> "отклонено";
         };
     }
 
     public static EventStatus toEventStatus(String dbStatus) {
         if (dbStatus == null) {
-            return EventStatus.PENDING_APPROVAL;
+            return EventStatus.DRAFT;
         }
         return switch (dbStatus) {
+            case "черновик" -> EventStatus.DRAFT;
+            case "на_рассмотрении" -> EventStatus.PENDING_APPROVAL;
             case "опубликовано" -> EventStatus.PUBLISHED;
             case "завершено" -> EventStatus.ARCHIVED;
-            case "отменено" -> EventStatus.REJECTED;
-            default -> EventStatus.PENDING_APPROVAL;
+            case "отклонено", "отменено" -> EventStatus.REJECTED;
+            default -> EventStatus.DRAFT;
         };
     }
 
