@@ -24,7 +24,14 @@ export default function OrganizerPublications() {
   const [organizerEvents, setOrganizerEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: '', excerpt: '', content: '', tags: '', eventId: '', imageId: null as number | null });
+  const [form, setForm] = useState({
+    title: '',
+    excerpt: '',
+    content: '',
+    tags: '',
+    eventId: '',
+    imageIds: [] as number[],
+  });
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [publicationToDelete, setPublicationToDelete] = useState<Publication | null>(null);
@@ -58,12 +65,13 @@ export default function OrganizerPublications() {
         ...form,
         authorId: user!.id,
         eventId: Number(form.eventId),
-        imageId: form.imageId ?? undefined,
+        imageId: form.imageIds[0] ?? undefined,
+        imageIds: form.imageIds,
         tags: form.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
       });
       setPubs((prev) => [pub, ...prev]);
       setShowForm(false);
-      setForm((prev) => ({ title: '', excerpt: '', content: '', tags: '', eventId: prev.eventId, imageId: null }));
+      setForm((prev) => ({ title: '', excerpt: '', content: '', tags: '', eventId: prev.eventId, imageIds: [] }));
       toast.success('Публикация создана');
     } catch { toast.error('Ошибка'); }
     setSaving(false);
@@ -76,8 +84,8 @@ export default function OrganizerPublications() {
     setUploadingImage(true);
     try {
       const uploaded = await fileUploadService.uploadPublicationImage(file);
-      setForm((prev) => ({ ...prev, imageId: uploaded.imageId }));
-      toast.success('Изображение публикации загружено');
+      setForm((prev) => ({ ...prev, imageIds: [...prev.imageIds, uploaded.imageId] }));
+      toast.success('Фотография публикации загружена');
     } catch (error: any) {
       toast.error(error?.message || 'Не удалось загрузить изображение');
     } finally {
@@ -177,7 +185,7 @@ export default function OrganizerPublications() {
               <Button type="button" variant="outline" size="sm" className="gap-1.5" asChild>
                 <label>
                   {uploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-                  {uploadingImage ? 'Загрузка…' : 'Загрузить изображение'}
+                  {uploadingImage ? 'Загрузка…' : 'Добавить фото'}
                   <input
                     type="file"
                     accept="image/*"
@@ -187,22 +195,29 @@ export default function OrganizerPublications() {
                   />
                 </label>
               </Button>
-              {form.imageId != null && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setForm((prev) => ({ ...prev, imageId: null }))}
-                >
-                  Убрать
-                </Button>
-              )}
             </div>
-            {form.imageId != null && (
-              <div className="overflow-hidden rounded-lg border border-border bg-muted">
-                <img src={imageSrc(form.imageId)} alt="Изображение публикации" className="h-44 w-full object-cover" />
+            {form.imageIds.length > 0 && (
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {form.imageIds.map((imageId) => (
+                  <div key={imageId} className="overflow-hidden rounded-lg border border-border bg-muted">
+                    <img src={imageSrc(imageId)} alt="Фото публикации" className="h-36 w-full object-cover" />
+                    <div className="flex justify-end p-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setForm((prev) => ({ ...prev, imageIds: prev.imageIds.filter((id) => id !== imageId) }))}
+                      >
+                        Убрать
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
+            <p className="text-xs text-muted-foreground">
+              Можно добавить несколько фотографий. Если фото нет, в карточке публикации будет обложка мероприятия.
+            </p>
           </div>
           <Input
             placeholder="Теги через запятую"

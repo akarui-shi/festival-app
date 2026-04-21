@@ -29,4 +29,8 @@ export const fileUploadService = {
   uploadPublicationImage(file: File): Promise<FileUploadResponse> {
     return uploadFile('/files/publication-image', file);
   },
+
+  uploadAvatar(file: File): Promise<FileUploadResponse> {
+    return uploadFile('/files/avatar', file);
+  },
 };

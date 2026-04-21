@@ -16,4 +16,5 @@ public class OrganizationPublicResponse {
     private String website;
     private String socialLinks;
     private Long logoImageId;
+    private Long coverImageId;
 }

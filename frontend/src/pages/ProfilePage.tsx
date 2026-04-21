@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building2, User } from 'lucide-react';
+import { Building2, Loader2, Upload, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PublicLayout } from '@/layouts/PublicLayout';
@@ -7,14 +7,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { fileUploadService } from '@/services/file-upload-service';
+import { imageSrc } from '@/lib/image';
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [form, setForm] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     phone: user?.phone || '',
+    avatarImageId: user?.avatarImageId || null,
   });
 
   const updateField = (field: keyof typeof form, value: string) => {
@@ -40,6 +44,23 @@ export default function ProfilePage() {
     }
   };
 
+  const uploadAvatar: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
+    const file = event.target.files?.[0];
+    event.currentTarget.value = '';
+    if (!file) return;
+
+    setUploadingAvatar(true);
+    try {
+      const uploaded = await fileUploadService.uploadAvatar(file);
+      setForm((prev) => ({ ...prev, avatarImageId: uploaded.imageId }));
+      toast.success('Аватар загружен');
+    } catch (error: any) {
+      toast.error(error?.message || 'Не удалось загрузить аватар');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   return (
     <PublicLayout>
       <div className="container mx-auto px-4 py-8">
@@ -48,9 +69,17 @@ export default function ProfilePage() {
 
         <div className="mt-8 max-w-2xl rounded-2xl border border-border bg-card p-6 shadow-card sm:p-8">
           <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-              <User className="h-6 w-6 text-primary" />
-            </div>
+            {form.avatarImageId != null ? (
+              <img
+                src={imageSrc(form.avatarImageId)}
+                alt="Аватар пользователя"
+                className="h-12 w-12 rounded-xl object-cover"
+              />
+            ) : (
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                <User className="h-6 w-6 text-primary" />
+              </div>
+            )}
             <div>
               <p className="font-heading text-xl text-foreground">{user?.firstName} {user?.lastName}</p>
               <p className="text-sm text-muted-foreground">{user?.email}</p>
@@ -104,6 +133,35 @@ export default function ProfilePage() {
                 onChange={(event) => updateField('phone', event.target.value)}
                 placeholder="+7 900 123-45-67"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Аватар</Label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" variant="outline" size="sm" asChild disabled={uploadingAvatar}>
+                  <label className="cursor-pointer">
+                    {uploadingAvatar ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Upload className="mr-1.5 h-4 w-4" />}
+                    {uploadingAvatar ? 'Загрузка…' : 'Загрузить с компьютера'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={uploadAvatar}
+                      disabled={uploadingAvatar}
+                    />
+                  </label>
+                </Button>
+                {form.avatarImageId != null && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setForm((prev) => ({ ...prev, avatarImageId: null }))}
+                  >
+                    Убрать
+                  </Button>
+                )}
+              </div>
             </div>
 
             <Button type="submit" disabled={loading}>

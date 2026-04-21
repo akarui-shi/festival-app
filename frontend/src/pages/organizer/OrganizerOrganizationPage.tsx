@@ -33,6 +33,7 @@ export default function OrganizerOrganizationPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
   const [requestActionId, setRequestActionId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
@@ -44,6 +45,7 @@ export default function OrganizerOrganizationPage() {
     website: '',
     socialLinks: '',
     logoImageId: null as number | null,
+    coverImageId: null as number | null,
   });
 
   const loadPage = async () => {
@@ -71,6 +73,7 @@ export default function OrganizerOrganizationPage() {
         website: org.website || '',
         socialLinks: org.socialLinks || '',
         logoImageId: org.logoImageId == null ? null : Number(org.logoImageId),
+        coverImageId: org.coverImageId == null ? null : Number(org.coverImageId),
       });
     } catch (error: any) {
       toast.error(error?.message || 'Не удалось загрузить данные организации');
@@ -112,7 +115,8 @@ export default function OrganizerOrganizationPage() {
         contactPhone: form.contactPhone || null,
         website: form.website || null,
         socialLinks: form.socialLinks || null,
-        logoImageId: form.logoImageId ?? null,
+        logoImageId: form.logoImageId ?? 0,
+        coverImageId: form.coverImageId ?? 0,
       });
       setOrganization(updated);
       toast.success('Данные организации обновлены');
@@ -150,6 +154,23 @@ export default function OrganizerOrganizationPage() {
       toast.error(error?.message || 'Не удалось загрузить логотип');
     } finally {
       setUploadingLogo(false);
+    }
+  };
+
+  const onUploadCover: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
+    const file = event.target.files?.[0];
+    event.currentTarget.value = '';
+    if (!file) return;
+
+    setUploadingCover(true);
+    try {
+      const uploaded = await fileUploadService.uploadImage(file);
+      setForm((prev) => ({ ...prev, coverImageId: uploaded.imageId }));
+      toast.success('Обложка загружена');
+    } catch (error: any) {
+      toast.error(error?.message || 'Не удалось загрузить обложку');
+    } finally {
+      setUploadingCover(false);
     }
   };
 
@@ -235,6 +256,43 @@ export default function OrganizerOrganizationPage() {
               placeholder="VK / Telegram / YouTube"
             />
           </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label>Обложка организации (большое изображение)</Label>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="button" variant="outline" disabled={uploadingCover} asChild>
+                <label className="cursor-pointer">
+                  {uploadingCover ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                  {uploadingCover ? 'Загрузка…' : 'Загрузить с компьютера'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={onUploadCover}
+                    disabled={uploadingCover}
+                  />
+                </label>
+              </Button>
+              {form.coverImageId != null && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setForm((prev) => ({ ...prev, coverImageId: null }))}
+                >
+                  Удалить обложку
+                </Button>
+              )}
+            </div>
+            {form.coverImageId != null && (
+              <div className="mt-2 overflow-hidden rounded-md border border-border bg-muted/20 p-2">
+                <img src={imageSrc(form.coverImageId)} alt="Обложка организации" className="h-44 w-full rounded object-cover" />
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Обложка используется на странице организации.
+            </p>
+          </div>
+
           <div className="space-y-2 md:col-span-2">
             <Label>Логотип организации</Label>
             <div className="flex flex-wrap items-center gap-3">

@@ -88,7 +88,9 @@ export const authService = {
       firstName: data.firstName ?? current.firstName,
       lastName: data.lastName ?? current.lastName,
       phone: data.phone ?? current.phone ?? '',
-      avatarImageId: data.avatarImageId ?? current.avatarImageId ?? undefined,
+      avatarImageId: Object.prototype.hasOwnProperty.call(data, 'avatarImageId')
+        ? data.avatarImageId
+        : (current.avatarImageId ?? undefined),
     });
 
     persistUser(response, response.login, localStorage.getItem('auth_token') || undefined);

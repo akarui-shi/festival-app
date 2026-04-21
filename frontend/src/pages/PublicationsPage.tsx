@@ -56,42 +56,46 @@ export default function PublicationsPage() {
           />
         ) : (
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {publications.map((publication) => (
-              <Link
-                key={publication.publicationId ?? publication.id}
-                to={`/publications/${publication.publicationId ?? publication.id}`}
-                className="group overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-hover"
-              >
-                <div className="aspect-[3/2] overflow-hidden bg-muted">
-                  <img
-                    src={imageSrc(
-                      publication.imageId == null ? publication.eventImageId == null ? null : Number(publication.eventImageId) : Number(publication.imageId),
-                    )}
-                    alt={publication.eventTitle || publication.title}
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                </div>
-                <div className="p-4">
-                  <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <CalendarDays className="h-3.5 w-3.5 text-primary/70" />
-                    <span>{formatDate(publication.publishedAt)}</span>
+            {publications.map((publication) => {
+              const primaryImageId = publication.imageIds && publication.imageIds.length > 0
+                ? publication.imageIds[0]
+                : publication.imageId ?? publication.eventImageId ?? null;
+
+              return (
+                <Link
+                  key={publication.publicationId ?? publication.id}
+                  to={`/publications/${publication.publicationId ?? publication.id}`}
+                  className="group overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-hover"
+                >
+                  <div className="aspect-[3/2] overflow-hidden bg-muted">
+                    <img
+                      src={imageSrc(primaryImageId == null ? null : Number(primaryImageId))}
+                      alt={publication.eventTitle || publication.title}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
                   </div>
-                  <h2 className="font-heading text-lg text-foreground group-hover:text-primary">
-                    {publication.title}
-                  </h2>
-                  <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">
-                    {publication.excerpt || publication.preview || 'Краткое описание публикации появится позже'}
-                  </p>
-                  <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Building2 className="h-3.5 w-3.5 text-primary/70" />
-                    <span className="truncate">{publication.organization?.name || publication.organizationName || 'Организация не указана'}</span>
+                  <div className="p-4">
+                    <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <CalendarDays className="h-3.5 w-3.5 text-primary/70" />
+                      <span>{formatDate(publication.publishedAt)}</span>
+                    </div>
+                    <h2 className="font-heading text-lg text-foreground group-hover:text-primary">
+                      {publication.title}
+                    </h2>
+                    <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">
+                      {publication.excerpt || publication.preview || 'Краткое описание публикации появится позже'}
+                    </p>
+                    <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Building2 className="h-3.5 w-3.5 text-primary/70" />
+                      <span className="truncate">{publication.organization?.name || publication.organizationName || 'Организация не указана'}</span>
+                    </div>
+                    <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary">
+                      Читать <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
                   </div>
-                  <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary">
-                    Читать <ArrowRight className="h-3.5 w-3.5" />
-                  </span>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>

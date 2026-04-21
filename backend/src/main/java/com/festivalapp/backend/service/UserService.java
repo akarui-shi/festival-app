@@ -63,7 +63,9 @@ public class UserService {
         user.setFirstName(normalizeOptional(request.getFirstName()) == null ? user.getFirstName() : normalizeOptional(request.getFirstName()));
         user.setLastName(normalizeOptional(request.getLastName()) == null ? user.getLastName() : normalizeOptional(request.getLastName()));
         user.setPhone(normalizedPhone);
-        if (request.getAvatarImageId() != null) {
+        if (request.getAvatarImageId() == null) {
+            user.setAvatarImage(null);
+        } else {
             Image avatarImage = imageRepository.findById(request.getAvatarImageId())
                 .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
             user.setAvatarImage(avatarImage);
