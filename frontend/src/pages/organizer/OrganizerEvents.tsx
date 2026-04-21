@@ -16,14 +16,24 @@ export default function OrganizerEvents() {
   const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
 
   useEffect(() => {
     if (!user) return;
-    eventService.getOrganizerEvents(user.id).then((response) => {
-      setEvents(response);
-      setLoading(false);
-    });
+    setLoading(true);
+    eventService.getOrganizerEvents(user.id)
+      .then((response) => {
+        setEvents(response);
+        setError(null);
+      })
+      .catch((err: any) => {
+        setEvents([]);
+        setError(err?.message || 'Не удалось загрузить мероприятия организации');
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [user]);
 
   const del = async (id: Id) => {
@@ -34,6 +44,15 @@ export default function OrganizerEvents() {
   };
 
   if (loading) return <LoadingState />;
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-6">
+        <h1 className="font-heading text-2xl text-foreground">Доступ к мероприятиям недоступен</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
