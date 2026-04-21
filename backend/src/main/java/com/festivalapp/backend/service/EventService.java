@@ -592,6 +592,22 @@ public class EventService {
         PriceRange priceRange = extractPriceRange(event.getSessions());
         boolean registrationOpen = event.getSessions().stream().anyMatch(this::isRegistrationOpen);
         List<ArtistSummaryResponse> artists = mapArtists(event.getId());
+        City resolvedCity = event.getCity();
+        if (resolvedCity == null) {
+            resolvedCity = event.getSessions().stream()
+                .map(Session::getVenue)
+                .filter(Objects::nonNull)
+                .map(Venue::getCity)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+        }
+        long sessionsCount = event.getSessions().size();
+        long registrationsCount = event.getSessions().stream()
+            .map(Session::getId)
+            .filter(Objects::nonNull)
+            .mapToLong(sessionId -> ticketRepository.countBySessionIdAndStatus(sessionId, "активен"))
+            .sum();
 
         return EventShortResponse.builder()
             .id(event.getId())
@@ -606,8 +622,8 @@ public class EventService {
             .venueId(mainSession != null && mainSession.getVenue() != null ? mainSession.getVenue().getId() : null)
             .venueName(mainSession != null && mainSession.getVenue() != null ? mainSession.getVenue().getName() : null)
             .venueAddress(mainSession != null && mainSession.getVenue() != null ? mainSession.getVenue().getAddress() : mainSession == null ? null : mainSession.getManualAddress())
-            .cityId(event.getCity() == null ? null : event.getCity().getId())
-            .cityName(event.getCity() == null ? null : event.getCity().getName())
+            .cityId(resolvedCity == null ? null : resolvedCity.getId())
+            .cityName(resolvedCity == null ? null : resolvedCity.getName())
             .categories(event.getEventCategories().stream()
                 .map(EventCategory::getCategory)
                 .filter(Objects::nonNull)
@@ -625,6 +641,8 @@ public class EventService {
             .minPrice(priceRange.min())
             .maxPrice(priceRange.max())
             .registrationOpen(registrationOpen)
+            .sessionsCount(sessionsCount)
+            .registrationsCount(registrationsCount)
             .artists(artists)
             .build();
     }
