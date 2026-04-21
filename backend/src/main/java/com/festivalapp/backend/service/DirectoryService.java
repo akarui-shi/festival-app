@@ -49,6 +49,7 @@ public class DirectoryService {
         int safeLimit = limit == null || limit <= 0 ? 50 : Math.min(limit, 200);
 
         return all.stream()
+            .filter(City::isActive)
             .limit(safeLimit)
             .map(this::toCityResponse)
             .toList();
@@ -68,6 +69,7 @@ public class DirectoryService {
             .name(city.getName())
             .region(city.getRegion())
             .country("Россия")
+            .active(city.isActive())
             .build();
     }
 

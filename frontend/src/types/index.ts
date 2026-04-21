@@ -57,6 +57,7 @@ export interface City {
   name: string;
   region?: string | null;
   country?: string | null;
+  active?: boolean | null;
 }
 
 export interface Organization {

@@ -1,5 +1,5 @@
 import type { Category, City, Venue } from '@/types';
-import { apiGet, apiPost } from './api-client';
+import { apiDelete, apiGet, apiPatch, apiPost } from './api-client';
 
 export const directoryService = {
   async getCategories(): Promise<Category[]> {
@@ -8,6 +8,10 @@ export const directoryService = {
 
   async getCities(): Promise<City[]> {
     return apiGet<City[]>('/cities');
+  },
+
+  async getAdminCities(): Promise<City[]> {
+    return apiGet<City[]>('/admin/cities');
   },
 
   async getVenues(): Promise<Venue[]> {
@@ -25,7 +29,16 @@ export const directoryService = {
     return apiPost<City>('/admin/cities', {
       name: data.name,
       region: data.region,
+      active: data.active,
     });
+  },
+
+  async setCityActive(cityId: Id, active: boolean): Promise<City> {
+    return apiPatch<City>(`/admin/cities/${cityId}/active`, { active });
+  },
+
+  async deleteCity(cityId: Id): Promise<void> {
+    await apiDelete(`/admin/cities/${cityId}`);
   },
 
   async createVenue(data: Partial<Venue>): Promise<Venue> {

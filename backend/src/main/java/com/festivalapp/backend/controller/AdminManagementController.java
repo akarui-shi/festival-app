@@ -1,6 +1,7 @@
 package com.festivalapp.backend.controller;
 
 import com.festivalapp.backend.dto.AdminCategoryUpsertRequest;
+import com.festivalapp.backend.dto.AdminCityActiveUpdateRequest;
 import com.festivalapp.backend.dto.AdminCityUpsertRequest;
 import com.festivalapp.backend.dto.AdminActionResponse;
 import com.festivalapp.backend.dto.AdminUserActiveUpdateRequest;
@@ -70,6 +71,11 @@ public class AdminManagementController {
         return ResponseEntity.ok(adminManagementService.deleteCategory(id));
     }
 
+    @GetMapping("/cities")
+    public ResponseEntity<List<CityResponse>> getCities() {
+        return ResponseEntity.ok(adminManagementService.getCities());
+    }
+
     @PostMapping("/cities")
     public ResponseEntity<CityResponse> createCity(@Valid @RequestBody AdminCityUpsertRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(adminManagementService.createCity(request));
@@ -79,6 +85,12 @@ public class AdminManagementController {
     public ResponseEntity<CityResponse> updateCity(@PathVariable Long id,
                                                    @Valid @RequestBody AdminCityUpsertRequest request) {
         return ResponseEntity.ok(adminManagementService.updateCity(id, request));
+    }
+
+    @PatchMapping("/cities/{id}/active")
+    public ResponseEntity<CityResponse> updateCityActive(@PathVariable Long id,
+                                                         @Valid @RequestBody AdminCityActiveUpdateRequest request) {
+        return ResponseEntity.ok(adminManagementService.updateCityActive(id, request.getActive()));
     }
 
     @DeleteMapping("/cities/{id}")

@@ -15,7 +15,5 @@ public class OrganizerEventArtistsRequest {
     @Setter
     public static class ExistingArtistItem {
         private Long artistId;
-        private String eventRole;
-        private Integer displayOrder;
     }
 }

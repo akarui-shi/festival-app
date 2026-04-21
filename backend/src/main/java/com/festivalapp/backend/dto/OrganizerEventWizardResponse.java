@@ -53,8 +53,6 @@ public class OrganizerEventWizardResponse {
         private String description;
         private String genre;
         private Long imageId;
-        private String eventRole;
-        private Integer displayOrder;
     }
 
     @Getter

@@ -71,7 +71,7 @@ public class ArtistService {
         Artist artist = artistRepository.findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new ResourceNotFoundException("Artist not found"));
 
-        List<EventShortResponse> events = eventArtistRepository.findAllByArtistIdOrderByDisplayOrderAscIdAsc(id).stream()
+        List<EventShortResponse> events = eventArtistRepository.findAllByArtistIdOrderByIdAsc(id).stream()
             .map(EventArtist::getEvent)
             .filter(event -> event != null && DomainStatusMapper.toEventStatus(event.getStatus()) == EventStatus.PUBLISHED)
             .distinct()
@@ -103,7 +103,6 @@ public class ArtistService {
             .stageName(normalize(request.getStageName()))
             .description(normalize(request.getDescription()))
             .genre(normalize(request.getGenre()))
-            .moderationStatus("на_рассмотрении")
             .createdAt(OffsetDateTime.now())
             .updatedAt(OffsetDateTime.now())
             .build());
@@ -154,7 +153,6 @@ public class ArtistService {
                 String name = rawName.trim();
                 Artist artist = artistRepository.save(Artist.builder()
                     .name(name)
-                    .moderationStatus("на_рассмотрении")
                     .createdAt(OffsetDateTime.now())
                     .updatedAt(OffsetDateTime.now())
                     .build());

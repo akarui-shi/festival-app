@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Ban, CheckCircle2, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { directoryService } from '@/services/directory-service';
 import { yandexMapsService, type YandexAddressSuggestion } from '@/services/yandex-maps-service';
@@ -32,7 +32,7 @@ export default function AdminDirectories() {
   const [venueMapCenter, setVenueMapCenter] = useState<[number, number] | undefined>(undefined);
 
   useEffect(() => {
-    Promise.all([directoryService.getCategories(), directoryService.getCities(), directoryService.getVenues()])
+    Promise.all([directoryService.getCategories(), directoryService.getAdminCities(), directoryService.getVenues()])
       .then(([categoryResponse, cityResponse, venueResponse]) => {
         setCategories(categoryResponse);
         setCities(cityResponse);
@@ -57,6 +57,18 @@ export default function AdminDirectories() {
     setCities((prev) => [...prev, city]);
     setNewCity({ name: '', region: '' });
     toast.success('Город добавлен');
+  };
+
+  const setCityActive = async (cityId: string | number, active: boolean) => {
+    const updated = await directoryService.setCityActive(cityId, active);
+    setCities((prev) => prev.map((city) => (String(city.id) === String(cityId) ? updated : city)));
+    toast.success(active ? 'Город активирован' : 'Город деактивирован');
+  };
+
+  const removeCity = async (cityId: string | number) => {
+    await directoryService.deleteCity(cityId);
+    setCities((prev) => prev.filter((city) => String(city.id) !== String(cityId)));
+    toast.success('Город удалён');
   };
 
   const addVenue = async () => {
@@ -179,9 +191,31 @@ export default function AdminDirectories() {
 
           <div className="space-y-2">
             {cities.map((city) => (
-              <div key={city.id} className="surface-row py-3 text-sm">
-                <span className="font-medium text-foreground">{city.name}</span>
-                {city.region && <span className="ml-2 text-muted-foreground">{city.region}</span>}
+              <div key={city.id} className="surface-row flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
+                <div>
+                  <span className="font-medium text-foreground">{city.name}</span>
+                  {city.region && <span className="ml-2 text-muted-foreground">{city.region}</span>}
+                  <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${city.active === false ? 'bg-destructive/10 text-destructive' : 'bg-success/10 text-success'}`}>
+                    {city.active === false ? 'Неактивен' : 'Активен'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {city.active === false ? (
+                    <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setCityActive(city.id, true)}>
+                      <CheckCircle2 className="h-4 w-4" />
+                      Активировать
+                    </Button>
+                  ) : (
+                    <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setCityActive(city.id, false)}>
+                      <Ban className="h-4 w-4" />
+                      Деактивировать
+                    </Button>
+                  )}
+                  <Button type="button" variant="outline" size="sm" className="gap-1.5 text-destructive" onClick={() => removeCity(city.id)}>
+                    <Trash2 className="h-4 w-4" />
+                    Удалить
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

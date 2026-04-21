@@ -11,4 +11,5 @@ public class CityResponse {
     private String name;
     private String region;
     private String country;
+    private Boolean active;
 }
