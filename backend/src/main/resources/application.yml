@@ -23,6 +23,39 @@ spring:
     baseline-on-migrate: true
     baseline-version: 0
 
+  security:
+    oauth2:
+      client:
+        registration:
+          vk:
+            client-id: ${VK_OAUTH_CLIENT_ID:54557502}
+            client-secret: ${VK_OAUTH_CLIENT_SECRET:vk-client-secret}
+            client-authentication-method: client_secret_post
+            authorization-grant-type: authorization_code
+            redirect-uri: "${app.oauth2.redirect-base-url:http://localhost:8080}/login/oauth2/code/{registrationId}"
+            scope:
+              - email
+          yandex:
+            client-id: ${YANDEX_OAUTH_CLIENT_ID:6955f4e06fa94614820fbb14ac8f0a83}
+            client-secret: ${YANDEX_OAUTH_CLIENT_SECRET:daa0678bb505423e9fb0791cd682d0eb}
+            client-authentication-method: client_secret_post
+            authorization-grant-type: authorization_code
+            redirect-uri: "${app.oauth2.redirect-base-url:http://localhost:8080}/login/oauth2/code/{registrationId}"
+            scope:
+              - login:email
+              - login:info
+        provider:
+          vk:
+            authorization-uri: https://id.vk.com/authorize
+            token-uri: https://id.vk.com/oauth2/auth
+            user-info-uri: https://id.vk.com/oauth2/user_info
+            user-name-attribute: user_id
+          yandex:
+            authorization-uri: https://oauth.yandex.ru/authorize
+            token-uri: https://oauth.yandex.ru/token
+            user-info-uri: https://login.yandex.ru/info?format=json
+            user-name-attribute: id
+
   servlet:
     multipart:
       max-file-size: 5MB

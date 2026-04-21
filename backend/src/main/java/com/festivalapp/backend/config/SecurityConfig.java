@@ -2,9 +2,12 @@ package com.festivalapp.backend.config;
 
 import com.festivalapp.backend.security.CustomUserDetailsService;
 import com.festivalapp.backend.security.JwtAuthFilter;
+import com.festivalapp.backend.security.OAuth2LoginFailureHandler;
+import com.festivalapp.backend.security.OAuth2LoginSuccessHandler;
+import com.festivalapp.backend.security.OAuth2ProviderUserService;
 import com.festivalapp.backend.security.RestAccessDeniedHandler;
 import com.festivalapp.backend.security.RestAuthenticationEntryPoint;
-import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -28,13 +31,31 @@ import java.util.List;
 
 @Configuration
 @EnableMethodSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final CustomUserDetailsService userDetailsService;
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
     private final RestAccessDeniedHandler restAccessDeniedHandler;
+    private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+    private final OAuth2LoginFailureHandler oAuth2LoginFailureHandler;
+    private final OAuth2ProviderUserService oAuth2ProviderUserService;
+
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter,
+                          CustomUserDetailsService userDetailsService,
+                          RestAuthenticationEntryPoint restAuthenticationEntryPoint,
+                          RestAccessDeniedHandler restAccessDeniedHandler,
+                          @Lazy OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler,
+                          @Lazy OAuth2LoginFailureHandler oAuth2LoginFailureHandler,
+                          @Lazy OAuth2ProviderUserService oAuth2ProviderUserService) {
+        this.jwtAuthFilter = jwtAuthFilter;
+        this.userDetailsService = userDetailsService;
+        this.restAuthenticationEntryPoint = restAuthenticationEntryPoint;
+        this.restAccessDeniedHandler = restAccessDeniedHandler;
+        this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
+        this.oAuth2LoginFailureHandler = oAuth2LoginFailureHandler;
+        this.oAuth2ProviderUserService = oAuth2ProviderUserService;
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -42,7 +63,7 @@ public class SecurityConfig {
         http
             .cors(Customizer.withDefaults())
             .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint(restAuthenticationEntryPoint)
                 .accessDeniedHandler(restAccessDeniedHandler)
@@ -50,6 +71,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/files/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/events/**").permitAll()
@@ -102,6 +124,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/sessions/**").hasAnyRole("ORGANIZER", "ADMIN")
                 .requestMatchers("/api/users/me").authenticated()
                 .anyRequest().authenticated()
+            )
+            .oauth2Login(oauth -> oauth
+                .userInfoEndpoint(userInfo -> userInfo.userService(oAuth2ProviderUserService))
+                .successHandler(oAuth2LoginSuccessHandler)
+                .failureHandler(oAuth2LoginFailureHandler)
             )
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

@@ -18,6 +18,7 @@ interface AuthContextType {
   ) => Promise<void>;
   logout: () => void;
   updateUser: (data: Partial<User>) => Promise<void>;
+  loginWithToken: (token: string) => Promise<void>;
   isAuthenticated: boolean;
   isResident: boolean;
   isOrganizer: boolean;
@@ -79,9 +80,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(updated);
   }, []);
 
+  const loginWithToken = useCallback(async (token: string) => {
+    const updated = await authService.loginWithToken(token);
+    setUser(updated);
+  }, []);
+
   return (
     <AuthContext.Provider value={{
-      user, loading, login, register, logout, updateUser,
+      user, loading, login, register, logout, updateUser, loginWithToken,
       isAuthenticated: !!user,
       isResident: hasRole(user, 'RESIDENT'),
       isOrganizer: hasRole(user, 'ORGANIZER'),

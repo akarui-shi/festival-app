@@ -18,6 +18,7 @@ import PaymentCheckoutPage from "./pages/PaymentCheckoutPage";
 import PaymentResultPage from "./pages/PaymentResultPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import ProfilePage from "./pages/ProfilePage";
 import FavoritesPage from "./pages/FavoritesPage";
 import RegistrationsPage from "./pages/RegistrationsPage";
@@ -64,6 +65,7 @@ const App = () => (
               <Route path="/payment/result" element={<PaymentResultPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
 
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
               <Route path="/favorites" element={<ProtectedRoute><FavoritesPage /></ProtectedRoute>} />

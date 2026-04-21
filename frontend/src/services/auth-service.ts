@@ -1,5 +1,5 @@
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types';
-import { ApiError, apiGet, apiPost, apiPut, removeAuthToken, setAuthToken } from './api-client';
+import { API_BASE_URL, ApiError, apiGet, apiPost, apiPut, removeAuthToken, setAuthToken } from './api-client';
 
 const CURRENT_USER_KEY = 'current_user';
 const CURRENT_USER_LOGIN_KEY = 'current_user_login';
@@ -24,9 +24,53 @@ function clearSession(): void {
   localStorage.removeItem(CURRENT_USER_LOGIN_KEY);
 }
 
+function resolveBackendBaseUrl(): string {
+  const explicitBase = (import.meta.env.VITE_BACKEND_BASE_URL as string | undefined)?.replace(/\/$/, '');
+  if (explicitBase) {
+    return explicitBase;
+  }
+
+  if (/^https?:\/\//i.test(API_BASE_URL)) {
+    const parsed = new URL(API_BASE_URL);
+    return `${parsed.protocol}//${parsed.host}`;
+  }
+
+  if (import.meta.env.DEV) {
+    return 'http://localhost:8080';
+  }
+
+  return window.location.origin;
+}
+
 function normalizeAuthResponse(response: AuthResponse): AuthResponse {
   persistUser(response.user, response.user.login, response.token);
   return response;
+}
+
+async function fetchCurrentUserDirect(token: string): Promise<User> {
+  const backendBaseUrl = resolveBackendBaseUrl();
+  const response = await fetch(`${backendBaseUrl}/api/users/me`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    // Important: do not send OAuth2 session cookies here.
+    // We want backend to authenticate strictly by JWT token.
+    credentials: 'omit',
+  });
+
+  if (!response.ok) {
+    let message = `HTTP ${response.status}`;
+    try {
+      const data = await response.json();
+      message = data?.message || data?.error || message;
+    } catch {
+      // ignore json parsing errors for non-json responses
+    }
+    throw new ApiError(response.status, message);
+  }
+
+  return response.json() as Promise<User>;
 }
 
 export const authService = {
@@ -95,6 +139,25 @@ export const authService = {
 
     persistUser(response, response.login, localStorage.getItem('auth_token') || undefined);
     return response;
+  },
+
+  getOAuthLoginUrl(provider: 'vk' | 'yandex'): string {
+    return `${resolveBackendBaseUrl()}/oauth2/authorization/${provider}`;
+  },
+
+  async loginWithToken(token: string): Promise<User> {
+    setAuthToken(token);
+    try {
+      const user = await fetchCurrentUserDirect(token);
+      persistUser(user, user.login, token);
+      return user;
+    } catch (error) {
+      clearSession();
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+        throw new Error('Токен соцвхода отклонен сервером. Проверьте что frontend и backend запущены на одном окружении');
+      }
+      throw error;
+    }
   },
 
   logout(): void {

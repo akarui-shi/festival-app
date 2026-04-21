@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import { authService } from '@/services/auth-service';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +17,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const startSocialLogin = (provider: 'vk' | 'yandex') => {
+    window.location.href = authService.getOAuthLoginUrl(provider);
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -82,6 +87,22 @@ export default function LoginPage() {
 
               <Button className="w-full" type="submit" disabled={loading}>
                 {loading ? 'Вход…' : 'Войти'}
+              </Button>
+
+              <div className="relative py-1">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">или</span>
+                </div>
+              </div>
+
+              <Button type="button" variant="outline" className="w-full" onClick={() => startSocialLogin('vk')}>
+                Войти через VK ID
+              </Button>
+              <Button type="button" variant="outline" className="w-full" onClick={() => startSocialLogin('yandex')}>
+                Войти через Яндекс ID
               </Button>
             </form>
 

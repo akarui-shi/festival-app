@@ -123,10 +123,7 @@ public class AuthService {
             }
         }
 
-        return AuthResponse.builder()
-            .token(jwtService.generateToken(savedUser.getLogin()))
-            .user(toCurrentUserResponse(savedUser))
-            .build();
+        return issueAuthResponse(savedUser);
     }
 
     @Transactional
@@ -146,6 +143,10 @@ public class AuthService {
         user.setUpdatedAt(OffsetDateTime.now());
         userRepository.save(user);
 
+        return issueAuthResponse(user);
+    }
+
+    public AuthResponse issueAuthResponse(User user) {
         return AuthResponse.builder()
             .token(jwtService.generateToken(user.getLogin()))
             .user(toCurrentUserResponse(user))
@@ -180,7 +181,7 @@ public class AuthService {
                 .orElseThrow(() -> new BadRequestException("В системе не настроены города")));
     }
 
-    private CurrentUserResponse toCurrentUserResponse(User user) {
+    public CurrentUserResponse toCurrentUserResponse(User user) {
         Set<String> roles = user.getUserRoles().stream()
             .map(userRole -> userRole.getRole().toRoleName().toApiName())
             .collect(Collectors.toSet());
