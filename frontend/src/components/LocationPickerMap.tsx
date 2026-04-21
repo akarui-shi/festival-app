@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { applyMinimalYandexMapUi, YANDEX_MAP_MINIMAL_OPTIONS } from '@/lib/yandex-map-ui';
 import { loadYandexMapsApi } from '@/services/yandex-maps-service';
 
 const MOSCOW_CENTER: [number, number] = [55.751244, 37.618423];
@@ -47,10 +48,9 @@ export function LocationPickerMap({ latitude, longitude, initialCenter, onPick }
             zoom: 12,
             controls: ['zoomControl', 'fullscreenControl'],
           },
-          {
-            suppressMapOpenBlock: true,
-          },
+          YANDEX_MAP_MINIMAL_OPTIONS,
         );
+        applyMinimalYandexMapUi(map);
 
         map.events.add('click', (event: any) => {
           const coords = event.get('coords') as [number, number];
@@ -128,7 +128,7 @@ export function LocationPickerMap({ latitude, longitude, initialCenter, onPick }
   }, [center, hasExactPoint, initialCenter, normalizedLatitude, normalizedLongitude]);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border">
+    <div className="ymap-clean overflow-hidden rounded-xl border border-border">
       <div ref={containerRef} className="h-64 w-full" />
     </div>
   );

@@ -12,16 +12,35 @@ export default function OrganizerDashboard() {
   const { user } = useAuth();
   const [overview, setOverview] = useState<OrganizerOverviewBundle | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
-    organizerService.getOverview(user.id).then((response) => {
-      setOverview(response);
-      setLoading(false);
-    });
+    setLoading(true);
+    organizerService.getOverview(user.id)
+      .then((response) => {
+        setOverview(response);
+        setError(null);
+      })
+      .catch((err: any) => {
+        setOverview(null);
+        setError(err?.message || 'Не удалось загрузить панель организатора');
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [user]);
 
-  if (loading || !overview) return <LoadingState />;
+  if (loading) return <LoadingState />;
+
+  if (error || !overview) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-6">
+        <h1 className="font-heading text-2xl text-foreground">Панель организатора недоступна</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{error || 'Не удалось получить данные организатора'}</p>
+      </div>
+    );
+  }
 
   const engagements = overview.engagements || [];
   const kpi = overview.overview.kpi || {};

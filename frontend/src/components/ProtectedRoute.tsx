@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import type { UserRole } from '@/types';
+import { userHasRole } from '@/lib/auth-roles';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -20,8 +21,7 @@ export function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (roles && user) {
-    const granted = new Set((user.roles || []).map((role) => role.toUpperCase()));
-    const allowed = roles.some((role) => granted.has(role) || granted.has(`ROLE_${role}`));
+    const allowed = roles.some((role) => userHasRole(user, role));
     if (!allowed) {
       return <Navigate to="/" replace />;
     }

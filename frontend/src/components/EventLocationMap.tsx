@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, MapPin } from 'lucide-react';
+import { applyMinimalYandexMapUi, YANDEX_MAP_MINIMAL_OPTIONS } from '@/lib/yandex-map-ui';
 import { loadYandexMapsApi, yandexMapsService } from '@/services/yandex-maps-service';
 
 type Coordinates = [number, number];
@@ -107,16 +108,16 @@ export function EventLocationMap({ address, latitude, longitude, title }: EventL
             zoom: 15,
             controls: ['zoomControl', 'fullscreenControl'],
           },
-          {
-            suppressMapOpenBlock: true,
-          },
+          YANDEX_MAP_MINIMAL_OPTIONS,
         );
 
         if (!mapRef.current) {
           mapRef.current = map;
+          applyMinimalYandexMapUi(map);
           map.behaviors.disable('scrollZoom');
           map.behaviors.disable('drag');
           map.behaviors.disable('multiTouch');
+          map.behaviors.disable('dblClickZoom');
         }
 
         map.setCenter(resolvedCoordinates, 15, { duration: 200 });
@@ -204,7 +205,7 @@ export function EventLocationMap({ address, latitude, longitude, title }: EventL
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+    <div className="ymap-clean overflow-hidden rounded-2xl border border-border bg-card">
       <div className="relative">
         <div ref={containerRef} className="h-72 w-full" />
         {mapState !== 'ready' && (
