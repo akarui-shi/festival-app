@@ -15,5 +15,7 @@ public class ArtistDetailsResponse {
     private String description;
     private String genre;
     private Long imageId;
+    private List<Long> imageIds;
+    private Long primaryImageId;
     private List<EventShortResponse> events;
 }

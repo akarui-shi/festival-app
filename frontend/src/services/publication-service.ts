@@ -75,19 +75,20 @@ export const publicationService = {
     return normalizePublication(response);
   },
 
-  async getAllPublications(): Promise<Publication[]> {
+  async getAllPublications(options?: { includeDeleted?: boolean }): Promise<Publication[]> {
+    const includeDeleted = options?.includeDeleted === true;
     try {
       const response = await apiGet<Publication[]>('/admin/publications');
-      return normalizePublications(response)
-        .filter((publication) => publication.status !== 'DELETED')
+      const normalized = normalizePublications(response);
+      return includeDeleted ? normalized : normalized.filter((publication) => publication.status !== 'DELETED');
     } catch (error) {
       if (!(error instanceof ApiError) || (error.status !== 401 && error.status !== 403)) {
         throw error;
       }
 
       const response = await apiGet<Publication[]>('/publications/mine');
-      return normalizePublications(response)
-        .filter((publication) => publication.status !== 'DELETED')
+      const normalized = normalizePublications(response);
+      return includeDeleted ? normalized : normalized.filter((publication) => publication.status !== 'DELETED');
     }
   },
 
