@@ -33,6 +33,7 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -71,6 +72,35 @@ public class OrderService {
 
         OffsetDateTime now = OffsetDateTime.now();
         String currency = request.getCurrency() == null ? "RUB" : request.getCurrency();
+        Map<Long, TicketType> ticketTypesById = new LinkedHashMap<>();
+        Map<Long, Integer> requestedByType = new LinkedHashMap<>();
+
+        for (OrderItemCreateRequest itemRequest : requestItems) {
+            TicketType ticketType = ticketTypeRepository.findById(itemRequest.getTicketTypeId())
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket type not found"));
+            if (!ticketType.getSession().getId().equals(session.getId())) {
+                throw new BadRequestException("Ticket type does not belong to session");
+            }
+            if (!ticketType.isActive()) {
+                throw new BadRequestException("Ticket type is inactive");
+            }
+            validateSalesWindow(ticketType, now);
+
+            ticketTypesById.put(ticketType.getId(), ticketType);
+            requestedByType.merge(ticketType.getId(), itemRequest.getQuantity(), Integer::sum);
+        }
+
+        for (Map.Entry<Long, Integer> requestedEntry : requestedByType.entrySet()) {
+            TicketType ticketType = ticketTypesById.get(requestedEntry.getKey());
+            if (ticketType == null) {
+                throw new BadRequestException("Ticket type not found");
+            }
+            int quota = ticketType.getQuota() == null ? Integer.MAX_VALUE : ticketType.getQuota();
+            long soldForType = ticketRepository.countBySessionIdAndOrderItemTicketTypeIdAndStatus(session.getId(), ticketType.getId(), "активен");
+            if (soldForType + requestedEntry.getValue() > quota) {
+                throw new BadRequestException("Недостаточно билетов типа \"" + ticketType.getName() + "\"");
+            }
+        }
 
         Order order = orderRepository.save(Order.builder()
             .user(actor)
@@ -86,16 +116,10 @@ public class OrderService {
         BigDecimal total = BigDecimal.ZERO;
 
         for (OrderItemCreateRequest itemRequest : requestItems) {
-            TicketType ticketType = ticketTypeRepository.findById(itemRequest.getTicketTypeId())
-                .orElseThrow(() -> new ResourceNotFoundException("Ticket type not found"));
-            if (!ticketType.getSession().getId().equals(session.getId())) {
-                throw new BadRequestException("Ticket type does not belong to session");
+            TicketType ticketType = ticketTypesById.get(itemRequest.getTicketTypeId());
+            if (ticketType == null) {
+                throw new BadRequestException("Ticket type not found");
             }
-            if (!ticketType.isActive()) {
-                throw new BadRequestException("Ticket type is inactive");
-            }
-
-            validateSalesWindow(ticketType, now);
 
             BigDecimal unitPrice = ticketType.getPrice() == null ? BigDecimal.ZERO : ticketType.getPrice();
             BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
@@ -277,13 +301,25 @@ public class OrderService {
             requestItems = List.of(autoItem);
         }
 
+        Map<Long, Integer> mergedByType = new LinkedHashMap<>();
         for (OrderItemCreateRequest item : requestItems) {
-            if (item.getQuantity() <= 0) {
+            if (item == null || item.getTicketTypeId() == null) {
+                throw new BadRequestException("Не указан тип билета");
+            }
+            if (item.getQuantity() == null || item.getQuantity() <= 0) {
                 throw new BadRequestException("Количество билетов должно быть больше 0");
             }
+            mergedByType.merge(item.getTicketTypeId(), item.getQuantity(), Integer::sum);
         }
 
-        return requestItems;
+        return mergedByType.entrySet().stream()
+            .map(entry -> {
+                OrderItemCreateRequest normalized = new OrderItemCreateRequest();
+                normalized.setTicketTypeId(entry.getKey());
+                normalized.setQuantity(entry.getValue());
+                return normalized;
+            })
+            .toList();
     }
 
     private void validateSalesWindow(TicketType ticketType, OffsetDateTime now) {

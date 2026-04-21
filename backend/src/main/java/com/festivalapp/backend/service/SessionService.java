@@ -40,6 +40,7 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class SessionService {
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Europe/Moscow");
 
     private final SessionRepository sessionRepository;
     private final EventRepository eventRepository;
@@ -110,8 +111,8 @@ public class SessionService {
                     .quota(type.getQuota())
                     .availableQuota(available)
                     .registrationOpen(open)
-                    .salesStartAt(type.getSalesStartAt() == null ? null : type.getSalesStartAt().toLocalDateTime())
-                    .salesEndAt(type.getSalesEndAt() == null ? null : type.getSalesEndAt().toLocalDateTime())
+                    .salesStartAt(toBusinessLocal(type.getSalesStartAt()))
+                    .salesEndAt(toBusinessLocal(type.getSalesEndAt()))
                     .build();
             })
             .toList();
@@ -235,7 +236,7 @@ public class SessionService {
                 .quantity(ticket.getOrderItem() == null ? 1 : ticket.getOrderItem().getQuantity())
                 .status(DomainStatusMapper.toRegistrationStatus(ticket.getStatus()))
                 .qrToken(ticket.getQrToken())
-                .createdAt(ticket.getIssuedAt() == null ? null : ticket.getIssuedAt().toLocalDateTime())
+                .createdAt(toBusinessLocal(ticket.getIssuedAt()))
                 .build())
             .toList();
     }
@@ -249,8 +250,8 @@ public class SessionService {
 
         return SessionShortResponse.builder()
             .id(session.getId())
-            .startAt(session.getStartsAt() == null ? null : session.getStartsAt().toLocalDateTime())
-            .endAt(session.getEndsAt() == null ? null : session.getEndsAt().toLocalDateTime())
+            .startAt(toBusinessLocal(session.getStartsAt()))
+            .endAt(toBusinessLocal(session.getEndsAt()))
             .eventId(session.getEvent() == null ? null : session.getEvent().getId())
             .eventTitle(session.getEvent() == null ? null : session.getEvent().getTitle())
             .venueId(session.getVenue() == null ? null : session.getVenue().getId())
@@ -276,16 +277,16 @@ public class SessionService {
 
         return SessionDetailsResponse.builder()
             .id(session.getId())
-            .startAt(session.getStartsAt() == null ? null : session.getStartsAt().toLocalDateTime())
-            .endAt(session.getEndsAt() == null ? null : session.getEndsAt().toLocalDateTime())
+            .startAt(toBusinessLocal(session.getStartsAt()))
+            .endAt(toBusinessLocal(session.getEndsAt()))
             .availableSeats(Math.max(0, total - (int) activeTickets))
             .totalCapacity(total)
             .participationType(free ? "free" : "paid")
             .price(ticketType == null ? BigDecimal.ZERO : ticketType.getPrice())
             .currency(ticketType == null ? "RUB" : ticketType.getCurrency())
             .registrationOpen(isRegistrationOpen(session, ticketType, total, activeTickets))
-            .salesStartAt(ticketType == null || ticketType.getSalesStartAt() == null ? null : ticketType.getSalesStartAt().toLocalDateTime())
-            .salesEndAt(ticketType == null || ticketType.getSalesEndAt() == null ? null : ticketType.getSalesEndAt().toLocalDateTime())
+            .salesStartAt(ticketType == null ? null : toBusinessLocal(ticketType.getSalesStartAt()))
+            .salesEndAt(ticketType == null ? null : toBusinessLocal(ticketType.getSalesEndAt()))
             .event(SessionDetailsResponse.EventInfo.builder()
                 .id(session.getEvent() == null ? null : session.getEvent().getId())
                 .title(session.getEvent() == null ? null : session.getEvent().getTitle())
@@ -404,6 +405,13 @@ public class SessionService {
     }
 
     private OffsetDateTime toSystemOffset(LocalDateTime value) {
-        return value.atZone(ZoneId.systemDefault()).toOffsetDateTime();
+        return value.atZone(BUSINESS_ZONE).toOffsetDateTime();
+    }
+
+    private LocalDateTime toBusinessLocal(OffsetDateTime value) {
+        if (value == null) {
+            return null;
+        }
+        return value.atZoneSameInstant(BUSINESS_ZONE).toLocalDateTime();
     }
 }

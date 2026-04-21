@@ -55,6 +55,7 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -68,6 +69,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class EventService {
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Europe/Moscow");
 
     private final EventRepository eventRepository;
     private final EventCategoryRepository eventCategoryRepository;
@@ -208,8 +210,8 @@ public class EventService {
 
             sessionStats.add(OrganizerEventStatsResponse.SessionStats.builder()
                 .sessionId(session.getId())
-                .startAt(session.getStartsAt() == null ? null : session.getStartsAt().toLocalDateTime())
-                .endAt(session.getEndsAt() == null ? null : session.getEndsAt().toLocalDateTime())
+                .startAt(toBusinessLocal(session.getStartsAt()))
+                .endAt(toBusinessLocal(session.getEndsAt()))
                 .capacity(capacity)
                 .occupiedSeats((int) occupiedForSession)
                 .occupancyPercent(occupancyPercent)
@@ -619,7 +621,7 @@ public class EventService {
             .title(event.getTitle())
             .shortDescription(event.getShortDescription())
             .ageRating(event.getAgeRating())
-            .createdAt(event.getCreatedAt() == null ? null : event.getCreatedAt().toLocalDateTime())
+            .createdAt(toBusinessLocal(event.getCreatedAt()))
             .status(DomainStatusMapper.toEventStatus(event.getStatus()))
             .organizationId(event.getOrganization() == null ? null : event.getOrganization().getId())
             .organizationName(event.getOrganization() == null ? null : event.getOrganization().getName())
@@ -633,11 +635,11 @@ public class EventService {
                 .filter(Objects::nonNull)
                 .map(this::toCategoryResponse)
                 .toList())
-            .nextSessionAt(nextSessionAt(event) == null ? null : nextSessionAt(event).toLocalDateTime())
+            .nextSessionAt(toBusinessLocal(nextSessionAt(event)))
             .sessionDates(event.getSessions().stream()
                 .map(Session::getStartsAt)
                 .filter(Objects::nonNull)
-                .map(OffsetDateTime::toLocalDateTime)
+                .map(this::toBusinessLocal)
                 .sorted()
                 .toList())
             .coverImageId(event.getCoverImageId())
@@ -671,7 +673,7 @@ public class EventService {
             .shortDescription(event.getShortDescription())
             .fullDescription(event.getFullDescription())
             .ageRating(event.getAgeRating())
-            .createdAt(event.getCreatedAt() == null ? null : event.getCreatedAt().toLocalDateTime())
+            .createdAt(toBusinessLocal(event.getCreatedAt()))
             .status(DomainStatusMapper.toEventStatus(event.getStatus()))
             .coverImageId(event.getCoverImageId())
             .eventImages(event.getEventImages().stream().map(this::toEventImageResponse).toList())
@@ -963,8 +965,8 @@ public class EventService {
 
         return SessionShortResponse.builder()
             .id(session.getId())
-            .startAt(session.getStartsAt() == null ? null : session.getStartsAt().toLocalDateTime())
-            .endAt(session.getEndsAt() == null ? null : session.getEndsAt().toLocalDateTime())
+            .startAt(toBusinessLocal(session.getStartsAt()))
+            .endAt(toBusinessLocal(session.getEndsAt()))
             .eventId(session.getEvent() == null ? null : session.getEvent().getId())
             .eventTitle(session.getEvent() == null ? null : session.getEvent().getTitle())
             .venueId(session.getVenue() == null ? null : session.getVenue().getId())
@@ -1013,6 +1015,13 @@ public class EventService {
             return active < session.getSeatLimit();
         }
         return true;
+    }
+
+    private java.time.LocalDateTime toBusinessLocal(OffsetDateTime value) {
+        if (value == null) {
+            return null;
+        }
+        return value.atZoneSameInstant(BUSINESS_ZONE).toLocalDateTime();
     }
 
     private PriceRange extractPriceRange(Set<Session> sessions) {

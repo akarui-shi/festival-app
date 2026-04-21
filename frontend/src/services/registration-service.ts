@@ -1,25 +1,29 @@
 import type { Id, Order, SessionRegistration, Ticket } from '@/types';
 import { apiDelete, apiGet, apiPost } from './api-client';
 
+export interface RegistrationItemInput {
+  ticketTypeId: Id;
+  quantity: number;
+}
+
 export const registrationService = {
   async createRegistration(
     sessionId: Id,
     _userId: Id,
     paymentProvider: 'yookassa' | 'sbp' = 'yookassa',
-    ticketTypeId?: Id,
-    quantity = 1,
+    items?: RegistrationItemInput[],
   ): Promise<Order> {
+    const normalizedItems = (items || [])
+      .map((item) => ({
+        ticketTypeId: Number(item.ticketTypeId),
+        quantity: Math.max(1, Number(item.quantity) || 1),
+      }))
+      .filter((item) => Number.isFinite(item.ticketTypeId));
+
     return apiPost<Order>('/orders', {
       sessionId: Number(sessionId),
       paymentProvider,
-      items: ticketTypeId == null
-        ? undefined
-        : [
-          {
-            ticketTypeId: Number(ticketTypeId),
-            quantity: Math.max(1, Number(quantity) || 1),
-          },
-        ],
+      items: normalizedItems.length > 0 ? normalizedItems : undefined,
     });
   },
 
