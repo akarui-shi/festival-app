@@ -34,5 +34,7 @@ public class EventShortResponse {
     private BigDecimal minPrice;
     private BigDecimal maxPrice;
     private Boolean registrationOpen;
+    private Long sessionsCount;
+    private Long registrationsCount;
     private List<ArtistSummaryResponse> artists;
 }

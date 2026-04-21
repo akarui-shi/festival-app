@@ -80,6 +80,10 @@ export default function OrganizerEvents() {
         <div className="space-y-3">
           {events.map((event) => {
             const status = getEventStatusBadge(event.status, event.moderationStatus);
+            const categoryLabel = event.categories?.[0]?.name || event.category?.name || 'Категория не указана';
+            const cityLabel = event.cityName || event.city?.name || 'Город не указан';
+            const sessionsCount = Number(event.sessionsCount ?? event.sessionDates?.length ?? 0);
+            const registrationsCount = Number(event.registrationsCount ?? 0);
             return (
               <div
                 key={event.id}
@@ -91,8 +95,7 @@ export default function OrganizerEvents() {
                     <Badge className={`${status.className} border-0 text-xs`}>{status.label}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {event.category?.name || 'Категория не указана'} · {event.city?.name || 'Город не указан'} ·{' '}
-                    {event.sessionsCount || 0} сеансов · {event.registrationsCount || 0} записей
+                    {categoryLabel} · {cityLabel} · {sessionsCount} сеансов · {registrationsCount} записей
                   </p>
                 </div>
 
