@@ -9,10 +9,10 @@ import java.util.List;
 public interface EventArtistRepository extends JpaRepository<EventArtist, Long> {
 
     @EntityGraph(attributePaths = {"artist", "event"})
-    List<EventArtist> findAllByEventIdOrderByDisplayOrderAscIdAsc(Long eventId);
+    List<EventArtist> findAllByEventIdOrderByIdAsc(Long eventId);
 
     @EntityGraph(attributePaths = {"artist", "event"})
-    List<EventArtist> findAllByArtistIdOrderByDisplayOrderAscIdAsc(Long artistId);
+    List<EventArtist> findAllByArtistIdOrderByIdAsc(Long artistId);
 
     void deleteByEventId(Long eventId);
 }

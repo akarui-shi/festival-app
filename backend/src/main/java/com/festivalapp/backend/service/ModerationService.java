@@ -106,7 +106,11 @@ public class ModerationService {
     private void moderateArtist(Long artistId, String decision) {
         Artist artist = artistRepository.findById(artistId)
             .orElseThrow(() -> new ResourceNotFoundException("Artist not found"));
-        artist.setModerationStatus("одобрено".equals(decision) ? "одобрено" : "отклонено");
+        if ("одобрено".equals(decision)) {
+            artist.setDeletedAt(null);
+        } else {
+            artist.setDeletedAt(OffsetDateTime.now());
+        }
         artist.setUpdatedAt(OffsetDateTime.now());
         artistRepository.save(artist);
     }

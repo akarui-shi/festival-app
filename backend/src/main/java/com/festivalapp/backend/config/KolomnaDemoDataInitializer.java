@@ -273,7 +273,6 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
                 .stageName(seed.stageName())
                 .description(seed.description())
                 .genre(seed.genre())
-                .moderationStatus("одобрено")
                 .createdAt(now)
                 .updatedAt(now)
                 .build()));
@@ -420,7 +419,7 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
     }
 
     private void ensureEventArtists(Event event, List<String> artistNames, Map<String, Artist> artists) {
-        List<EventArtist> existing = eventArtistRepository.findAllByEventIdOrderByDisplayOrderAscIdAsc(event.getId());
+        List<EventArtist> existing = eventArtistRepository.findAllByEventIdOrderByIdAsc(event.getId());
         Set<Long> existingArtistIds = new HashSet<>();
         for (EventArtist eventArtist : existing) {
             if (eventArtist.getArtist() != null) {
@@ -428,7 +427,6 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
             }
         }
 
-        int order = existing.size();
         for (String artistName : artistNames) {
             Artist artist = artists.get(artistName.toLowerCase());
             if (artist == null || existingArtistIds.contains(artist.getId())) {
@@ -437,8 +435,6 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
             eventArtistRepository.save(EventArtist.builder()
                 .event(event)
                 .artist(artist)
-                .eventRole(null)
-                .displayOrder(order++)
                 .build());
         }
     }

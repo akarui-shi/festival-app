@@ -297,7 +297,7 @@ public class OrganizerEventWizardService {
             throw new ResourceNotFoundException("Artist not found");
         }
 
-        List<EventArtist> currentLinks = eventArtistRepository.findAllByEventIdOrderByDisplayOrderAscIdAsc(event.getId());
+        List<EventArtist> currentLinks = eventArtistRepository.findAllByEventIdOrderByIdAsc(event.getId());
         Map<Long, EventArtist> currentByArtistId = currentLinks.stream()
             .filter(link -> link.getArtist() != null && link.getArtist().getId() != null)
             .collect(Collectors.toMap(link -> link.getArtist().getId(), Function.identity(), (left, right) -> left, LinkedHashMap::new));
@@ -312,22 +312,15 @@ public class OrganizerEventWizardService {
         }
 
         List<EventArtist> toSave = new ArrayList<>();
-        for (int index = 0; index < artistIds.size(); index++) {
-            Long artistId = artistIds.get(index);
+        for (Long artistId : artistIds) {
             EventArtist link = currentByArtistId.get(artistId);
             if (link == null) {
                 link = EventArtist.builder()
                     .event(event)
                     .artist(artistsById.get(artistId))
-                    .eventRole("artist")
-                    .displayOrder(index)
                     .build();
             } else {
                 link.setArtist(artistsById.get(artistId));
-                link.setDisplayOrder(index);
-                if (!StringUtils.hasText(link.getEventRole())) {
-                    link.setEventRole("artist");
-                }
             }
             toSave.add(link);
         }
@@ -611,7 +604,7 @@ public class OrganizerEventWizardService {
     private OrganizerEventWizardResponse buildWizardState(Event event) {
         List<EventCategory> eventCategories = eventCategoryRepository.findAllByEventId(event.getId());
         List<EventImage> eventImages = eventImageRepository.findAllByEventIdOrderBySortOrderAscIdAsc(event.getId());
-        List<EventArtist> eventArtists = eventArtistRepository.findAllByEventIdOrderByDisplayOrderAscIdAsc(event.getId());
+        List<EventArtist> eventArtists = eventArtistRepository.findAllByEventIdOrderByIdAsc(event.getId());
         List<Session> sessions = sessionRepository.findAllByEventIdOrderByStartsAtAsc(event.getId());
 
         Map<Long, List<TicketType>> ticketTypesBySession = new HashMap<>();
@@ -675,8 +668,6 @@ public class OrganizerEventWizardService {
                     .description(artist.getDescription())
                     .genre(artist.getGenre())
                     .imageId(imageId)
-                    .eventRole(link.getEventRole())
-                    .displayOrder(link.getDisplayOrder())
                     .build();
             })
             .filter(Objects::nonNull)
@@ -764,7 +755,7 @@ public class OrganizerEventWizardService {
         }
 
         Set<Long> uniqueArtistIds = new HashSet<>();
-        for (EventArtist eventArtist : eventArtistRepository.findAllByEventIdOrderByDisplayOrderAscIdAsc(event.getId())) {
+        for (EventArtist eventArtist : eventArtistRepository.findAllByEventIdOrderByIdAsc(event.getId())) {
             if (eventArtist.getArtist() != null && !uniqueArtistIds.add(eventArtist.getArtist().getId())) {
                 issues.add(issue("duplicate_artists", "Артисты в событии не должны дублироваться", "step_3"));
                 break;

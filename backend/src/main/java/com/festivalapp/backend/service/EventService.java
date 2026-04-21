@@ -545,7 +545,7 @@ public class EventService {
             chunks.add(event.getOrganization().getName());
         }
 
-        for (EventArtist eventArtist : eventArtistRepository.findAllByEventIdOrderByDisplayOrderAscIdAsc(event.getId())) {
+        for (EventArtist eventArtist : eventArtistRepository.findAllByEventIdOrderByIdAsc(event.getId())) {
             Artist artist = eventArtist.getArtist();
             if (artist == null) {
                 continue;
@@ -874,7 +874,6 @@ public class EventService {
                 String name = rawName.trim();
                 Artist artist = artistRepository.save(Artist.builder()
                     .name(name)
-                    .moderationStatus("на_рассмотрении")
                     .createdAt(OffsetDateTime.now())
                     .updatedAt(OffsetDateTime.now())
                     .build());
@@ -882,13 +881,10 @@ public class EventService {
             }
         }
 
-        int order = 0;
         for (Artist artist : artists) {
             eventArtistRepository.save(EventArtist.builder()
                 .event(event)
                 .artist(artist)
-                .eventRole("artist")
-                .displayOrder(order++)
                 .build());
         }
     }
@@ -942,7 +938,7 @@ public class EventService {
     }
 
     private List<ArtistSummaryResponse> mapArtists(Long eventId) {
-        return eventArtistRepository.findAllByEventIdOrderByDisplayOrderAscIdAsc(eventId).stream()
+        return eventArtistRepository.findAllByEventIdOrderByIdAsc(eventId).stream()
             .map(EventArtist::getArtist)
             .filter(Objects::nonNull)
             .map(artist -> ArtistSummaryResponse.builder()

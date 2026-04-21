@@ -18,5 +18,6 @@ public class AdminCityUpsertRequest {
 
     @Size(max = 255, message = "Country is too long")
     private String country;
-}
 
+    private Boolean active;
+}

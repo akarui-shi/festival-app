@@ -39,9 +39,6 @@ public class Artist {
     @Column
     private String genre;
 
-    @Column(name = "moderation_status", nullable = false)
-    private String moderationStatus;
-
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 

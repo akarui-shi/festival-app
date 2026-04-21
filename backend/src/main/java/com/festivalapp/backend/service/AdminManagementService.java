@@ -148,6 +148,13 @@ public class AdminManagementService {
         return Map.of("success", true);
     }
 
+    @Transactional(readOnly = true)
+    public List<CityResponse> getCities() {
+        return cityRepository.findAllByOrderByNameAsc().stream()
+            .map(city -> toCityResponse(city, null))
+            .toList();
+    }
+
     @Transactional
     public CityResponse createCity(AdminCityUpsertRequest request) {
         String name = normalizeRequired(request.getName(), "City name is required");
@@ -161,7 +168,7 @@ public class AdminManagementService {
         City city = cityRepository.save(City.builder()
             .name(name)
             .region(region)
-            .active(true)
+            .active(request.getActive() == null || request.getActive())
             .createdAt(OffsetDateTime.now())
             .country(normalizeOptional(request.getCountry()))
             .build());
@@ -177,9 +184,22 @@ public class AdminManagementService {
 
         city.setName(normalizeRequired(request.getName(), "City name is required"));
         city.setRegion(normalizeOptional(request.getRegion()));
+        if (request.getActive() != null) {
+            city.setActive(request.getActive());
+        }
         City saved = cityRepository.save(city);
         adminAuditService.log(null, "CITY_UPDATED", "City", saved.getId(), saved.getName());
         return toCityResponse(saved, request.getCountry());
+    }
+
+    @Transactional
+    public CityResponse updateCityActive(Long id, boolean active) {
+        City city = cityRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("City not found"));
+        city.setActive(active);
+        City saved = cityRepository.save(city);
+        adminAuditService.log(null, active ? "CITY_ACTIVATED" : "CITY_DEACTIVATED", "City", saved.getId(), saved.getName());
+        return toCityResponse(saved, null);
     }
 
     @Transactional
@@ -288,6 +308,7 @@ public class AdminManagementService {
             .name(city.getName())
             .region(city.getRegion())
             .country(StringUtils.hasText(explicitCountry) ? explicitCountry.trim() : "Россия")
+            .active(city.isActive())
             .build();
     }
 

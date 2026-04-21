@@ -1,6 +1,5 @@
 package com.festivalapp.backend.entity;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -35,10 +34,4 @@ public class EventArtist {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "artist_id", nullable = false)
     private Artist artist;
-
-    @Column(name = "event_role")
-    private String eventRole;
-
-    @Column(name = "display_order", nullable = false)
-    private Integer displayOrder;
 }
