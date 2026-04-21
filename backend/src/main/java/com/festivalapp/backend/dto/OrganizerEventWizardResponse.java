@@ -13,7 +13,6 @@ public class OrganizerEventWizardResponse {
 
     private Long eventId;
     private String status;
-    private String moderationStatus;
     private Boolean free;
 
     private Long organizationId;

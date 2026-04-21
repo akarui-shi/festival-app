@@ -310,7 +310,6 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
             .startsAt(startsAt)
             .endsAt(endsAt)
             .status("опубликовано")
-            .moderationStatus("одобрено")
             .createdAt(now)
             .updatedAt(now)
             .build());

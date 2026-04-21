@@ -130,7 +130,6 @@ public class OrganizerEventWizardService {
             .startsAt(now.plusDays(7))
             .endsAt(now.plusDays(7).plusHours(2))
             .status("черновик")
-            .moderationStatus("черновик")
             .createdAt(now)
             .updatedAt(now)
             .build());
@@ -567,7 +566,6 @@ public class OrganizerEventWizardService {
         Event event = loadManagedEventForUpdate(eventId, actor);
 
         event.setStatus("черновик");
-        event.setModerationStatus("черновик");
         event.setUpdatedAt(OffsetDateTime.now());
         eventRepository.save(event);
 
@@ -592,8 +590,7 @@ public class OrganizerEventWizardService {
             throw new BadRequestException("Мероприятие не готово к модерации: " + issues.get(0).getMessage());
         }
 
-        event.setStatus("черновик");
-        event.setModerationStatus("на_рассмотрении");
+        event.setStatus("на_рассмотрении");
         event.setUpdatedAt(OffsetDateTime.now());
         eventRepository.save(event);
 
@@ -676,7 +673,6 @@ public class OrganizerEventWizardService {
         return OrganizerEventWizardResponse.builder()
             .eventId(event.getId())
             .status(event.getStatus())
-            .moderationStatus(event.getModerationStatus())
             .free(event.isFree())
             .organizationId(event.getOrganization() == null ? null : event.getOrganization().getId())
             .organizationName(event.getOrganization() == null ? null : event.getOrganization().getName())

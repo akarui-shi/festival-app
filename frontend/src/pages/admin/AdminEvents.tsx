@@ -21,12 +21,17 @@ const FILTER_LABELS: Record<EventFilterKey, string> = {
   ARCHIVED: 'Архив',
 };
 
-function normalizeEventStatus(value?: string | null): EventFilterKey | 'OTHER' {
-  const key = String(value || '').trim().toUpperCase();
+function normalizeEventStatus(event: Event): EventFilterKey | 'OTHER' {
+  const key = String(event.status || '').trim().toUpperCase();
+
   if (key === 'PUBLISHED') return 'PUBLISHED';
   if (key === 'REJECTED') return 'REJECTED';
   if (key === 'ARCHIVED') return 'ARCHIVED';
-  if (key === 'PENDING' || key === 'PENDING_APPROVAL' || key === 'DRAFT') return 'PENDING';
+  if (key === 'PENDING' || key === 'PENDING_APPROVAL' || key === 'НА_РАССМОТРЕНИИ') return 'PENDING';
+  if (key === 'ОПУБЛИКОВАНО') return 'PUBLISHED';
+  if (key === 'ОТКЛОНЕНО' || key === 'ОТМЕНЕНО') return 'REJECTED';
+  if (key === 'ЗАВЕРШЕНО' || key === 'АРХИВИРОВАНО') return 'ARCHIVED';
+
   return 'OTHER';
 }
 
@@ -45,7 +50,7 @@ export default function AdminEvents() {
 
   const counts = useMemo(() => {
     return events.reduce<Record<EventFilterKey, number>>((acc, event) => {
-      const status = normalizeEventStatus(event.status);
+      const status = normalizeEventStatus(event);
       acc.ALL += 1;
       if (status === 'PENDING') acc.PENDING += 1;
       if (status === 'PUBLISHED') acc.PUBLISHED += 1;
@@ -60,7 +65,7 @@ export default function AdminEvents() {
     return events
       .filter((event) => {
         if (filter === 'ALL') return true;
-        return normalizeEventStatus(event.status) === filter;
+        return normalizeEventStatus(event) === filter;
       })
       .filter((event) => {
         if (!q) return true;
@@ -77,8 +82,8 @@ export default function AdminEvents() {
         return haystack.includes(q);
       })
       .sort((a, b) => {
-        const statusA = normalizeEventStatus(a.status);
-        const statusB = normalizeEventStatus(b.status);
+        const statusA = normalizeEventStatus(a);
+        const statusB = normalizeEventStatus(b);
         if (statusA === 'PENDING' && statusB !== 'PENDING') return -1;
         if (statusA !== 'PENDING' && statusB === 'PENDING') return 1;
         const aDate = a.createdAt ? Date.parse(a.createdAt) : 0;
@@ -88,8 +93,8 @@ export default function AdminEvents() {
   }, [events, filter, query]);
 
   const changeStatus = async (id: string, status: EventStatus) => {
-    await eventService.updateEvent(id, { status });
-    setEvents((prev) => prev.map((event) => (String(event.id) === String(id) ? { ...event, status } : event)));
+    const updated = await eventService.updateEvent(id, { status });
+    setEvents((prev) => prev.map((event) => (String(event.id) === String(id) ? { ...event, ...updated } : event)));
     toast.success('Статус обновлён');
   };
 
@@ -140,7 +145,8 @@ export default function AdminEvents() {
       ) : (
         <div className="space-y-3">
           {filteredEvents.map((event) => {
-            const status = getEventStatusBadge(event.status || 'PENDING', event.moderationStatus);
+            const status = getEventStatusBadge(event.status || 'PENDING');
+            const normalizedStatus = normalizeEventStatus(event);
             const categoryText = (event.categories || []).map((category) => category.name).join(', ') || 'Категории не указаны';
             const createdAtLabel = event.createdAt
               ? new Date(event.createdAt).toLocaleString('ru-RU', {
@@ -178,7 +184,7 @@ export default function AdminEvents() {
                       <ExternalLink className="h-3.5 w-3.5" />
                     </Link>
                   </Button>
-                  {(event.status === 'PENDING' || event.status === 'PENDING_APPROVAL') && (
+                  {normalizedStatus === 'PENDING' && (
                     <>
                       <Button size="sm" onClick={() => changeStatus(String(event.id), 'PUBLISHED')}>
                         Опубликовать
@@ -188,7 +194,7 @@ export default function AdminEvents() {
                       </Button>
                     </>
                   )}
-                  {event.status === 'PUBLISHED' && (
+                  {normalizedStatus === 'PUBLISHED' && (
                     <Button size="sm" variant="outline" onClick={() => changeStatus(String(event.id), 'ARCHIVED')}>
                       В архив
                     </Button>

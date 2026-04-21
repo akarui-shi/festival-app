@@ -10,33 +10,24 @@ function normalizeStatus(status?: string | null): string {
     .toUpperCase();
 }
 
-function isDraftModerationStatus(status?: string | null): boolean {
-  const key = normalizeStatus(status);
-  return key === '' || ['DRAFT', 'ЧЕРНОВИК', 'НЕ_ОТПРАВЛЕНО', 'NOT_SENT'].includes(key);
-}
-
-function isPendingModerationStatus(status?: string | null): boolean {
-  const key = normalizeStatus(status);
-  return ['PENDING', 'PENDING_APPROVAL', 'ON_MODERATION', 'НА_РАССМОТРЕНИИ', 'НА_МОДЕРАЦИИ'].includes(key);
-}
-
 const EVENT_STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Черновик',
+  ЧЕРНОВИК: 'Черновик',
   PENDING: 'На модерации',
   PENDING_APPROVAL: 'На модерации',
   ON_MODERATION: 'На модерации',
+  НА_РАССМОТРЕНИИ: 'На модерации',
   PUBLISHED: 'Опубликовано',
+  ОПУБЛИКОВАНО: 'Опубликовано',
   REJECTED: 'Отклонено',
+  ОТКЛОНЕНО: 'Отклонено',
   CANCELLED: 'Отменено',
   CANCELED: 'Отменено',
+  ОТМЕНЕНО: 'Отменено',
   ARCHIVED: 'В архиве',
+  ЗАВЕРШЕНО: 'В архиве',
   HIDDEN: 'Скрыто',
   DELETED: 'Удалено',
-  ЧЕРНОВИК: 'Черновик',
-  НА_РАССМОТРЕНИИ: 'На модерации',
-  ОПУБЛИКОВАНО: 'Опубликовано',
-  ОТКЛОНЕНО: 'Отклонено',
-  ОТМЕНЕНО: 'Отменено',
   АРХИВИРОВАНО: 'В архиве',
   СКРЫТО: 'Скрыто',
   УДАЛЕНО: 'Удалено',
@@ -90,9 +81,10 @@ const JOIN_REQUEST_STATUS_LABELS: Record<string, string> = {
 };
 
 function eventStatusClass(key: string): string {
+  if (['DRAFT', 'ЧЕРНОВИК'].includes(key)) return 'bg-muted text-muted-foreground';
   if (['PENDING', 'PENDING_APPROVAL', 'ON_MODERATION', 'НА_РАССМОТРЕНИИ'].includes(key)) return 'bg-warning/10 text-warning';
   if (['PUBLISHED', 'ОПУБЛИКОВАНО'].includes(key)) return 'bg-success/10 text-success';
-  if (['REJECTED', 'ОТКЛОНЕНО'].includes(key)) return 'bg-destructive/10 text-destructive';
+  if (['REJECTED', 'ОТКЛОНЕНО', 'CANCELLED', 'CANCELED', 'ОТМЕНЕНО'].includes(key)) return 'bg-destructive/10 text-destructive';
   return 'bg-muted text-muted-foreground';
 }
 
@@ -116,18 +108,8 @@ function registrationStatusClass(key: string): string {
   return 'bg-muted text-muted-foreground';
 }
 
-export function getEventStatusBadge(status?: string | null, moderationStatus?: string | null): StatusBadgeView {
+export function getEventStatusBadge(status?: string | null): StatusBadgeView {
   const key = normalizeStatus(status);
-
-  if (['PENDING', 'PENDING_APPROVAL', 'ON_MODERATION', 'НА_РАССМОТРЕНИИ'].includes(key)) {
-    if (isDraftModerationStatus(moderationStatus)) {
-      return { label: 'Черновик', className: 'bg-muted text-muted-foreground' };
-    }
-    if (isPendingModerationStatus(moderationStatus)) {
-      return { label: 'На модерации', className: 'bg-warning/10 text-warning' };
-    }
-  }
-
   return {
     label: EVENT_STATUS_LABELS[key] || 'Статус не указан',
     className: eventStatusClass(key),

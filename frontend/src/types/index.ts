@@ -112,7 +112,6 @@ export interface Event {
   ageRating?: number | null;
   createdAt?: string | null;
   status?: string | null;
-  moderationStatus?: string | null;
   organizationId?: Id | null;
   organizationName?: string | null;
   venueId?: Id | null;
