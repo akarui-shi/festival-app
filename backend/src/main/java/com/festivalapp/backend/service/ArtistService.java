@@ -36,9 +36,12 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -74,6 +77,8 @@ public class ArtistService {
             .distinct()
             .map(this::toEventShort)
             .toList();
+        List<Long> imageIds = resolveArtistImageIds(artist.getId());
+        Long primaryImageId = imageIds.isEmpty() ? null : imageIds.get(0);
 
         return ArtistDetailsResponse.builder()
             .id(artist.getId())
@@ -81,7 +86,9 @@ public class ArtistService {
             .stageName(artist.getStageName())
             .description(artist.getDescription())
             .genre(artist.getGenre())
-            .imageId(resolveArtistImageId(artist.getId()))
+            .imageId(primaryImageId)
+            .imageIds(imageIds)
+            .primaryImageId(primaryImageId)
             .events(events)
             .build();
     }
@@ -100,7 +107,7 @@ public class ArtistService {
             .createdAt(OffsetDateTime.now())
             .updatedAt(OffsetDateTime.now())
             .build());
-        applyArtistImage(artist, request.getImageId());
+        applyArtistImages(artist, request.getImageIds(), request.getPrimaryImageId(), request.getImageId());
 
         return toSummary(artist);
     }
@@ -126,8 +133,8 @@ public class ArtistService {
             artist.setGenre(normalize(request.getGenre()));
         }
         artist.setUpdatedAt(OffsetDateTime.now());
-        if (request.getImageId() != null) {
-            applyArtistImage(artist, request.getImageId());
+        if (request.getImageId() != null || request.getImageIds() != null || request.getPrimaryImageId() != null) {
+            applyArtistImages(artist, request.getImageIds(), request.getPrimaryImageId(), request.getImageId());
         }
 
         return toSummary(artistRepository.save(artist));
@@ -286,27 +293,88 @@ public class ArtistService {
     }
 
     private ArtistSummaryResponse toSummary(Artist artist) {
+        List<Long> imageIds = resolveArtistImageIds(artist.getId());
+        Long primaryImageId = imageIds.isEmpty() ? null : imageIds.get(0);
         return ArtistSummaryResponse.builder()
             .id(artist.getId())
             .name(artist.getName())
             .stageName(artist.getStageName())
             .description(artist.getDescription())
             .genre(artist.getGenre())
-            .imageId(resolveArtistImageId(artist.getId()))
+            .imageId(primaryImageId)
+            .imageIds(imageIds)
+            .primaryImageId(primaryImageId)
             .build();
     }
 
-    private void applyArtistImage(Artist artist, Long imageId) {
-        Image image = resolveImage(imageId);
-        if (image == null) {
+    private void applyArtistImages(Artist artist, List<Long> imageIds, Long primaryImageId, Long legacyImageId) {
+        List<Long> requestedIds = null;
+        if (imageIds != null) {
+            requestedIds = imageIds.stream()
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        } else if (legacyImageId != null) {
+            requestedIds = List.of(legacyImageId);
+        }
+
+        List<ArtistImage> existing = artistImageRepository.findAllByArtistIdOrderByPrimaryDescIdAsc(artist.getId());
+
+        if (requestedIds == null) {
+            if (primaryImageId != null) {
+                if (existing.isEmpty()) {
+                    throw new BadRequestException("Нельзя выбрать главное фото: у артиста пока нет изображений");
+                }
+                Set<Long> existingImageIds = existing.stream()
+                    .map(ArtistImage::getImage)
+                    .filter(Objects::nonNull)
+                    .map(Image::getId)
+                    .collect(java.util.stream.Collectors.toSet());
+                if (!existingImageIds.contains(primaryImageId)) {
+                    throw new BadRequestException("Главное фото должно входить в набор изображений артиста");
+                }
+                for (ArtistImage link : existing) {
+                    Image image = link.getImage();
+                    link.setPrimary(image != null && Objects.equals(image.getId(), primaryImageId));
+                }
+                artistImageRepository.saveAll(existing);
+            }
             return;
         }
+
+        List<Long> uniqueIds = requestedIds.stream()
+            .collect(java.util.stream.Collectors.collectingAndThen(
+                java.util.stream.Collectors.toCollection(LinkedHashSet::new),
+                ArrayList::new
+            ));
+
         artistImageRepository.deleteByArtistId(artist.getId());
-        artistImageRepository.save(ArtistImage.builder()
-            .artist(artist)
-            .image(image)
-            .primary(true)
-            .build());
+        artistImageRepository.flush();
+        if (uniqueIds.isEmpty()) {
+            return;
+        }
+
+        List<Image> images = imageRepository.findAllById(uniqueIds);
+        if (images.size() != uniqueIds.size()) {
+            throw new ResourceNotFoundException("Image not found");
+        }
+        java.util.Map<Long, Image> imagesById = images.stream()
+            .collect(java.util.stream.Collectors.toMap(Image::getId, java.util.function.Function.identity()));
+
+        Long primaryResolved = primaryImageId;
+        if (primaryResolved == null || !imagesById.containsKey(primaryResolved)) {
+            primaryResolved = uniqueIds.get(0);
+        }
+
+        List<ArtistImage> links = new ArrayList<>();
+        for (Long id : uniqueIds) {
+            Image image = imagesById.get(id);
+            links.add(ArtistImage.builder()
+                .artist(artist)
+                .image(image)
+                .primary(Objects.equals(id, primaryResolved))
+                .build());
+        }
+        artistImageRepository.saveAll(links);
     }
 
     private Image resolveImage(Long imageId) {
@@ -317,11 +385,12 @@ public class ArtistService {
         return null;
     }
 
-    private Long resolveArtistImageId(Long artistId) {
-        return artistImageRepository.findFirstByArtistIdAndPrimaryIsTrueOrderByIdAsc(artistId)
+    private List<Long> resolveArtistImageIds(Long artistId) {
+        return artistImageRepository.findAllByArtistIdOrderByPrimaryDescIdAsc(artistId).stream()
             .map(ArtistImage::getImage)
+            .filter(Objects::nonNull)
             .map(Image::getId)
-            .orElse(null);
+            .toList();
     }
 
     private User resolveActor(String actorIdentifier) {

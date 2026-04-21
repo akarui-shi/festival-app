@@ -6,12 +6,14 @@ import { EventCard } from '@/components/EventCard';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState, LoadingState } from '@/components/StateDisplays';
 import { artistService } from '@/services/artist-service';
+import { imageSrc } from '@/lib/image';
 import type { Artist, Event } from '@/types';
 
 export default function ArtistPage() {
   const { id } = useParams<{ id: string }>();
   const [artist, setArtist] = useState<Artist | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
+  const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -24,10 +26,21 @@ export default function ArtistPage() {
       .then((response) => {
         setArtist(response);
         setEvents(response.events || []);
+        setSelectedImageId(response.primaryImageId ?? response.imageIds?.[0] ?? response.imageId ?? null);
       })
       .catch(() => setError('Не удалось загрузить страницу артиста'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  const artistImageIds = artist
+    ? (() => {
+      const ids = artist.imageIds && artist.imageIds.length > 0
+        ? artist.imageIds
+        : artist.imageId != null ? [Number(artist.imageId)] : [];
+      return ids.filter((value, index, array) => array.indexOf(value) === index);
+    })()
+    : [];
+  const activeImageId = artist ? (selectedImageId ?? artist.primaryImageId ?? artistImageIds[0] ?? null) : null;
 
   if (loading) {
     return (
@@ -69,6 +82,32 @@ export default function ArtistPage() {
               </p>
             </div>
           </div>
+
+          {artistImageIds.length > 0 && (
+            <div className="mt-6 space-y-3">
+              <div className="overflow-hidden rounded-xl border border-border bg-muted/20">
+                <img
+                  src={imageSrc(activeImageId)}
+                  alt={artist.stageName || artist.name}
+                  className="h-64 w-full object-cover sm:h-80"
+                />
+              </div>
+              {artistImageIds.length > 1 && (
+                <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                  {artistImageIds.map((imageId) => (
+                    <button
+                      key={imageId}
+                      type="button"
+                      onClick={() => setSelectedImageId(imageId)}
+                      className={`overflow-hidden rounded-lg border ${activeImageId === imageId ? 'border-primary' : 'border-border'}`}
+                    >
+                      <img src={imageSrc(imageId)} alt="Фото артиста" className="h-16 w-full object-cover sm:h-20" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </section>
 
         <section className="mt-8">

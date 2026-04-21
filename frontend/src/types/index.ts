@@ -78,6 +78,8 @@ export interface Artist {
   description?: string | null;
   genre?: string | null;
   imageId?: number | null;
+  imageIds?: number[] | null;
+  primaryImageId?: number | null;
   events?: Event[] | null;
 }
 
