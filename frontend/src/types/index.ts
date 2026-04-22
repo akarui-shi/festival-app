@@ -285,8 +285,18 @@ export interface Ticket {
   orderId?: Id | null;
   eventId?: Id | null;
   eventTitle?: string | null;
+  eventShortDescription?: string | null;
   sessionId?: Id | null;
   sessionTitle?: string | null;
+  sessionStartsAt?: string | null;
+  sessionEndsAt?: string | null;
+  venueName?: string | null;
+  venueAddress?: string | null;
+  cityName?: string | null;
+  ticketTypeName?: string | null;
+  ticketPrice?: number | null;
+  ticketCurrency?: string | null;
+  holderName?: string | null;
   status?: string | null;
   qrToken?: string | null;
   issuedAt?: string | null;

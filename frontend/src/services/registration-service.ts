@@ -42,6 +42,10 @@ export const registrationService = {
     await apiDelete(`/orders/${id}`);
   },
 
+  async refundTicket(ticketId: Id): Promise<Ticket> {
+    return apiDelete<Ticket>(`/tickets/${ticketId}`);
+  },
+
   async getRegistrationsByEvent(eventId: Id): Promise<SessionRegistration[]> {
     const sessions = await apiGet<Array<{ id: number }>>('/sessions', { eventId });
     const response = await Promise.all(

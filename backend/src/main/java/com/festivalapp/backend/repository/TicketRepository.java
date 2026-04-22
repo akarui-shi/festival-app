@@ -20,4 +20,6 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     long countBySessionIdAndStatus(Long sessionId, String status);
 
     long countBySessionIdAndOrderItemTicketTypeIdAndStatus(Long sessionId, Long ticketTypeId, String status);
+
+    long countByOrderItemOrderIdAndStatusNot(Long orderId, String status);
 }
