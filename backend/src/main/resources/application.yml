@@ -1,6 +1,8 @@
 spring:
   application:
     name: festival-backend
+  config:
+    import: optional:file:./.env[.properties]
 
   datasource:
     url: jdbc:postgresql://localhost:5432/festival_db
@@ -81,6 +83,12 @@ app:
     telegram-bot-token: ${TELEGRAM_BOT_TOKEN:}
     telegram-chat-id: ${TELEGRAM_CHAT_ID:}
     email-from: ${NOTIFICATIONS_EMAIL_FROM:noreply@festival.local}
+
+payments:
+  yookassa:
+    shop-id: ${YOOKASSA_SHOP_ID:1338545}
+    secret-key: ${YOOKASSA_SECRET_KEY:test_60I1jqryWKjk6w9BAXPowiSEhWpM4h99D-TumQ9uCko}
+    api-base-url: ${YOOKASSA_API_BASE_URL:https://api.yookassa.ru/v3}
 
 yandex:
   metrika:

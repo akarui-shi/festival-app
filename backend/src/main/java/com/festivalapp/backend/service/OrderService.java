@@ -154,15 +154,11 @@ public class OrderService {
                 .order(order)
                 .externalPaymentId(checkout.getExternalPaymentId())
                 .provider(checkout.getProvider())
-                .status("pending")
+                .status(normalizePaymentStatus(checkout.getGatewayStatus()))
                 .amount(total)
                 .currency(currency)
                 .createdAt(now)
-                .payloadJson(objectMapper.valueToTree(Map.of(
-                    "paymentUrl", checkout.getPaymentUrl(),
-                    "successUrl", checkout.getSuccessUrl(),
-                    "cancelUrl", checkout.getCancelUrl()
-                )))
+                .payloadJson(buildPaymentPayloadJson(checkout))
                 .build());
         } else {
             List<Ticket> issued = issueTickets(actor, session, createdItems, now);
@@ -203,8 +199,15 @@ public class OrderService {
             return toOrderResponse(order, orderItemRepository.findAllByOrderId(order.getId()), payment);
         }
 
-        String status = StringUtils.hasText(request.getStatus()) ? request.getStatus().trim().toLowerCase() : "succeeded";
-        if (!status.equals("succeeded") && !status.equals("success") && !status.equals("paid")) {
+        String gatewayStatus = resolveGatewayStatus(payment, request);
+
+        if (isPaymentPending(gatewayStatus)) {
+            payment.setStatus("pending");
+            paymentRepository.save(payment);
+            return toOrderResponse(order, orderItemRepository.findAllByOrderId(order.getId()), payment);
+        }
+
+        if (!isPaymentSucceeded(gatewayStatus)) {
             order.setStatus("отменён");
             order.setUpdatedAt(OffsetDateTime.now());
             orderRepository.save(order);
@@ -353,6 +356,55 @@ public class OrderService {
             }
         }
         return issued;
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode buildPaymentPayloadJson(PaymentGatewayService.PaymentCheckout checkout) {
+        if (checkout.getGatewayPayload() != null && checkout.getGatewayPayload().isObject()) {
+            com.fasterxml.jackson.databind.node.ObjectNode payload = checkout.getGatewayPayload().deepCopy();
+            payload.put("paymentUrl", checkout.getPaymentUrl());
+            payload.put("successUrl", checkout.getSuccessUrl());
+            payload.put("cancelUrl", checkout.getCancelUrl());
+            return payload;
+        }
+        return objectMapper.valueToTree(Map.of(
+            "paymentUrl", checkout.getPaymentUrl(),
+            "successUrl", checkout.getSuccessUrl(),
+            "cancelUrl", checkout.getCancelUrl()
+        ));
+    }
+
+    private String resolveGatewayStatus(Payment payment, PaymentConfirmRequest request) {
+        String provider = payment.getProvider();
+        String externalPaymentId = StringUtils.hasText(request.getExternalPaymentId())
+            ? request.getExternalPaymentId().trim()
+            : payment.getExternalPaymentId();
+
+        if (StringUtils.hasText(provider) && "yookassa".equalsIgnoreCase(provider)) {
+            PaymentGatewayService.GatewayStatus gatewayStatus = paymentGatewayService.resolvePaymentStatus(provider, externalPaymentId);
+            if (gatewayStatus.getPayload() != null) {
+                payment.setPayloadJson(gatewayStatus.getPayload());
+                paymentRepository.save(payment);
+            }
+            return normalizePaymentStatus(gatewayStatus.getStatus());
+        }
+
+        String fallbackStatus = StringUtils.hasText(request.getStatus()) ? request.getStatus().trim() : "succeeded";
+        return normalizePaymentStatus(fallbackStatus);
+    }
+
+    private String normalizePaymentStatus(String status) {
+        if (!StringUtils.hasText(status)) {
+            return "pending";
+        }
+        return status.trim().toLowerCase();
+    }
+
+    private boolean isPaymentSucceeded(String status) {
+        return "succeeded".equals(status) || "success".equals(status) || "paid".equals(status);
+    }
+
+    private boolean isPaymentPending(String status) {
+        return "pending".equals(status) || "waiting_for_capture".equals(status) || "in_progress".equals(status);
     }
 
     private OrderResponse toOrderResponse(Order order, List<OrderItem> items, Payment payment) {

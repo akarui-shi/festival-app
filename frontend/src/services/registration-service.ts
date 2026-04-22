@@ -27,10 +27,10 @@ export const registrationService = {
     });
   },
 
-  async confirmPayment(orderId: Id, externalPaymentId?: string): Promise<Order> {
+  async confirmPayment(orderId: Id, externalPaymentId?: string, status?: string): Promise<Order> {
     return apiPost<Order>(`/orders/${orderId}/confirm-payment`, {
       externalPaymentId,
-      status: 'succeeded',
+      status,
     });
   },
 
