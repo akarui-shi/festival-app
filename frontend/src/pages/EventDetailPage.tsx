@@ -363,6 +363,22 @@ export default function EventDetailPage() {
     })
     .filter((item) => item.quantity > 0);
   const ticketSelectionTotal = ticketSelectionItems.reduce((sum, item) => sum + item.quantity, 0);
+  const ticketSelectionTotalAmount = ticketSelectionItems.reduce((sum, item) => {
+    const selectedType = ticketDialogTypes.find((ticketType) => String(ticketType.id) === String(item.ticketTypeId));
+    const price = Number(selectedType?.price ?? 0);
+    if (!Number.isFinite(price) || price <= 0) {
+      return sum;
+    }
+    return sum + price * item.quantity;
+  }, 0);
+  const ticketSelectionCurrencyCandidates = Array.from(new Set(
+    ticketSelectionItems
+      .map((item) => ticketDialogTypes.find((ticketType) => String(ticketType.id) === String(item.ticketTypeId))?.currency)
+      .filter((currency): currency is string => Boolean(currency)),
+  ));
+  const ticketSelectionCurrency = ticketSelectionCurrencyCandidates.length === 1
+    ? ticketSelectionCurrencyCandidates[0]
+    : 'RUB';
 
   return (
     <PublicLayout>
@@ -766,7 +782,12 @@ export default function EventDetailPage() {
                 </div>
               );
             })}
-            <p className="text-sm text-muted-foreground">Всего билетов: {ticketSelectionTotal}</p>
+            <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
+              <p className="text-sm text-muted-foreground">Всего билетов: {ticketSelectionTotal}</p>
+              <p className="mt-1 text-base font-semibold text-foreground">
+                Сумма заказа: {ticketSelectionTotalAmount.toLocaleString('ru-RU')} {ticketSelectionCurrency}
+              </p>
+            </div>
           </div>
 
           <DialogFooter>

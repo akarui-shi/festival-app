@@ -5,6 +5,7 @@ import com.festivalapp.backend.entity.Order;
 import com.festivalapp.backend.entity.Payment;
 import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.Ticket;
+import com.festivalapp.backend.entity.TicketType;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
@@ -15,6 +16,7 @@ import com.festivalapp.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -44,6 +46,7 @@ public class TicketService {
                 .orderId(order.getId())
                 .eventId(order.getEvent() == null ? null : order.getEvent().getId())
                 .eventTitle(order.getEvent() == null ? null : order.getEvent().getTitle())
+                .eventShortDescription(order.getEvent() == null ? null : order.getEvent().getShortDescription())
                 .sessionId(null)
                 .sessionTitle("Ожидает оплаты")
                 .status("ожидает_оплаты")
@@ -80,14 +83,71 @@ public class TicketService {
         return toResponse(ticketRepository.save(ticket));
     }
 
+    @Transactional
+    public TicketResponse refundTicket(Long ticketId, String actorIdentifier) {
+        User actor = resolveActor(actorIdentifier);
+        Ticket ticket = ticketRepository.findById(ticketId)
+            .orElseThrow(() -> new ResourceNotFoundException("Ticket not found"));
+
+        boolean ownTicket = ticket.getUser() != null
+            && ticket.getUser().getId() != null
+            && ticket.getUser().getId().equals(actor.getId());
+        boolean admin = hasAdminRole(actor);
+        if (!ownTicket && !admin) {
+            throw new BadRequestException("Недостаточно прав для возврата билета");
+        }
+
+        if ("возвращён".equals(ticket.getStatus())) {
+            return toResponse(ticket);
+        }
+        if ("использован".equals(ticket.getStatus())) {
+            throw new BadRequestException("Использованный билет нельзя вернуть");
+        }
+
+        ticket.setStatus("возвращён");
+        ticket.setUsedAt(OffsetDateTime.now());
+        Ticket saved = ticketRepository.save(ticket);
+
+        Long orderId = saved.getOrderItem() == null || saved.getOrderItem().getOrder() == null
+            ? null
+            : saved.getOrderItem().getOrder().getId();
+        if (orderId != null) {
+            long notReturnedCount = ticketRepository.countByOrderItemOrderIdAndStatusNot(orderId, "возвращён");
+            if (notReturnedCount == 0) {
+                orderRepository.findById(orderId).ifPresent(order -> {
+                    order.setStatus("отменён");
+                    order.setUpdatedAt(OffsetDateTime.now());
+                    orderRepository.save(order);
+                });
+            }
+        }
+
+        return toResponse(saved);
+    }
+
     private TicketResponse toResponse(Ticket ticket) {
+        TicketType ticketType = ticket.getOrderItem() == null ? null : ticket.getOrderItem().getTicketType();
         return TicketResponse.builder()
             .ticketId(ticket.getId())
             .orderId(ticket.getOrderItem() == null || ticket.getOrderItem().getOrder() == null ? null : ticket.getOrderItem().getOrder().getId())
             .eventId(ticket.getSession() == null || ticket.getSession().getEvent() == null ? null : ticket.getSession().getEvent().getId())
             .eventTitle(ticket.getSession() == null || ticket.getSession().getEvent() == null ? null : ticket.getSession().getEvent().getTitle())
+            .eventShortDescription(ticket.getSession() == null || ticket.getSession().getEvent() == null ? null : ticket.getSession().getEvent().getShortDescription())
             .sessionId(ticket.getSession() == null ? null : ticket.getSession().getId())
             .sessionTitle(ticket.getSession() == null ? null : ticket.getSession().getSessionTitle())
+            .sessionStartsAt(ticket.getSession() == null || ticket.getSession().getStartsAt() == null ? null : ticket.getSession().getStartsAt().toLocalDateTime())
+            .sessionEndsAt(ticket.getSession() == null || ticket.getSession().getEndsAt() == null ? null : ticket.getSession().getEndsAt().toLocalDateTime())
+            .venueName(ticket.getSession() == null || ticket.getSession().getVenue() == null ? null : ticket.getSession().getVenue().getName())
+            .venueAddress(ticket.getSession() == null || ticket.getSession().getVenue() == null ? null : ticket.getSession().getVenue().getAddress())
+            .cityName(ticket.getSession() == null
+                || ticket.getSession().getVenue() == null
+                || ticket.getSession().getVenue().getCity() == null
+                ? null
+                : ticket.getSession().getVenue().getCity().getName())
+            .ticketTypeName(ticketType == null ? null : ticketType.getName())
+            .ticketPrice(ticket.getOrderItem() == null ? null : ticket.getOrderItem().getUnitPrice())
+            .ticketCurrency(ticketType == null ? null : ticketType.getCurrency())
+            .holderName(resolveHolderName(ticket.getUser()))
             .status(ticket.getStatus())
             .qrToken(ticket.getQrToken())
             .issuedAt(ticket.getIssuedAt() == null ? null : ticket.getIssuedAt().toLocalDateTime())
@@ -103,6 +163,29 @@ public class TicketService {
             RoleName roleName = userRole.getRole().toRoleName();
             return roleName == RoleName.ROLE_ORGANIZER || roleName == RoleName.ROLE_ADMIN;
         });
+    }
+
+    private boolean hasAdminRole(User user) {
+        return user.getUserRoles().stream()
+            .anyMatch(userRole -> userRole.getRole().toRoleName() == RoleName.ROLE_ADMIN);
+    }
+
+    private String resolveHolderName(User user) {
+        if (user == null) {
+            return null;
+        }
+
+        String fullName = (user.getFirstName() + " " + user.getLastName()).trim();
+        if (StringUtils.hasText(fullName)) {
+            return fullName;
+        }
+        if (StringUtils.hasText(user.getLogin())) {
+            return user.getLogin();
+        }
+        if (StringUtils.hasText(user.getEmail())) {
+            return user.getEmail();
+        }
+        return null;
     }
 
     private User resolveActor(String actorIdentifier) {
