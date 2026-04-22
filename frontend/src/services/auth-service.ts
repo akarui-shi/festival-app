@@ -125,9 +125,8 @@ export const authService = {
       throw new Error('Не авторизован');
     }
 
-    const login = localStorage.getItem(CURRENT_USER_LOGIN_KEY) || buildLoginFromEmail(current.email);
-    const response = await apiPut<User>('/users/me', {
-      login,
+    const response = await apiPut<AuthResponse>('/users/me', {
+      login: current.login,
       email: data.email ?? current.email,
       firstName: data.firstName ?? current.firstName,
       lastName: data.lastName ?? current.lastName,
@@ -137,8 +136,7 @@ export const authService = {
         : (current.avatarImageId ?? undefined),
     });
 
-    persistUser(response, response.login, localStorage.getItem('auth_token') || undefined);
-    return response;
+    return normalizeAuthResponse(response).user;
   },
 
   getOAuthLoginUrl(provider: 'vk' | 'yandex'): string {

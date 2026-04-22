@@ -34,6 +34,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
+        // If a Bearer token is provided, it must take precedence over any session-based auth.
+        // This prevents account mix-ups when an old OAuth2 session cookie is still present.
+        SecurityContextHolder.clearContext();
+
         String jwt = authHeader.substring(7);
         String username;
 
@@ -44,7 +48,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if (username != null) {
             try {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                 if (jwtService.isTokenValid(jwt, userDetails)) {
@@ -52,8 +56,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                } else {
+                    SecurityContextHolder.clearContext();
                 }
             } catch (UsernameNotFoundException ex) {
+                SecurityContextHolder.clearContext();
                 filterChain.doFilter(request, response);
                 return;
             }
