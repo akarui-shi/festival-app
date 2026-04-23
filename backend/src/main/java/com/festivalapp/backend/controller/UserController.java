@@ -1,6 +1,7 @@
 package com.festivalapp.backend.controller;
 
 import com.festivalapp.backend.dto.AuthResponse;
+import com.festivalapp.backend.dto.ChangePasswordRequest;
 import com.festivalapp.backend.dto.CurrentUserResponse;
 import com.festivalapp.backend.dto.UpdateCurrentUserRequest;
 import com.festivalapp.backend.exception.UnauthorizedException;
@@ -15,6 +16,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -42,6 +44,13 @@ public class UserController {
             .user(updatedUser)
             .build();
         return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/me/password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request,
+                                               Authentication authentication) {
+        userService.changeCurrentUserPassword(extractUserIdentifier(authentication), request);
+        return ResponseEntity.noContent().build();
     }
 
     private String extractUserIdentifier(Authentication authentication) {

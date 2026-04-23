@@ -1,5 +1,6 @@
 package com.festivalapp.backend.service;
 
+import com.festivalapp.backend.dto.ChangePasswordRequest;
 import com.festivalapp.backend.dto.CurrentUserResponse;
 import com.festivalapp.backend.dto.UpdateCurrentUserRequest;
 import com.festivalapp.backend.entity.Organization;
@@ -12,6 +13,7 @@ import com.festivalapp.backend.repository.ImageRepository;
 import com.festivalapp.backend.repository.OrganizationMemberRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -30,6 +32,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
     private final ImageRepository imageRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public CurrentUserResponse getCurrentUser(String username) {
@@ -74,6 +77,23 @@ public class UserService {
 
         User saved = userRepository.save(user);
         return toCurrentUserResponse(saved);
+    }
+
+    @Transactional
+    public void changeCurrentUserPassword(String username, ChangePasswordRequest request) {
+        User user = userRepository.findByLoginOrEmailWithRoles(username)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new BadRequestException("Текущий пароль указан неверно");
+        }
+        if (request.getCurrentPassword().equals(request.getNewPassword())) {
+            throw new BadRequestException("Новый пароль должен отличаться от текущего");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setUpdatedAt(OffsetDateTime.now());
+        userRepository.save(user);
     }
 
     private CurrentUserResponse toCurrentUserResponse(User user) {

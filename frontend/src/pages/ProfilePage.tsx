@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building2, Loader2, Upload, User } from 'lucide-react';
+import { Building2, KeyRound, Loader2, Upload, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PublicLayout } from '@/layouts/PublicLayout';
@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { authService } from '@/services/auth-service';
 import { fileUploadService } from '@/services/file-upload-service';
 import { imageSrc } from '@/lib/image';
 
@@ -14,15 +15,24 @@ export default function ProfilePage() {
   const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
   const [form, setForm] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     phone: user?.phone || '',
     avatarImageId: user?.avatarImageId || null,
   });
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
 
   const updateField = (field: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+  const updatePasswordField = (field: keyof typeof passwordForm, value: string) => {
+    setPasswordForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -58,6 +68,42 @@ export default function ProfilePage() {
       toast.error(error?.message || 'Не удалось загрузить аватар');
     } finally {
       setUploadingAvatar(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      toast.error('Заполните все поля для смены пароля');
+      return;
+    }
+    if (passwordForm.newPassword.length < 6) {
+      toast.error('Новый пароль должен содержать минимум 6 символов');
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error('Подтверждение пароля не совпадает');
+      return;
+    }
+    if (passwordForm.currentPassword === passwordForm.newPassword) {
+      toast.error('Новый пароль должен отличаться от текущего');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await authService.changeCurrentPassword(passwordForm.currentPassword, passwordForm.newPassword);
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+      toast.success('Пароль успешно изменён');
+    } catch (error: any) {
+      toast.error(error?.message || 'Не удалось изменить пароль');
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -168,6 +214,50 @@ export default function ProfilePage() {
               {loading ? 'Сохранение…' : 'Сохранить'}
             </Button>
           </form>
+
+          <div className="mt-8 border-t border-border pt-6">
+            <p className="mb-3 inline-flex items-center gap-2 font-heading text-lg text-foreground">
+              <KeyRound className="h-5 w-5 text-primary" />
+              Смена пароля
+            </p>
+            <form onSubmit={handlePasswordSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="currentPassword">Текущий пароль</Label>
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  value={passwordForm.currentPassword}
+                  onChange={(event) => updatePasswordField('currentPassword', event.target.value)}
+                  autoComplete="current-password"
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">Новый пароль</Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={(event) => updatePasswordField('newPassword', event.target.value)}
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Подтверждение</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(event) => updatePasswordField('confirmPassword', event.target.value)}
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+              <Button type="submit" variant="outline" disabled={changingPassword}>
+                {changingPassword ? 'Обновляем пароль…' : 'Изменить пароль'}
+              </Button>
+            </form>
+          </div>
         </div>
       </div>
     </PublicLayout>
