@@ -13,7 +13,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const [email, setEmail] = useState('');
+  const [loginOrEmail, setLoginOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -25,7 +25,7 @@ export default function LoginPage() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!email || !password) {
+    if (!loginOrEmail || !password) {
       setError('Заполните все поля');
       return;
     }
@@ -33,7 +33,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
+      await login(loginOrEmail, password);
       toast.success('Добро пожаловать');
       navigate('/');
     } catch (loginError: any) {
@@ -63,13 +63,14 @@ export default function LoginPage() {
 
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="loginOrEmail">Логин или email</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="your@email.com"
+                  id="loginOrEmail"
+                  type="text"
+                  value={loginOrEmail}
+                  onChange={(event) => setLoginOrEmail(event.target.value)}
+                  placeholder="ivan.petrov или ivan@mail.com"
+                  autoComplete="username"
                 />
               </div>
               <div className="space-y-2">

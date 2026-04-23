@@ -6,7 +6,7 @@ import { userHasRole } from '@/lib/auth-roles';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (loginOrEmail: string, password: string) => Promise<void>;
   register: (
     email: string,
     password: string,
@@ -45,8 +45,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await authService.login({ email, password });
+  const login = useCallback(async (loginOrEmail: string, password: string) => {
+    const res = await authService.login({ loginOrEmail, password });
     setUser(res.user);
   }, []);
 
