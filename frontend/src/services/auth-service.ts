@@ -76,7 +76,7 @@ async function fetchCurrentUserDirect(token: string): Promise<User> {
 export const authService = {
   async login(req: LoginRequest): Promise<AuthResponse> {
     const response = await apiPost<AuthResponse>('/auth/login', {
-      loginOrEmail: req.email,
+      loginOrEmail: req.loginOrEmail,
       password: req.password,
     });
 

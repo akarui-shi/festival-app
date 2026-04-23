@@ -30,7 +30,7 @@ export interface AuthResponse {
 }
 
 export interface LoginRequest {
-  email: string;
+  loginOrEmail: string;
   password: string;
 }
 
