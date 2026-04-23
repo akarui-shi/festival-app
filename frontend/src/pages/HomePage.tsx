@@ -9,6 +9,7 @@ import { LoadingState } from '@/components/StateDisplays';
 import { imageSrc } from '@/lib/image';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCity } from '@/contexts/CityContext';
 import { eventService } from '@/services/event-service';
 import type { Event } from '@/types';
 
@@ -26,18 +27,81 @@ function formatDate(value?: string): string {
   }).format(date);
 }
 
+function resolveEventDate(event: Event): string | undefined {
+  return event.nextSessionAt || event.startDate || event.sessionDates?.[0] || event.createdAt || undefined;
+}
+
+function resolveEventDateTime(event: Event): number {
+  const value = resolveEventDate(event);
+  if (!value) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : Number.POSITIVE_INFINITY;
+}
+
+function resolveEventTitle(event: Event): string {
+  const value = event.title?.trim();
+  return value && value.length > 0 ? value : 'Мероприятие';
+}
+
+function resolveEventCityName(event: Event): string {
+  return event.city?.name || event.cityName || event.venue?.city?.name || event.venue?.cityName || 'Город уточняется';
+}
+
 export default function HomePage() {
   const { user, isAuthenticated, updateUser } = useAuth();
+  const { selectedCity, loading: cityLoading } = useCity();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingSubscription, setUpdatingSubscription] = useState(false);
 
   useEffect(() => {
+    if (cityLoading) {
+      return;
+    }
+
+    let active = true;
+    setLoading(true);
+    const selectedCityId = selectedCity?.id == null ? null : String(selectedCity.id);
+
     eventService
-      .getEvents({ size: 6 })
-      .then((response) => setEvents(response.content))
-      .finally(() => setLoading(false));
-  }, []);
+      .getEvents({
+        size: 120,
+        cityId: selectedCity?.id || undefined,
+        status: 'PUBLISHED',
+      })
+      .then((response) => {
+        if (!active) return;
+
+        if (!selectedCityId) {
+          setEvents([]);
+          return;
+        }
+
+        const filtered = response.content.filter((event) => {
+          const eventCityId = event.cityId ?? event.city?.id;
+          return eventCityId != null && String(eventCityId) === selectedCityId;
+        });
+
+        setEvents(filtered);
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedCity?.id, cityLoading]);
+
+  const sortedEvents = [...events].sort((left, right) => resolveEventDateTime(left) - resolveEventDateTime(right));
+  const upcomingEvent = sortedEvents[0];
+  const featuredEvents = sortedEvents.slice(0, 3);
+  const notificationsEnabled = Boolean(user?.newEventsNotificationsEnabled);
 
   if (loading) {
     return (
@@ -46,10 +110,6 @@ export default function HomePage() {
       </PublicLayout>
     );
   }
-
-  const upcomingEvent = events[0];
-  const featuredEvents = events.slice(0, 3);
-  const notificationsEnabled = Boolean(user?.newEventsNotificationsEnabled);
 
   const toggleSubscription = async (enabled: boolean) => {
     if (!isAuthenticated) {
@@ -94,11 +154,13 @@ export default function HomePage() {
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
-                <Link to="/register">
-                  <Button variant="outline" size="lg">
-                    Создать аккаунт
-                  </Button>
-                </Link>
+                {!isAuthenticated && (
+                  <Link to="/register">
+                    <Button variant="outline" size="lg">
+                      Создать аккаунт
+                    </Button>
+                  </Link>
+                )}
               </div>
             </div>
 
@@ -107,8 +169,8 @@ export default function HomePage() {
                 <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
                   <div className="relative aspect-video overflow-hidden">
                     <img
-                      src={imageSrc(upcomingEvent.coverImageId == null ? null : Number(upcomingEvent.coverImageId))}
-                      alt={upcomingEvent.title}
+                      src={imageSrc(upcomingEvent.coverImageId == null ? null : Number(upcomingEvent.coverImageId), '/placeholder-event.svg')}
+                      alt={resolveEventTitle(upcomingEvent)}
                       className="h-full w-full object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 to-transparent" />
@@ -116,18 +178,18 @@ export default function HomePage() {
                       <span className="mb-1 inline-block rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
                         Ближайшее событие
                       </span>
-                      <h3 className="font-heading text-xl text-primary-foreground">{upcomingEvent.title}</h3>
+                      <h3 className="font-heading text-xl text-primary-foreground">{resolveEventTitle(upcomingEvent)}</h3>
                     </div>
                   </div>
                   <div className="flex items-center justify-between p-4">
                     <div className="flex flex-col gap-1 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1.5">
                         <CalendarDays className="h-4 w-4 text-primary" />
-                        {formatDate(upcomingEvent.startDate)}
+                        {formatDate(resolveEventDate(upcomingEvent))}
                       </span>
                       <span className="flex items-center gap-1.5">
                         <MapPin className="h-4 w-4 text-primary" />
-                        {upcomingEvent.city?.name || 'Город уточняется'}
+                        {resolveEventCityName(upcomingEvent)}
                       </span>
                     </div>
                     <Link to={`/events/${upcomingEvent.id}`}>
