@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { authService } from '@/services/auth-service';
 import { fileUploadService } from '@/services/file-upload-service';
 import { imageSrc } from '@/lib/image';
@@ -18,6 +19,7 @@ function buildProfileForm(user: {
   lastName?: string | null;
   phone?: string | null;
   avatarImageId?: number | null;
+  newEventsNotificationsEnabled?: boolean;
 } | null | undefined) {
   return {
     login: user?.login || '',
@@ -26,6 +28,7 @@ function buildProfileForm(user: {
     lastName: user?.lastName || '',
     phone: user?.phone || '',
     avatarImageId: user?.avatarImageId || null,
+    newEventsNotificationsEnabled: Boolean(user?.newEventsNotificationsEnabled),
   };
 }
 
@@ -36,6 +39,7 @@ function normalizeProfileForm(form: {
   lastName: string;
   phone: string;
   avatarImageId: number | null;
+  newEventsNotificationsEnabled: boolean;
 }) {
   return {
     login: form.login.trim(),
@@ -44,6 +48,7 @@ function normalizeProfileForm(form: {
     lastName: form.lastName.trim(),
     phone: form.phone.trim(),
     avatarImageId: form.avatarImageId,
+    newEventsNotificationsEnabled: form.newEventsNotificationsEnabled,
   };
 }
 
@@ -60,7 +65,10 @@ export default function ProfilePage() {
     confirmPassword: '',
   });
 
-  const updateField = (field: keyof typeof form, value: string) => {
+  const updateField = (field: Exclude<keyof typeof form, 'avatarImageId' | 'newEventsNotificationsEnabled'>, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+  const updateBooleanField = (field: 'newEventsNotificationsEnabled', value: boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
   const updatePasswordField = (field: keyof typeof passwordForm, value: string) => {
@@ -97,6 +105,7 @@ export default function ProfilePage() {
         firstName: normalizedForm.firstName,
         lastName: normalizedForm.lastName,
         phone: normalizedForm.phone,
+        newEventsNotificationsEnabled: normalizedForm.newEventsNotificationsEnabled,
         avatarImageId: normalizedForm.avatarImageId,
       });
       setForm(buildProfileForm(updatedUser));
@@ -335,6 +344,22 @@ export default function ProfilePage() {
                       value={form.phone}
                       onChange={(event) => updateField('phone', event.target.value)}
                       placeholder="+7 900 123-45-67"
+                    />
+                  </div>
+                </section>
+
+                <section className="rounded-xl border border-border p-4">
+                  <p className="font-heading text-lg text-foreground">Уведомления</p>
+                  <p className="mb-4 mt-1 text-xs text-muted-foreground">Настройте получение анонсов о новых мероприятиях на email.</p>
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Новые мероприятия</p>
+                      <p className="text-xs text-muted-foreground">Письма будут приходить на {form.email || 'ваш email'}</p>
+                    </div>
+                    <Switch
+                      checked={form.newEventsNotificationsEnabled}
+                      onCheckedChange={(checked) => updateBooleanField('newEventsNotificationsEnabled', checked)}
+                      aria-label="Подписка на новые мероприятия"
                     />
                   </div>
                 </section>

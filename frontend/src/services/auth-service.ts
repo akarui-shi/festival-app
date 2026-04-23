@@ -90,6 +90,7 @@ export const authService = {
       password: req.password,
       firstName: req.firstName,
       lastName: req.lastName,
+      newEventsNotificationsEnabled: req.newEventsNotificationsEnabled,
       role: req.role || 'RESIDENT',
       companyName: req.companyName,
       organizationId: req.organizationId,
@@ -133,6 +134,7 @@ export const authService = {
       firstName: data.firstName ?? current.firstName,
       lastName: data.lastName ?? current.lastName,
       phone: data.phone ?? current.phone ?? '',
+      newEventsNotificationsEnabled: data.newEventsNotificationsEnabled ?? current.newEventsNotificationsEnabled ?? false,
       avatarImageId: Object.prototype.hasOwnProperty.call(data, 'avatarImageId')
         ? data.avatarImageId
         : (current.avatarImageId ?? undefined),

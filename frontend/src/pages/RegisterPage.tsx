@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { PublicLayout } from '@/layouts/PublicLayout';
@@ -7,11 +7,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { organizationService } from '@/services/organization-service';
 import type { Organization } from '@/types';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const subscribeByDefault = searchParams.get('subscribe') === '1';
   const { register } = useAuth();
 
   const [form, setForm] = useState({
@@ -26,13 +29,17 @@ export default function RegisterPage() {
     organizationSearch: '',
     organizationId: '',
     joinRequestMessage: '',
+    newEventsNotificationsEnabled: subscribeByDefault,
   });
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [showOrganizationSuggestions, setShowOrganizationSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const updateField = (field: keyof typeof form, value: string) => {
+  const updateField = (field: Exclude<keyof typeof form, 'newEventsNotificationsEnabled'>, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+  const updateBooleanField = (field: 'newEventsNotificationsEnabled', value: boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -102,6 +109,7 @@ export default function RegisterPage() {
         form.password,
         form.firstName,
         form.lastName,
+        form.newEventsNotificationsEnabled,
         form.role,
         form.role === 'ORGANIZER' && form.organizationMode === 'create' ? form.companyName : undefined,
         form.role === 'ORGANIZER' && form.organizationMode === 'join' ? Number(form.organizationId) : undefined,
@@ -314,6 +322,20 @@ export default function RegisterPage() {
                   onChange={(event) => updateField('confirmPassword', event.target.value)}
                   placeholder="Повторите пароль"
                 />
+              </div>
+
+              <div className="rounded-lg border border-border bg-muted/40 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Уведомления о новых мероприятиях</p>
+                    <p className="text-xs text-muted-foreground">Будем присылать анонсы новых событий на email</p>
+                  </div>
+                  <Switch
+                    checked={form.newEventsNotificationsEnabled}
+                    onCheckedChange={(checked) => updateBooleanField('newEventsNotificationsEnabled', checked)}
+                    aria-label="Подписка на уведомления о новых мероприятиях"
+                  />
+                </div>
               </div>
 
               {error && <p className="text-sm text-destructive">{error}</p>}

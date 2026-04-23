@@ -74,6 +74,9 @@ public class UserService {
         user.setFirstName(normalizeOptional(request.getFirstName()) == null ? user.getFirstName() : normalizeOptional(request.getFirstName()));
         user.setLastName(normalizeOptional(request.getLastName()) == null ? user.getLastName() : normalizeOptional(request.getLastName()));
         user.setPhone(normalizedPhone);
+        if (request.getNewEventsNotificationsEnabled() != null) {
+            user.setNewEventsNotificationsEnabled(request.getNewEventsNotificationsEnabled());
+        }
         if (request.getAvatarImageId() == null) {
             user.setAvatarImage(null);
         } else {
@@ -120,6 +123,7 @@ public class UserService {
             .email(user.getEmail())
             .emailVerified(user.isEmailVerified())
             .pendingEmail(user.getPendingEmail())
+            .newEventsNotificationsEnabled(user.isNewEventsNotificationsEnabled())
             .phone(user.getPhone())
             .firstName(user.getFirstName())
             .lastName(user.getLastName())

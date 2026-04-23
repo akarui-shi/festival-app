@@ -42,4 +42,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @EntityGraph(attributePaths = {"userRoles", "userRoles.role", "city"})
     @Query("select u from User u where u.id = :id and u.deletedAt is null")
     Optional<User> findByIdWithRoles(@Param("id") Long id);
+
+    List<User> findAllByDeletedAtIsNullAndActiveTrueAndEmailVerifiedTrueAndNewEventsNotificationsEnabledTrueAndEmailIsNotNull();
 }
