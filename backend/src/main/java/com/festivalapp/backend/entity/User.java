@@ -47,6 +47,10 @@ public class User {
     @Column(name = "pending_email", unique = true)
     private String pendingEmail;
 
+    @Builder.Default
+    @Column(name = "new_events_notifications_enabled", nullable = false)
+    private boolean newEventsNotificationsEnabled = false;
+
     @Column(unique = true)
     private String phone;
 

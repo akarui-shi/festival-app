@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CalendarDays, MapPin, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { EventCard } from '@/components/EventCard';
 import { LoadingState } from '@/components/StateDisplays';
 import { imageSrc } from '@/lib/image';
 import { PublicLayout } from '@/layouts/PublicLayout';
+import { useAuth } from '@/contexts/AuthContext';
 import { eventService } from '@/services/event-service';
 import type { Event } from '@/types';
 
@@ -24,8 +27,10 @@ function formatDate(value?: string): string {
 }
 
 export default function HomePage() {
+  const { user, isAuthenticated, updateUser } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updatingSubscription, setUpdatingSubscription] = useState(false);
 
   useEffect(() => {
     eventService
@@ -44,6 +49,24 @@ export default function HomePage() {
 
   const upcomingEvent = events[0];
   const featuredEvents = events.slice(0, 3);
+  const notificationsEnabled = Boolean(user?.newEventsNotificationsEnabled);
+
+  const toggleSubscription = async (enabled: boolean) => {
+    if (!isAuthenticated) {
+      toast.info('Войдите в аккаунт, чтобы управлять подпиской на уведомления');
+      return;
+    }
+
+    setUpdatingSubscription(true);
+    try {
+      await updateUser({ newEventsNotificationsEnabled: enabled });
+      toast.success(enabled ? 'Подписка на новые мероприятия включена' : 'Подписка отключена');
+    } catch (error: any) {
+      toast.error(error?.message || 'Не удалось обновить подписку');
+    } finally {
+      setUpdatingSubscription(false);
+    }
+  };
 
   return (
     <PublicLayout>
@@ -150,6 +173,40 @@ export default function HomePage() {
               Все мероприятия <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
+        </div>
+      </section>
+
+      <section className="container mx-auto px-4 py-10">
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-heading text-2xl text-foreground">Уведомления о новых мероприятиях</h2>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                Получайте анонсы новых событий по email и не пропускайте интересные мероприятия.
+              </p>
+            </div>
+
+            {isAuthenticated ? (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground">{notificationsEnabled ? 'Включено' : 'Выключено'}</span>
+                <Switch
+                  checked={notificationsEnabled}
+                  onCheckedChange={(checked) => void toggleSubscription(checked)}
+                  disabled={updatingSubscription}
+                  aria-label="Подписка на новые мероприятия"
+                />
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <Link to="/register?subscribe=1">
+                  <Button>Подписаться</Button>
+                </Link>
+                <Link to="/login">
+                  <Button variant="outline">Войти</Button>
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 

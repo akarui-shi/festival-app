@@ -15,6 +15,7 @@ export interface User {
   email: string;
   emailVerified?: boolean;
   pendingEmail?: string | null;
+  newEventsNotificationsEnabled?: boolean;
   firstName?: string | null;
   lastName?: string | null;
   phone?: string | null;
@@ -51,6 +52,7 @@ export interface RegisterRequest {
   password: string;
   firstName: string;
   lastName: string;
+  newEventsNotificationsEnabled?: boolean;
   role?: UserRole;
   companyName?: string;
   organizationId?: Id;

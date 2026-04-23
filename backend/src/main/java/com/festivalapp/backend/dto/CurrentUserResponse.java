@@ -14,6 +14,7 @@ public class CurrentUserResponse {
     private String email;
     private boolean emailVerified;
     private String pendingEmail;
+    private boolean newEventsNotificationsEnabled;
     private String firstName;
     private String lastName;
     private String phone;

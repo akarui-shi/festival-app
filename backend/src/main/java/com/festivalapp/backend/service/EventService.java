@@ -87,6 +87,7 @@ public class EventService {
     private final CommentRepository commentRepository;
     private final TicketRepository ticketRepository;
     private final TicketTypeRepository ticketTypeRepository;
+    private final EventNotificationService eventNotificationService;
 
     @Transactional(readOnly = true)
     public List<EventShortResponse> getAll(String title,
@@ -379,9 +380,15 @@ public class EventService {
     @Transactional
     public EventShortResponse updateStatusByAdmin(Long eventId, EventStatus status) {
         Event event = loadEvent(eventId);
-        event.setStatus(DomainStatusMapper.toEventDbStatus(status == null ? EventStatus.DRAFT : status));
+        EventStatus previousStatus = DomainStatusMapper.toEventStatus(event.getStatus());
+        EventStatus targetStatus = status == null ? EventStatus.DRAFT : status;
+        event.setStatus(DomainStatusMapper.toEventDbStatus(targetStatus));
         event.setUpdatedAt(OffsetDateTime.now());
-        return toShortResponse(hydrateEvent(eventRepository.save(event)));
+        Event saved = eventRepository.save(event);
+        if (previousStatus != EventStatus.PUBLISHED && targetStatus == EventStatus.PUBLISHED) {
+            eventNotificationService.notifyNewPublishedEvent(hydrateEvent(saved));
+        }
+        return toShortResponse(hydrateEvent(saved));
     }
 
     @Transactional

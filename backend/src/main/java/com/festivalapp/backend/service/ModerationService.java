@@ -5,6 +5,7 @@ import com.festivalapp.backend.dto.ModerationResponse;
 import com.festivalapp.backend.entity.Artist;
 import com.festivalapp.backend.entity.Comment;
 import com.festivalapp.backend.entity.Event;
+import com.festivalapp.backend.entity.EventStatus;
 import com.festivalapp.backend.entity.Moderation;
 import com.festivalapp.backend.entity.Publication;
 import com.festivalapp.backend.entity.RoleName;
@@ -38,6 +39,7 @@ public class ModerationService {
     private final PublicationRepository publicationRepository;
     private final CommentRepository commentRepository;
     private final AdminAuditService adminAuditService;
+    private final EventNotificationService eventNotificationService;
 
     @Transactional
     public ModerationResponse applyDecision(ModerationDecisionRequest request, String adminIdentifier) {
@@ -84,6 +86,7 @@ public class ModerationService {
     private void moderateEvent(Long eventId, String decision) {
         Event event = eventRepository.findByIdAndDeletedAtIsNull(eventId)
             .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
+        EventStatus previousStatus = DomainStatusMapper.toEventStatus(event.getStatus());
 
         if ("одобрено".equals(decision)) {
             event.setStatus("опубликовано");
@@ -91,7 +94,12 @@ public class ModerationService {
             event.setStatus("отклонено");
         }
         event.setUpdatedAt(OffsetDateTime.now());
-        eventRepository.save(event);
+        Event saved = eventRepository.save(event);
+
+        EventStatus currentStatus = DomainStatusMapper.toEventStatus(saved.getStatus());
+        if (previousStatus != EventStatus.PUBLISHED && currentStatus == EventStatus.PUBLISHED) {
+            eventNotificationService.notifyNewPublishedEvent(saved);
+        }
     }
 
     private void moderateOrganization(Long organizationId, String decision) {

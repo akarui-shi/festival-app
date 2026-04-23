@@ -30,4 +30,6 @@ public class UpdateCurrentUserRequest {
 
     @Min(value = 1, message = "Некорректный идентификатор изображения")
     private Long avatarImageId;
+
+    private Boolean newEventsNotificationsEnabled;
 }
