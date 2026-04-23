@@ -102,6 +102,10 @@ const KOLOMNA_TICKET_BACKGROUNDS = [
   '/ticket-scene-festival.svg',
   '/ticket-scene-jazz.svg',
   '/ticket-scene-lecture.svg',
+  '/ticket-scene-riverwalk.svg',
+  '/ticket-scene-theatre.svg',
+  '/ticket-scene-techno.svg',
+  '/ticket-scene-art.svg',
 ];
 
 function pickKolomnaBackground(ticket: Ticket): string {
@@ -146,7 +150,7 @@ function formatDateTime(value?: string | null, fallback = 'Не указано')
 }
 
 function formatTicketPrice(value?: number | null, currency?: string | null): string {
-  if (value == null || Number.isNaN(Number(value))) {
+  if (value == null || Number.isNaN(Number(value)) || Number(value) <= 0) {
     return 'Бесплатно';
   }
   return `${Number(value).toLocaleString('ru-RU')} ${currency || 'RUB'}`;
@@ -217,7 +221,7 @@ export default function RegistrationsPage() {
             </div>
           </>
         ) : (
-          <div className="mx-auto mt-8 max-w-5xl space-y-3">
+          <div className="mx-auto mt-8 max-w-4xl space-y-3">
             {tickets.map((ticket) => {
               const status = getRegistrationStatusBadge(ticket.status);
               const startsAt = ticket.sessionStartsAt || ticket.issuedAt;
@@ -249,33 +253,33 @@ export default function RegistrationsPage() {
               return (
                 <div
                   key={ticket.ticketId}
-                  className={`relative overflow-hidden rounded-[22px] border ${theme.border} shadow-[0_20px_36px_-24px_rgba(23,16,12,0.75)]`}
+                  className={`relative overflow-hidden rounded-[18px] border ${theme.border} shadow-[0_18px_30px_-22px_rgba(23,16,12,0.75)]`}
                 >
                   <div
                     className="absolute inset-0 bg-cover bg-center"
                     style={{ backgroundImage: `url('${backgroundImage}')` }}
                   />
                   <div className={`absolute inset-0 ${theme.overlay}`} />
-                  <div className="absolute -left-3 top-[16%] hidden h-6 w-6 -translate-y-1/2 rounded-full bg-background md:block" />
-                  <div className="absolute -left-3 top-[38%] hidden h-6 w-6 -translate-y-1/2 rounded-full bg-background md:block" />
-                  <div className="absolute -left-3 top-[60%] hidden h-6 w-6 -translate-y-1/2 rounded-full bg-background md:block" />
-                  <div className="absolute -left-3 top-[82%] hidden h-6 w-6 -translate-y-1/2 rounded-full bg-background md:block" />
-                  <div className="absolute -right-3 top-[16%] hidden h-6 w-6 -translate-y-1/2 rounded-full bg-background md:block" />
-                  <div className="absolute -right-3 top-[38%] hidden h-6 w-6 -translate-y-1/2 rounded-full bg-background md:block" />
-                  <div className="absolute -right-3 top-[60%] hidden h-6 w-6 -translate-y-1/2 rounded-full bg-background md:block" />
-                  <div className="absolute -right-3 top-[82%] hidden h-6 w-6 -translate-y-1/2 rounded-full bg-background md:block" />
-                  <div className="absolute -top-5 right-[176px] hidden h-10 w-10 rounded-full bg-background md:block" />
-                  <div className="absolute -bottom-5 right-[176px] hidden h-10 w-10 rounded-full bg-background md:block" />
+                  <div className="absolute -left-3 top-[16%] z-20 hidden h-6 w-6 -translate-y-1/2 rounded-full md:block" style={{ backgroundColor: '#ffffff' }} />
+                  <div className="absolute -left-3 top-[38%] z-20 hidden h-6 w-6 -translate-y-1/2 rounded-full md:block" style={{ backgroundColor: '#ffffff' }} />
+                  <div className="absolute -left-3 top-[60%] z-20 hidden h-6 w-6 -translate-y-1/2 rounded-full md:block" style={{ backgroundColor: '#ffffff' }} />
+                  <div className="absolute -left-3 top-[82%] z-20 hidden h-6 w-6 -translate-y-1/2 rounded-full md:block" style={{ backgroundColor: '#ffffff' }} />
+                  <div className="absolute -right-3 top-[16%] z-20 hidden h-6 w-6 -translate-y-1/2 rounded-full md:block" style={{ backgroundColor: '#ffffff' }} />
+                  <div className="absolute -right-3 top-[38%] z-20 hidden h-6 w-6 -translate-y-1/2 rounded-full md:block" style={{ backgroundColor: '#ffffff' }} />
+                  <div className="absolute -right-3 top-[60%] z-20 hidden h-6 w-6 -translate-y-1/2 rounded-full md:block" style={{ backgroundColor: '#ffffff' }} />
+                  <div className="absolute -right-3 top-[82%] z-20 hidden h-6 w-6 -translate-y-1/2 rounded-full md:block" style={{ backgroundColor: '#ffffff' }} />
+                  <div className="absolute -top-5 right-[164px] z-20 hidden h-10 w-10 rounded-full md:block" style={{ backgroundColor: '#ffffff' }} />
+                  <div className="absolute -bottom-5 right-[164px] z-20 hidden h-10 w-10 rounded-full md:block" style={{ backgroundColor: '#ffffff' }} />
 
-                  <div className="relative grid min-h-[188px] md:min-h-[170px] md:grid-cols-[1fr_176px]">
-                    <div className={`flex flex-col p-3 text-white md:p-3.5 ${theme.mainPanel}`}>
+                  <div className="relative grid min-h-[172px] md:min-h-[156px] md:grid-cols-[1fr_184px]">
+                    <div className={`flex flex-col py-2.5 pl-5 pr-4 text-left text-white md:py-3 md:pl-8 md:pr-6 ${theme.mainPanel}`}>
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="font-heading text-[2.35rem] leading-[0.82] text-white drop-shadow-sm">{dateParts.day}</p>
+                          <p className="font-heading text-[2.2rem] leading-[0.82] text-white drop-shadow-sm">{dateParts.day}</p>
                           <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-white/88">{dateParts.month}</p>
                           <p className="text-[1rem] font-bold text-white/95">{dateParts.time}</p>
                         </div>
-                        <div className="text-right">
+                        <div className="mr-4 text-right md:mr-6">
                           <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.06em] shadow-sm ${statusPillClass}`}>
                             {status.label}
                           </span>
@@ -287,36 +291,38 @@ export default function RegistrationsPage() {
 
                       <Link
                         to={ticket.eventId ? `/events/${ticket.eventId}` : '/events'}
-                        className="mt-1 block break-words font-heading text-[1.7rem] leading-tight text-white hover:text-white/90"
+                        className="mt-0.5 block break-words font-heading text-[1.9rem] leading-[0.95] text-white hover:text-white/90"
                       >
                         {eventLabel}
                       </Link>
-                      <p className="break-words text-[15px] font-bold tracking-[0.02em] text-white/92">
+                      <p className="break-words text-[16px] font-bold tracking-[0.02em] text-white/94">
                         {sessionLabel}
                       </p>
                       {shortDescription && (
-                        <p className="mt-0.5 max-h-8 overflow-hidden break-words text-[12px] leading-snug text-white/88">
+                        <p className="mt-0.5 max-h-7 overflow-hidden break-words text-[12px] leading-snug text-white/88">
                           {shortDescription}
                         </p>
                       )}
 
-                      <div className="mt-1.5 grid gap-1 text-[12px] text-white/93 sm:grid-cols-2">
-                        <p className="rounded-md bg-black/18 px-2 py-1"><span className="font-bold text-white">Начало:</span> {startsAtLabel}</p>
-                        <p className="rounded-md bg-black/18 px-2 py-1"><span className="font-bold text-white">Окончание:</span> {endsAtLabel}</p>
-                        <p className="rounded-md bg-black/18 px-2 py-1"><span className="font-bold text-white">Тип:</span> {ticketTypeLabel}</p>
+                      <div className="mt-1 space-y-0.5 text-[13px] text-white/94">
+                        <p><span className="font-bold text-white">Начало:</span> {startsAtLabel}</p>
+                        <p><span className="font-bold text-white">Окончание:</span> {endsAtLabel}</p>
+                        <p><span className="font-bold text-white">Тип:</span> {ticketTypeLabel}</p>
                         {venueLabel && (
-                          <p className="rounded-md bg-black/18 px-2 py-1 sm:col-span-2">
-                            <span className="font-bold text-white">Место:</span> {venueLabel}
-                          </p>
+                          <p><span className="font-bold text-white">Место:</span> {venueLabel}</p>
                         )}
                       </div>
-                      {usefulInfo && (
-                        <p className="mt-0.5 max-h-4 overflow-hidden break-words text-[10px] text-white/80">
-                          {usefulInfo}
+                      <div className="mt-0.5 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
+                        <p className="min-w-0 max-h-4 overflow-hidden break-words text-[10px] leading-none text-white/80">
+                          {usefulInfo || '\u00A0'}
                         </p>
-                      )}
+                        <div className="mr-4 shrink-0 self-end text-right md:mr-6">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/84">Цена</p>
+                          <p className="font-heading text-[2.2rem] leading-none text-white">{ticketPriceLabel}</p>
+                        </div>
+                      </div>
 
-                      <div className="mt-auto flex items-end justify-between gap-3 pt-1.5">
+                      <div className="mt-auto flex items-center gap-2 pt-1">
                         <div className="flex min-h-[28px] flex-wrap items-center gap-2">
                           {canRefund && (
                             <Button
@@ -351,21 +357,17 @@ export default function RegistrationsPage() {
                             </Button>
                           )}
                         </div>
-                        <div className="shrink-0 text-right">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/84">Цена</p>
-                          <p className="font-heading text-[2.08rem] leading-none text-white">{ticketPriceLabel}</p>
-                        </div>
                       </div>
                     </div>
 
-                    <div className={`relative flex flex-col items-center justify-between p-2.5 md:border-l ${theme.stubBg}`}>
+                    <div className={`relative flex flex-col items-center justify-between p-2 md:border-l ${theme.stubBg}`}>
                       <div className="absolute left-0 top-2 bottom-2 hidden border-l-2 border-dashed border-white/48 md:block" />
                       <span className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${theme.qrText}`}>
                         Stub
                       </span>
                       {hasQr ? (
                         <div className={`rounded-lg border bg-white p-1.5 shadow-sm ${theme.qrBorder}`}>
-                          <QRCode value={qrValue} size={108} />
+                          <QRCode value={qrValue} size={114} />
                         </div>
                       ) : (
                         <div className="rounded-lg border border-dashed border-white/40 bg-white/16 px-2 py-4 text-center">
