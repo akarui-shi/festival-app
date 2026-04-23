@@ -1,5 +1,5 @@
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types';
-import { API_BASE_URL, ApiError, apiGet, apiPost, apiPut, removeAuthToken, setAuthToken } from './api-client';
+import { API_BASE_URL, ApiError, apiGet, apiPatch, apiPost, apiPut, removeAuthToken, setAuthToken } from './api-client';
 
 const CURRENT_USER_KEY = 'current_user';
 const CURRENT_USER_LOGIN_KEY = 'current_user_login';
@@ -137,6 +137,13 @@ export const authService = {
     });
 
     return normalizeAuthResponse(response).user;
+  },
+
+  async changeCurrentPassword(currentPassword: string, newPassword: string): Promise<void> {
+    await apiPatch<void>('/users/me/password', {
+      currentPassword,
+      newPassword,
+    });
   },
 
   getOAuthLoginUrl(provider: 'vk' | 'yandex'): string {
