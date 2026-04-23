@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 public class SessionShortResponse {
 
     private Long id;
+    private String sessionTitle;
     private LocalDateTime startAt;
     private LocalDateTime endAt;
     private Long eventId;

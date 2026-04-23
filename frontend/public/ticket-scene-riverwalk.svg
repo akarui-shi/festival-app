@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="700" viewBox="0 0 1600 700" fill="none">
+  <defs>
+    <linearGradient id="riverSky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f4dfc7"/>
+      <stop offset="56%" stop-color="#d7a681"/>
+      <stop offset="100%" stop-color="#b57655"/>
+    </linearGradient>
+    <radialGradient id="riverGlow" cx="0" cy="0" r="1" gradientTransform="translate(1260 136) rotate(128) scale(220 220)">
+      <stop offset="0" stop-color="#fff4e5" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#fff4e5" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1600" height="700" fill="url(#riverSky)"/>
+  <rect width="1600" height="700" fill="url(#riverGlow)"/>
+
+  <path d="M0 498C150 450 302 434 470 458C638 482 810 548 980 548C1150 548 1290 490 1600 514V700H0V498Z" fill="#7f5640" fill-opacity="0.34"/>
+  <path d="M0 560C184 530 370 525 566 548C762 571 950 620 1136 612C1322 604 1440 566 1600 580V700H0V560Z" fill="#5f3f31" fill-opacity="0.34"/>
+
+  <g fill="#fff0df" fill-opacity="0.22">
+    <circle cx="210" cy="156" r="18"/>
+    <circle cx="268" cy="120" r="10"/>
+    <circle cx="344" cy="172" r="14"/>
+    <circle cx="1372" cy="184" r="20"/>
+    <circle cx="1468" cy="132" r="12"/>
+  </g>
+
+  <g stroke="#4a2f20" stroke-opacity="0.16" stroke-width="2">
+    <path d="M84 286H578"/>
+    <path d="M1060 268H1520"/>
+    <path d="M700 216H960"/>
+  </g>
+
+  <g fill="#4a2f20" fill-opacity="0.2">
+    <rect x="132" y="334" width="58" height="150" rx="18"/>
+    <rect x="206" y="356" width="42" height="128" rx="13"/>
+    <rect x="260" y="316" width="46" height="168" rx="14"/>
+    <rect x="318" y="338" width="34" height="146" rx="11"/>
+  </g>
+</svg>

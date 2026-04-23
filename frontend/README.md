@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# Festival App Frontend
 
 TODO: Document your project here

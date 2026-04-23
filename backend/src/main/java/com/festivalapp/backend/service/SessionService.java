@@ -250,6 +250,7 @@ public class SessionService {
 
         return SessionShortResponse.builder()
             .id(session.getId())
+            .sessionTitle(session.getSessionTitle())
             .startAt(toBusinessLocal(session.getStartsAt()))
             .endAt(toBusinessLocal(session.getEndsAt()))
             .eventId(session.getEvent() == null ? null : session.getEvent().getId())

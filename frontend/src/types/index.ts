@@ -153,6 +153,7 @@ export interface Event {
 
 export interface Session {
   id: Id;
+  sessionTitle?: string | null;
   startAt: string;
   endAt: string;
   availableSeats?: number | null;

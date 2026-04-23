@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
+  Banknote,
   Building2,
   CalendarDays,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Clock,
   Heart,
   MapPin,
   Share2,
@@ -41,37 +41,69 @@ import { favoriteService } from '@/services/favorite-service';
 import type { Event, Id, Review, Session, SessionTicketType } from '@/types';
 import type { RegistrationItemInput } from '@/services/registration-service';
 
-function formatDate(value?: string): string {
-  if (!value) return 'Дата уточняется';
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return 'Дата уточняется';
+function toValidDate(value?: string): Date | null {
+  if (!value) {
+    return null;
   }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
 
+function formatTime(date: Date): string {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function formatNumericDate(date: Date): string {
+  return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
+}
+
+function formatDayMonth(date: Date): string {
   return new Intl.DateTimeFormat('ru-RU', {
-    day: '2-digit',
+    day: 'numeric',
     month: 'long',
-    year: 'numeric',
   }).format(date);
 }
 
-function formatTime(value?: string): string {
-  if (!value) return 'Время уточняется';
+function isSameCalendarDate(left: Date, right: Date): boolean {
+  return left.getFullYear() === right.getFullYear()
+    && left.getMonth() === right.getMonth()
+    && left.getDate() === right.getDate();
+}
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return 'Время уточняется';
+function formatSessionRange(startAt?: string, endAt?: string): string {
+  const start = toValidDate(startAt);
+  const end = toValidDate(endAt);
+
+  if (start && end) {
+    if (isSameCalendarDate(start, end)) {
+      return `${formatDayMonth(start)} ${formatTime(start)} - ${formatTime(end)}`;
+    }
+    return `${formatNumericDate(start)} ${formatTime(start)} - ${formatNumericDate(end)} ${formatTime(end)}`;
+  }
+  if (start) {
+    return `${formatNumericDate(start)} ${formatTime(start)}`;
+  }
+  if (end) {
+    return `${formatNumericDate(end)} ${formatTime(end)}`;
+  }
+  return 'Дата и время уточняются';
+}
+
+function formatSessionPrice(session?: Session): string {
+  if (!session) {
+    return 'Цена уточняется';
   }
 
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const amount = Number(session.price ?? 0);
+  const isFree = session.participationType !== 'paid'
+    || !Number.isFinite(amount)
+    || amount <= 0;
 
-  if (hours === '00' && minutes === '00') {
-    return 'Время уточняется';
+  if (isFree) {
+    return 'Бесплатно';
   }
 
-  return `${hours}:${minutes}`;
+  return `${amount.toLocaleString('ru-RU')} ${session.currency || 'RUB'}`;
 }
 
 function formatPrice(event: Event): string {
@@ -334,6 +366,12 @@ export default function EventDetailPage() {
   const canLeaveReview = isAuthenticated && isResident;
   const primarySession = sessions[0];
   const selectedSession = sessions.find((session) => String(session.id) === selectedSessionId) || primarySession;
+  const selectedSessionTitle = (
+    selectedSession?.sessionTitle
+    || selectedSession?.eventTitle
+    || event.title
+    || 'Сеанс'
+  ).trim();
 
   const eventImageItems = (event.eventImages || [])
     .filter((image) => image?.imageId != null)
@@ -513,6 +551,12 @@ export default function EventDetailPage() {
                   const currentParticipants = session.totalCapacity != null && session.availableSeats != null
                     ? session.totalCapacity - session.availableSeats
                     : 0;
+                  const sessionTitle = (
+                    session.sessionTitle
+                    || session.eventTitle
+                    || event.title
+                    || `Сеанс #${session.id}`
+                  ).trim();
                   const isRegistered = registeredSessionIds.includes(String(session.id));
                   const isFull = session.availableSeats != null ? session.availableSeats <= 0 : currentParticipants >= maxParticipants;
                   const isOpen = session.registrationOpen ?? true;
@@ -529,14 +573,12 @@ export default function EventDetailPage() {
                           <CalendarDays className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                          <p className="font-semibold text-foreground">{formatDate(session.startAt)}</p>
+                          <p className="font-semibold text-foreground">{sessionTitle}</p>
                           <p className="text-sm text-muted-foreground">
-                            {formatTime(session.startAt)} - {formatTime(session.endAt)}
+                            {formatSessionRange(session.startAt, session.endAt)}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {session.participationType === 'paid'
-                              ? `${Number(session.price || 0).toLocaleString('ru-RU')} ${session.currency || 'RUB'}`
-                              : 'Бесплатно'}
+                            {formatSessionPrice(session)}
                           </p>
                         </div>
                       </div>
@@ -689,14 +731,14 @@ export default function EventDetailPage() {
                   <div className="flex items-start gap-3">
                     <CalendarDays className="mt-0.5 h-4 w-4 text-primary" />
                     <div>
-                      <p className="text-sm font-semibold text-foreground">{formatDate(selectedSession?.startAt)}</p>
-                      <p className="text-xs text-muted-foreground">до {formatDate(selectedSession?.endAt)}</p>
+                      <p className="text-sm font-semibold text-foreground">{selectedSessionTitle}</p>
+                      <p className="text-xs text-muted-foreground">{formatSessionRange(selectedSession?.startAt, selectedSession?.endAt)}</p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-3">
-                    <Clock className="mt-0.5 h-4 w-4 text-primary" />
-                    <p className="text-sm text-foreground">Начало в {formatTime(selectedSession?.startAt)}</p>
+                    <Banknote className="mt-0.5 h-4 w-4 text-primary" />
+                    <p className="text-sm text-foreground">Цена: {formatSessionPrice(selectedSession)}</p>
                   </div>
 
                   <div className="flex items-start gap-3">
@@ -736,7 +778,7 @@ export default function EventDetailPage() {
             <DialogTitle>Выберите билеты</DialogTitle>
             <DialogDescription>
               {ticketDialogSession
-                ? `Сеанс ${formatDate(ticketDialogSession.startAt)} ${formatTime(ticketDialogSession.startAt)}`
+                ? `${(ticketDialogSession.sessionTitle || ticketDialogSession.eventTitle || event.title || 'Сеанс').trim()} · ${formatSessionRange(ticketDialogSession.startAt, ticketDialogSession.endAt)}`
                 : 'Выберите подходящие билеты для регистрации'}
             </DialogDescription>
           </DialogHeader>
