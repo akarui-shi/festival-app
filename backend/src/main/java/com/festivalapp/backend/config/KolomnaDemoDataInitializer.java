@@ -10,6 +10,8 @@ import com.festivalapp.backend.entity.EventImage;
 import com.festivalapp.backend.entity.Image;
 import com.festivalapp.backend.entity.Organization;
 import com.festivalapp.backend.entity.OrganizationMember;
+import com.festivalapp.backend.entity.Publication;
+import com.festivalapp.backend.entity.PublicationImage;
 import com.festivalapp.backend.entity.Role;
 import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.Session;
@@ -27,6 +29,8 @@ import com.festivalapp.backend.repository.EventRepository;
 import com.festivalapp.backend.repository.ImageRepository;
 import com.festivalapp.backend.repository.OrganizationMemberRepository;
 import com.festivalapp.backend.repository.OrganizationRepository;
+import com.festivalapp.backend.repository.PublicationImageRepository;
+import com.festivalapp.backend.repository.PublicationRepository;
 import com.festivalapp.backend.repository.RoleRepository;
 import com.festivalapp.backend.repository.SessionRepository;
 import com.festivalapp.backend.repository.TicketTypeRepository;
@@ -61,9 +65,12 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class KolomnaDemoDataInitializer implements ApplicationRunner {
 
-    private static final String RESOURCES_PREFIX = "data/seed-images/kolomna/";
+    private static final String KOLOMNA_RESOURCES_PREFIX = "data/seed-images/kolomna/";
+    private static final String RYAZAN_RESOURCES_PREFIX = "data/seed-images/ryazan/";
     private static final String KOLOMNA_NAME = "Коломна";
     private static final String KOLOMNA_REGION = "Московская область";
+    private static final String RYAZAN_NAME = "Рязань";
+    private static final String RYAZAN_REGION = "Рязанская область";
 
     private final CityRepository cityRepository;
     private final CategoryRepository categoryRepository;
@@ -72,6 +79,8 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
     private final UserRoleRepository userRoleRepository;
     private final OrganizationRepository organizationRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
+    private final PublicationRepository publicationRepository;
+    private final PublicationImageRepository publicationImageRepository;
     private final EventRepository eventRepository;
     private final EventCategoryRepository eventCategoryRepository;
     private final EventImageRepository eventImageRepository;
@@ -86,15 +95,23 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
     @Value("${app.demo.kolomna-seed-enabled:true}")
     private boolean enabled;
 
+    @Value("${app.demo.ryazan-seed-enabled:true}")
+    private boolean ryazanEnabled;
+
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        if (!enabled) {
+        if (enabled) {
+            seedKolomnaDemoData();
+        } else {
             log.info("Kolomna demo seeding is disabled");
-            return;
         }
 
-        seedKolomnaDemoData();
+        if (ryazanEnabled) {
+            seedRyazanDemoData();
+        } else {
+            log.info("Ryazan demo seeding is disabled");
+        }
     }
 
     private void seedKolomnaDemoData() {
@@ -111,7 +128,7 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
         Organization organization = ensureOrganization(kolomna, now);
         ensureOrganizationMember(organizer, organization, "владелец", now);
 
-        Image organizationLogo = ensureImage("org-logo", "kolomna-logo.svg", organizer, now);
+        Image organizationLogo = ensureImage("kolomna", KOLOMNA_RESOURCES_PREFIX, "org-logo", "kolomna-logo.svg", organizer, now);
         boolean organizationUpdated = false;
         if (organization.getLogoImage() == null) {
             organization.setLogoImage(organizationLogo);
@@ -135,7 +152,7 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
             Event event = holder.event();
 
             ensureEventCategories(event, spec.categoryNames(), categories);
-            ensureEventImages(event, spec.imageFiles(), organizer, now);
+            ensureEventImages(event, spec.imageFiles(), organizer, now, "kolomna", KOLOMNA_RESOURCES_PREFIX);
 
             if (holder.created() || sessionRepository.findAllByEventIdOrderByStartsAtAsc(event.getId()).isEmpty()) {
                 createSessionsAndTickets(event, spec, kolomna);
@@ -148,12 +165,190 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
         log.info("Kolomna demo data has been seeded/verified: {} events", specs.size());
     }
 
+    private void seedRyazanDemoData() {
+        OffsetDateTime now = OffsetDateTime.now();
+
+        City ryazan = ensureRyazanCity(now);
+        Role organizerRole = ensureRole(RoleName.ROLE_ORGANIZER, "Организатор мероприятий");
+        Role residentRole = ensureRole(RoleName.ROLE_RESIDENT, "Обычный житель");
+
+        User organizer = ensureRyazanOrganizerUser(ryazan, now);
+        ensureUserRole(organizer, organizerRole, now);
+        ensureUserRole(organizer, residentRole, now);
+
+        Organization organization = ensureRyazanOrganization(ryazan, now);
+        ensureOrganizationMember(organizer, organization, "владелец", now);
+
+        Image organizationLogo = ensureImage("ryazan", RYAZAN_RESOURCES_PREFIX, "org-logo", "ryazan-logo.svg", organizer, now);
+        boolean organizationUpdated = false;
+        if (organization.getLogoImage() == null) {
+            organization.setLogoImage(organizationLogo);
+            organizationUpdated = true;
+        }
+        if (organization.getCoverImage() == null) {
+            organization.setCoverImage(organizationLogo);
+            organizationUpdated = true;
+        }
+        if (organizationUpdated) {
+            organization.setUpdatedAt(now);
+            organizationRepository.save(organization);
+        }
+
+        Map<String, Category> categories = ensureCategories();
+        Map<String, Artist> artists = ensureRyazanArtists(now);
+        Map<String, List<PublicationSeedSpec>> publicationsByEventTitle = buildRyazanPublicationSpecs();
+
+        List<EventSeedSpec> specs = buildRyazanEventSpecs(now);
+        for (EventSeedSpec spec : specs) {
+            EventHolder holder = ensureEventBase(spec, organization, organizer, ryazan, now);
+            Event event = holder.event();
+
+            ensureEventCategories(event, spec.categoryNames(), categories);
+            ensureEventImages(event, spec.imageFiles(), organizer, now, "ryazan", RYAZAN_RESOURCES_PREFIX);
+
+            if (holder.created() || sessionRepository.findAllByEventIdOrderByStartsAtAsc(event.getId()).isEmpty()) {
+                createSessionsAndTickets(event, spec, ryazan);
+            }
+
+            ensureEventArtists(event, spec.artistNames(), artists);
+            ensurePublicationsForEvent(
+                event,
+                organization,
+                organizer,
+                publicationsByEventTitle.getOrDefault(spec.title(), List.of()),
+                now,
+                "ryazan",
+                RYAZAN_RESOURCES_PREFIX
+            );
+            normalizePrimaryImage(event.getId());
+        }
+
+        log.info("Ryazan demo data has been seeded/verified: {} events", specs.size());
+    }
+
+    private void ensurePublicationsForEvent(Event event,
+                                            Organization organization,
+                                            User author,
+                                            List<PublicationSeedSpec> specs,
+                                            OffsetDateTime now,
+                                            String demoKey,
+                                            String resourcesPrefix) {
+        if (specs == null || specs.isEmpty()) {
+            return;
+        }
+
+        List<Publication> existingPublications = publicationRepository.findAllByEventIdOrderByCreatedAtDesc(event.getId());
+        Map<String, Publication> byTitle = new HashMap<>();
+        for (Publication publication : existingPublications) {
+            if (publication.getTitle() != null) {
+                byTitle.put(publication.getTitle().trim().toLowerCase(), publication);
+            }
+        }
+
+        int publicationIndex = 0;
+        for (PublicationSeedSpec spec : specs) {
+            String normalizedTitle = spec.title().trim().toLowerCase();
+            Publication publication = byTitle.get(normalizedTitle);
+            if (publication == null) {
+                publication = publicationRepository.save(Publication.builder()
+                    .event(event)
+                    .organization(organization)
+                    .createdByUser(author)
+                    .title(spec.title().trim())
+                    .content(spec.content().trim())
+                    .status("PUBLISHED")
+                    .moderationStatus("одобрено")
+                    .createdAt(now)
+                    .publishedAt(now)
+                    .updatedAt(now)
+                    .build());
+                byTitle.put(normalizedTitle, publication);
+            }
+
+            List<PublicationImage> existingImages = publicationImageRepository.findAllByPublicationIdOrderBySortOrderAscIdAsc(publication.getId());
+            Set<Long> existingImageIds = new HashSet<>();
+            for (PublicationImage image : existingImages) {
+                if (image.getImage() != null) {
+                    existingImageIds.add(image.getImage().getId());
+                }
+            }
+
+            int sortOrder = existingImages.size();
+            for (int imageIndex = 0; imageIndex < spec.imageFiles().size(); imageIndex += 1) {
+                String imageFile = spec.imageFiles().get(imageIndex);
+                String imageKey = "publication-" + event.getId() + "-" + publicationIndex + "-" + imageIndex + "-" + imageFile.replace('.', '-');
+                Image image = ensureImage(demoKey, resourcesPrefix, imageKey, imageFile, author, now);
+                if (existingImageIds.contains(image.getId())) {
+                    continue;
+                }
+
+                publicationImageRepository.save(PublicationImage.builder()
+                    .publication(publication)
+                    .image(image)
+                    .sortOrder(sortOrder++)
+                    .build());
+            }
+
+            publicationIndex += 1;
+        }
+    }
+
+    private Map<String, List<PublicationSeedSpec>> buildRyazanPublicationSpecs() {
+        return Map.of(
+            "Ночь музыки на Почтовой",
+            List.of(
+                new PublicationSeedSpec(
+                    "Программа вечера: Ночь музыки на Почтовой",
+                    "Открываем площадку в 18:30, первый сет стартует в 19:00. В программе электронный лайв, саксофон и финальный джем.",
+                    List.of("ryazan-night.svg")
+                ),
+                new PublicationSeedSpec(
+                    "Как добраться и что взять с собой",
+                    "Площадка находится в пешеходной зоне. Рекомендуем приходить за 20 минут до начала, взять документ и электронный билет.",
+                    List.of("ryazan-festival.svg")
+                )
+            ),
+            "Лекторий: Истории старой Рязани",
+            List.of(
+                new PublicationSeedSpec(
+                    "Темы лектория и расписание вопросов",
+                    "Разберем три эпохи города, ключевые архитектурные объекты и редкие исторические факты. В конце — открытая сессия вопросов.",
+                    List.of("ryazan-lecture.svg")
+                )
+            ),
+            "Семейный фестиваль у Кремля",
+            List.of(
+                new PublicationSeedSpec(
+                    "Карта активностей фестиваля",
+                    "На фестивале будут детская зона, мастер-классы, сцена живой музыки и гастрономический дворик. Для семей с детьми подготовлен отдельный маршрут.",
+                    List.of("ryazan-festival.svg")
+                ),
+                new PublicationSeedSpec(
+                    "Вечерняя программа и регистрация на мастер-классы",
+                    "Для вечернего блока открыта отдельная регистрация. Количество мест ограничено, просим приходить заранее.",
+                    List.of("ryazan-night.svg", "ryazan-lecture.svg")
+                )
+            )
+        );
+    }
+
     private City ensureKolomnaCity(OffsetDateTime now) {
         return cityRepository.findFirstByNameIgnoreCaseAndRegionIgnoreCase(KOLOMNA_NAME, KOLOMNA_REGION)
             .or(() -> cityRepository.findFirstByNameIgnoreCase(KOLOMNA_NAME))
             .orElseGet(() -> cityRepository.save(City.builder()
                 .name(KOLOMNA_NAME)
                 .region(KOLOMNA_REGION)
+                .active(true)
+                .createdAt(now)
+                .build()));
+    }
+
+    private City ensureRyazanCity(OffsetDateTime now) {
+        return cityRepository.findFirstByNameIgnoreCaseAndRegionIgnoreCase(RYAZAN_NAME, RYAZAN_REGION)
+            .or(() -> cityRepository.findFirstByNameIgnoreCase(RYAZAN_NAME))
+            .orElseGet(() -> cityRepository.save(City.builder()
+                .name(RYAZAN_NAME)
+                .region(RYAZAN_REGION)
                 .active(true)
                 .createdAt(now)
                 .build()));
@@ -176,6 +371,38 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
                 .passwordHash(passwordEncoder.encode("Test12345!"))
                 .firstName("Алексей")
                 .lastName("Коломенский")
+                .registeredAt(now)
+                .active(true)
+                .city(city)
+                .createdAt(now)
+                .updatedAt(now)
+                .build()));
+
+        boolean changed = false;
+        if (!user.isActive()) {
+            user.setActive(true);
+            changed = true;
+        }
+        if (user.getCity() == null) {
+            user.setCity(city);
+            changed = true;
+        }
+        if (changed) {
+            user.setUpdatedAt(now);
+            return userRepository.save(user);
+        }
+        return user;
+    }
+
+    private User ensureRyazanOrganizerUser(City city, OffsetDateTime now) {
+        User user = userRepository.findByEmail("organizer.ryazan@festival.local")
+            .orElseGet(() -> userRepository.save(User.builder()
+                .login("organizer_ryazan")
+                .email("organizer.ryazan@festival.local")
+                .phone("+79001230012")
+                .passwordHash(passwordEncoder.encode("Test12345!"))
+                .firstName("Ольга")
+                .lastName("Рязанская")
                 .registeredAt(now)
                 .active(true)
                 .city(city)
@@ -226,6 +453,22 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
                 .build()));
     }
 
+    private Organization ensureRyazanOrganization(City city, OffsetDateTime now) {
+        return organizationRepository.findByNameIgnoreCase("Рязанская культурная лаборатория")
+            .orElseGet(() -> organizationRepository.save(Organization.builder()
+                .city(city)
+                .name("Рязанская культурная лаборатория")
+                .description("Команда, которая объединяет современные городские форматы и культурные инициативы Рязани.")
+                .contactEmail("hello@ryazan-events.local")
+                .contactPhone("+74912456789")
+                .website("https://ryazan-events.local")
+                .socialLinks("vk.com/ryazan_events")
+                .moderationStatus("одобрена")
+                .createdAt(now)
+                .updatedAt(now)
+                .build()));
+    }
+
     private void ensureOrganizationMember(User user, Organization organization, String status, OffsetDateTime now) {
         if (organizationMemberRepository.existsByUserIdAndOrganizationIdAndLeftAtIsNull(user.getId(), organization.getId())) {
             return;
@@ -269,6 +512,32 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
             new ArtistSeed("Егор Нечаев", "Егор Нечаев", "Лектор и популяризатор науки, автор цикла о космосе.", "Лектор"),
             new ArtistSeed("Марина Соколова", "Марина Соколова", "Вокалистка с акустической концертной программой.", "Акустика"),
             new ArtistSeed("Павел Громов", "Павел Громов", "Ведущий детских мастер-классов по робототехнике.", "Образование")
+        );
+
+        for (ArtistSeed seed : seeds) {
+            byName.computeIfAbsent(seed.name().toLowerCase(), ignored -> artistRepository.save(Artist.builder()
+                .name(seed.name())
+                .stageName(seed.stageName())
+                .description(seed.description())
+                .genre(seed.genre())
+                .createdAt(now)
+                .updatedAt(now)
+                .build()));
+        }
+        return byName;
+    }
+
+    private Map<String, Artist> ensureRyazanArtists(OffsetDateTime now) {
+        List<Artist> existing = artistRepository.findAllByDeletedAtIsNullOrderByNameAsc();
+        Map<String, Artist> byName = new HashMap<>();
+        existing.forEach(artist -> byName.put(artist.getName().toLowerCase(), artist));
+
+        List<ArtistSeed> seeds = List.of(
+            new ArtistSeed("Дарья Белова", "Daria Belova", "Вокалистка с инди-поп программой и камерным составом.", "Инди"),
+            new ArtistSeed("Антон Сухов", "Антон Сухов", "Городской историк и лектор о культурном наследии Рязани.", "Лектор"),
+            new ArtistSeed("Никита Власов", "NVLS", "Электронный продюсер и лайв-исполнитель с атмосферными сетами.", "Электроника"),
+            new ArtistSeed("Елена Гурьева", "Елена Гурьева", "Куратор семейных мастер-классов и интерактивных программ.", "Образование"),
+            new ArtistSeed("Сергей Титов", "Sergey Titov Quartet", "Саксофонист и руководитель городского джаз-квартета.", "Джаз")
         );
 
         for (ArtistSeed seed : seeds) {
@@ -341,7 +610,12 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
         }
     }
 
-    private void ensureEventImages(Event event, List<String> imageFiles, User uploader, OffsetDateTime now) {
+    private void ensureEventImages(Event event,
+                                   List<String> imageFiles,
+                                   User uploader,
+                                   OffsetDateTime now,
+                                   String demoKey,
+                                   String resourcesPrefix) {
         List<EventImage> existing = eventImageRepository.findAllByEventIdOrderBySortOrderAscIdAsc(event.getId());
         Set<Long> existingImageIds = new HashSet<>();
         for (EventImage image : existing) {
@@ -356,7 +630,7 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
         for (int i = 0; i < imageFiles.size(); i += 1) {
             String imageFile = imageFiles.get(i);
             String key = "event-" + event.getId() + "-" + i + "-" + imageFile.replace('.', '-');
-            Image image = ensureImage(key, imageFile, uploader, now);
+            Image image = ensureImage(demoKey, resourcesPrefix, key, imageFile, uploader, now);
             if (existingImageIds.contains(image.getId())) {
                 continue;
             }
@@ -442,16 +716,21 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
         }
     }
 
-    private Image ensureImage(String key, String imageFile, User uploader, OffsetDateTime now) {
+    private Image ensureImage(String demoKey,
+                              String resourcesPrefix,
+                              String key,
+                              String imageFile,
+                              User uploader,
+                              OffsetDateTime now) {
         String ext = extensionOf(imageFile);
-        String fileName = "seed-kolomna-" + key + ext;
+        String fileName = "seed-" + demoKey + "-" + key + ext;
 
         Optional<Image> existing = imageRepository.findByFileName(fileName);
         if (existing.isPresent()) {
             return existing.get();
         }
 
-        byte[] bytes = readClasspathBytes(RESOURCES_PREFIX + imageFile);
+        byte[] bytes = readClasspathBytes(resourcesPrefix + imageFile, demoKey);
         String mime = mimeTypeForExtension(ext);
 
         Image saved = imageRepository.save(Image.builder()
@@ -465,13 +744,16 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
         return saved;
     }
 
-    private byte[] readClasspathBytes(String classpathPath) {
+    private byte[] readClasspathBytes(String classpathPath, String demoKey) {
         ClassPathResource resource = new ClassPathResource(classpathPath);
         if (!resource.exists()) {
+            String demoLabel = demoKey == null || demoKey.isBlank()
+                ? "Demo"
+                : Character.toUpperCase(demoKey.charAt(0)) + demoKey.substring(1).toLowerCase();
             String fallback = "<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='800'>"
                 + "<rect width='100%' height='100%' fill='#efe5dc'/>"
                 + "<text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' "
-                + "font-family='Arial' font-size='48' fill='#8f5f45'>Kolomna Demo</text></svg>";
+                + "font-family='Arial' font-size='48' fill='#8f5f45'>" + demoLabel + " Demo</text></svg>";
             return fallback.getBytes(StandardCharsets.UTF_8);
         }
         try {
@@ -578,6 +860,84 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
         return result;
     }
 
+    private List<EventSeedSpec> buildRyazanEventSpecs(OffsetDateTime now) {
+        List<EventSeedSpec> result = new ArrayList<>();
+
+        result.add(new EventSeedSpec(
+            "Ночь музыки на Почтовой",
+            "Современный городской концерт в центре Рязани.",
+            "Вечерняя программа с лайв-электроникой, вокалом и джазовыми импровизациями на главной пешеходной улице города.",
+            "12+",
+            List.of("Концерт", "Фестиваль"),
+            List.of("ryazan-night.svg", "ryazan-festival.svg"),
+            List.of(
+                new SessionSeedSpec(
+                    "Главный вечерний сет",
+                    now.plusDays(8).withHour(19).withMinute(30).withSecond(0).withNano(0),
+                    now.plusDays(8).withHour(22).withMinute(0).withSecond(0).withNano(0),
+                    null,
+                    "Рязанская область, Рязань, улица Почтовая, 54",
+                    420,
+                    new BigDecimal("1200.00")
+                )
+            ),
+            List.of("Дарья Белова", "Никита Власов", "Сергей Титов")
+        ));
+
+        result.add(new EventSeedSpec(
+            "Лекторий: Истории старой Рязани",
+            "Публичная лекция о ключевых страницах истории города.",
+            "Разговор о развитии Рязани, ее культурном коде и архитектурных символах. Формат подойдет и школьникам, и взрослым.",
+            "6+",
+            List.of("Лекция"),
+            List.of("ryazan-lecture.svg", "ryazan-festival.svg"),
+            List.of(
+                new SessionSeedSpec(
+                    "Открытая лекция",
+                    now.plusDays(11).withHour(18).withMinute(0).withSecond(0).withNano(0),
+                    now.plusDays(11).withHour(19).withMinute(40).withSecond(0).withNano(0),
+                    null,
+                    "Рязанская область, Рязань, Соборная площадь, 13",
+                    180,
+                    BigDecimal.ZERO
+                )
+            ),
+            List.of("Антон Сухов")
+        ));
+
+        result.add(new EventSeedSpec(
+            "Семейный фестиваль у Кремля",
+            "Дневная и вечерняя программы для всей семьи рядом с Рязанским кремлем.",
+            "Музыка, интерактивные зоны, мастер-классы и образовательные активности. Формат рассчитан на разный возраст и семейный отдых.",
+            "0+",
+            List.of("Фестиваль", "Мастер-класс"),
+            List.of("ryazan-festival.svg", "ryazan-lecture.svg"),
+            List.of(
+                new SessionSeedSpec(
+                    "Дневная семейная программа",
+                    now.plusDays(14).withHour(11).withMinute(0).withSecond(0).withNano(0),
+                    now.plusDays(14).withHour(15).withMinute(30).withSecond(0).withNano(0),
+                    null,
+                    "Рязанская область, Рязань, Кремлевский вал, 10",
+                    260,
+                    BigDecimal.ZERO
+                ),
+                new SessionSeedSpec(
+                    "Вечерние мастер-классы",
+                    now.plusDays(14).withHour(17).withMinute(0).withSecond(0).withNano(0),
+                    now.plusDays(14).withHour(20).withMinute(0).withSecond(0).withNano(0),
+                    null,
+                    "Рязанская область, Рязань, Кремлевский вал, 10",
+                    140,
+                    new BigDecimal("700.00")
+                )
+            ),
+            List.of("Елена Гурьева", "Дарья Белова")
+        ));
+
+        return result;
+    }
+
     private record EventHolder(Event event, boolean created) {
     }
 
@@ -601,5 +961,10 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
                                  List<String> imageFiles,
                                  List<SessionSeedSpec> sessions,
                                  List<String> artistNames) {
+    }
+
+    private record PublicationSeedSpec(String title,
+                                       String content,
+                                       List<String> imageFiles) {
     }
 }

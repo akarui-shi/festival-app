@@ -97,6 +97,7 @@ app:
     max-file-size-bytes: 5242880
   demo:
     kolomna-seed-enabled: ${APP_DEMO_KOLOMNA_SEED_ENABLED:true}
+    ryazan-seed-enabled: ${APP_DEMO_RYAZAN_SEED_ENABLED:true}
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
   notifications:
     telegram-bot-token: ${TELEGRAM_BOT_TOKEN:}
