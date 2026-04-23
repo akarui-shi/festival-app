@@ -79,7 +79,6 @@ class FileStorageServiceTest {
         assertThat(firstSave.getFileData().length).isGreaterThan(0);
         assertThat(firstSave.getMimeType()).isEqualTo("image/png");
         assertThat(firstSave.getUploadedByUser()).isNotNull();
-        assertThat(saved.getFileUrl()).isEqualTo("/api/files/101");
     }
 
     @Test
@@ -89,7 +88,6 @@ class FileStorageServiceTest {
             .fileName("image.png")
             .mimeType("image/png")
             .fileSize(4L)
-            .fileUrl("/api/files/55")
             .fileData(new byte[]{1, 2, 3, 4})
             .uploadedAt(OffsetDateTime.now())
             .build();

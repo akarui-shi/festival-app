@@ -75,6 +75,7 @@ export default function ProfilePage() {
   const normalizedForm = normalizeProfileForm(form);
   const currentUserForm = normalizeProfileForm(buildProfileForm(user));
   const hasProfileChanges = JSON.stringify(normalizedForm) !== JSON.stringify(currentUserForm);
+  const hasPendingEmail = !!user?.pendingEmail && user.pendingEmail !== user.email;
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -90,7 +91,7 @@ export default function ProfilePage() {
 
     setLoading(true);
     try {
-      await updateUser({
+      const updatedUser = await updateUser({
         login: normalizedForm.login,
         email: normalizedForm.email,
         firstName: normalizedForm.firstName,
@@ -98,8 +99,12 @@ export default function ProfilePage() {
         phone: normalizedForm.phone,
         avatarImageId: normalizedForm.avatarImageId,
       });
-      setForm(normalizedForm);
-      toast.success('Профиль обновлён');
+      setForm(buildProfileForm(updatedUser));
+      if (updatedUser.pendingEmail && updatedUser.pendingEmail !== updatedUser.email && updatedUser.pendingEmail === normalizedForm.email) {
+        toast.success('Изменения сохранены. Подтвердите новый email по ссылке из письма.');
+      } else {
+        toast.success('Профиль обновлён');
+      }
     } catch (error: any) {
       toast.error(error?.message || 'Не удалось сохранить изменения');
     } finally {
@@ -115,8 +120,8 @@ export default function ProfilePage() {
     setUploadingAvatar(true);
     try {
       const uploaded = await fileUploadService.uploadAvatar(file);
-      await updateUser({ avatarImageId: uploaded.imageId });
-      setForm((prev) => ({ ...prev, avatarImageId: uploaded.imageId }));
+      const updatedUser = await updateUser({ avatarImageId: uploaded.imageId });
+      setForm(buildProfileForm(updatedUser));
       toast.success('Аватар загружен');
     } catch (error: any) {
       toast.error(error?.message || 'Не удалось загрузить аватар');
@@ -132,8 +137,8 @@ export default function ProfilePage() {
 
     setUploadingAvatar(true);
     try {
-      await updateUser({ avatarImageId: null });
-      setForm((prev) => ({ ...prev, avatarImageId: null }));
+      const updatedUser = await updateUser({ avatarImageId: null });
+      setForm(buildProfileForm(updatedUser));
       toast.success('Аватар удалён');
     } catch (error: any) {
       toast.error(error?.message || 'Не удалось удалить аватар');
@@ -265,6 +270,11 @@ export default function ProfilePage() {
                 <section className="rounded-xl border border-border p-4">
                   <p className="font-heading text-lg text-foreground">Аккаунт</p>
                   <p className="mb-4 mt-1 text-xs text-muted-foreground">Логин и email используются для входа и должны быть уникальными.</p>
+                  {user && (
+                    <p className="mb-4 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                      Статус email: {user.emailVerified ? 'подтвержден' : 'не подтвержден'}
+                    </p>
+                  )}
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="login">Логин *</Label>
@@ -290,6 +300,11 @@ export default function ProfilePage() {
                       />
                     </div>
                   </div>
+                  {hasPendingEmail && (
+                    <p className="mt-3 rounded-lg border border-amber-300/60 bg-amber-100/50 px-3 py-2 text-xs text-amber-900">
+                      Новый email ожидает подтверждения: {user?.pendingEmail}. Пока для входа используется текущий адрес.
+                    </p>
+                  )}
                 </section>
 
                 <section className="rounded-xl border border-border p-4">

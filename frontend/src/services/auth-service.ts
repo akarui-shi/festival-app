@@ -1,4 +1,4 @@
-import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types';
+import type { AuthResponse, LoginRequest, MessageResponse, RegisterRequest, RegisterResponse, User } from '@/types';
 import { API_BASE_URL, ApiError, apiGet, apiPatch, apiPost, apiPut, removeAuthToken, setAuthToken } from './api-client';
 
 const CURRENT_USER_KEY = 'current_user';
@@ -83,8 +83,8 @@ export const authService = {
     return normalizeAuthResponse(response);
   },
 
-  async register(req: RegisterRequest): Promise<AuthResponse> {
-    const response = await apiPost<AuthResponse>('/auth/register', {
+  async register(req: RegisterRequest): Promise<RegisterResponse> {
+    return apiPost<RegisterResponse>('/auth/register', {
       login: buildLoginFromEmail(req.email),
       email: req.email,
       password: req.password,
@@ -95,8 +95,10 @@ export const authService = {
       organizationId: req.organizationId,
       joinRequestMessage: req.joinRequestMessage,
     });
+  },
 
-    return normalizeAuthResponse(response);
+  async verifyEmail(token: string): Promise<MessageResponse> {
+    return apiPost<MessageResponse>('/auth/verify-email', { token });
   },
 
   async getCurrentUser(): Promise<User | null> {
@@ -126,7 +128,7 @@ export const authService = {
     }
 
     const response = await apiPut<AuthResponse>('/users/me', {
-      login: current.login,
+      login: data.login ?? current.login,
       email: data.email ?? current.email,
       firstName: data.firstName ?? current.firstName,
       lastName: data.lastName ?? current.lastName,

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { User, UserRole } from '@/types';
+import type { RegisterResponse, User } from '@/types';
 import { authService } from '@/services/auth-service';
 import { userHasRole } from '@/lib/auth-roles';
 
@@ -16,9 +16,9 @@ interface AuthContextType {
     companyName?: string,
     organizationId?: number,
     joinRequestMessage?: string,
-  ) => Promise<void>;
+  ) => Promise<RegisterResponse>;
   logout: () => void;
-  updateUser: (data: Partial<User>) => Promise<void>;
+  updateUser: (data: Partial<User>) => Promise<User>;
   loginWithToken: (token: string) => Promise<void>;
   isAuthenticated: boolean;
   isResident: boolean;
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     organizationId?: number,
     joinRequestMessage?: string,
   ) => {
-    const res = await authService.register({
+    return authService.register({
       email,
       password,
       firstName,
@@ -70,7 +70,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       organizationId,
       joinRequestMessage,
     });
-    setUser(res.user);
   }, []);
 
   const logout = useCallback(() => {
@@ -81,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateUser = useCallback(async (data: Partial<User>) => {
     const updated = await authService.updateCurrentUser(data);
     setUser(updated);
+    return updated;
   }, []);
 
   const loginWithToken = useCallback(async (token: string) => {

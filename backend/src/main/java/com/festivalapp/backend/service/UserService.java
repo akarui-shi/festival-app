@@ -33,6 +33,7 @@ public class UserService {
     private final OrganizationMemberRepository organizationMemberRepository;
     private final ImageRepository imageRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailVerificationService emailVerificationService;
 
     @Transactional(readOnly = true)
     public CurrentUserResponse getCurrentUser(String username) {
@@ -57,12 +58,19 @@ public class UserService {
         if (userRepository.existsByEmailAndIdNot(normalizedEmail, user.getId())) {
             throw new BadRequestException("Электронная почта уже используется");
         }
+        if (!normalizedEmail.equals(user.getEmail())
+            && userRepository.existsByPendingEmailAndIdNot(normalizedEmail, user.getId())) {
+            throw new BadRequestException("Электронная почта уже ожидает подтверждения у другого пользователя");
+        }
         if (normalizedPhone != null && userRepository.existsByPhoneAndIdNot(normalizedPhone, user.getId())) {
             throw new BadRequestException("Пользователь с таким номером телефона уже существует");
         }
 
+        boolean emailChanged = !normalizedEmail.equals(user.getEmail());
         user.setLogin(normalizedLogin);
-        user.setEmail(normalizedEmail);
+        if (emailChanged) {
+            user.setPendingEmail(normalizedEmail);
+        }
         user.setFirstName(normalizeOptional(request.getFirstName()) == null ? user.getFirstName() : normalizeOptional(request.getFirstName()));
         user.setLastName(normalizeOptional(request.getLastName()) == null ? user.getLastName() : normalizeOptional(request.getLastName()));
         user.setPhone(normalizedPhone);
@@ -76,6 +84,9 @@ public class UserService {
         user.setUpdatedAt(OffsetDateTime.now());
 
         User saved = userRepository.save(user);
+        if (emailChanged) {
+            emailVerificationService.sendEmailChangeVerification(saved, normalizedEmail);
+        }
         return toCurrentUserResponse(saved);
     }
 
@@ -107,6 +118,8 @@ public class UserService {
             .id(user.getId())
             .login(user.getLogin())
             .email(user.getEmail())
+            .emailVerified(user.isEmailVerified())
+            .pendingEmail(user.getPendingEmail())
             .phone(user.getPhone())
             .firstName(user.getFirstName())
             .lastName(user.getLastName())
