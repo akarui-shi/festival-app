@@ -13,6 +13,8 @@ export interface User {
   id: Id;
   login: string;
   email: string;
+  emailVerified?: boolean;
+  pendingEmail?: string | null;
   firstName?: string | null;
   lastName?: string | null;
   phone?: string | null;
@@ -32,6 +34,16 @@ export interface AuthResponse {
 export interface LoginRequest {
   loginOrEmail: string;
   password: string;
+}
+
+export interface RegisterResponse {
+  message: string;
+  email: string;
+  emailVerificationRequired: boolean;
+}
+
+export interface MessageResponse {
+  message: string;
 }
 
 export interface RegisterRequest {

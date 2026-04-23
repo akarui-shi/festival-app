@@ -54,15 +54,19 @@ public class NotificationService {
         sendTelegram("Новый оформленный билет: заказ #" + order.getId() + ", пользователь " + user.getEmail());
     }
 
-    private void sendEmail(String to, String subject, String body) {
+    public EmailSendResult sendEmailMessage(String to, String subject, String body) {
+        return sendEmail(to, subject, body);
+    }
+
+    private EmailSendResult sendEmail(String to, String subject, String body) {
         if (!StringUtils.hasText(to)) {
-            return;
+            return EmailSendResult.failure("INVALID_RECIPIENT");
         }
 
         JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
         if (mailSender == null) {
-            log.info("Email sender is not configured. Mock email to {} with subject '{}'", to, subject);
-            return;
+            log.warn("Email sender is not configured. Set MAIL_HOST/MAIL_PORT/MAIL_USERNAME/MAIL_PASSWORD. Mock email to {} with subject '{}'", to, subject);
+            return EmailSendResult.failure("NOT_CONFIGURED");
         }
 
         try {
@@ -72,8 +76,17 @@ public class NotificationService {
             message.setSubject(subject);
             message.setText(body);
             mailSender.send(message);
+            return EmailSendResult.ok();
         } catch (Exception ex) {
             log.warn("Failed to send email notification to {}: {}", to, ex.getMessage());
+            String message = ex.getMessage() == null ? "" : ex.getMessage().toLowerCase();
+            if (message.contains("authentication failed")) {
+                return EmailSendResult.failure("AUTH_FAILED");
+            }
+            if (message.contains("timed out") || message.contains("connect")) {
+                return EmailSendResult.failure("CONNECTION_FAILED");
+            }
+            return EmailSendResult.failure("SEND_FAILED");
         }
     }
 
@@ -97,6 +110,16 @@ public class NotificationService {
                 .toBodilessEntity();
         } catch (Exception ex) {
             log.warn("Failed to send telegram notification: {}", ex.getMessage());
+        }
+    }
+
+    public record EmailSendResult(boolean success, String reason) {
+        public static EmailSendResult ok() {
+            return new EmailSendResult(true, "OK");
+        }
+
+        public static EmailSendResult failure(String reason) {
+            return new EmailSendResult(false, reason);
         }
     }
 }

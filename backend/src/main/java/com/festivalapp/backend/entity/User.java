@@ -40,6 +40,13 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @Builder.Default
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = true;
+
+    @Column(name = "pending_email", unique = true)
+    private String pendingEmail;
+
     @Column(unique = true)
     private String phone;
 

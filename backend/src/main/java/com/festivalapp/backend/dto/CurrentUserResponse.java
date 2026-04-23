@@ -12,6 +12,8 @@ public class CurrentUserResponse {
     private Long id;
     private String login;
     private String email;
+    private boolean emailVerified;
+    private String pendingEmail;
     private String firstName;
     private String lastName;
     private String phone;

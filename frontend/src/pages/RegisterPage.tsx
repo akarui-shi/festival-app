@@ -97,7 +97,7 @@ export default function RegisterPage() {
     setError('');
     setLoading(true);
     try {
-      await register(
+      const response = await register(
         form.email,
         form.password,
         form.firstName,
@@ -107,12 +107,8 @@ export default function RegisterPage() {
         form.role === 'ORGANIZER' && form.organizationMode === 'join' ? Number(form.organizationId) : undefined,
         form.role === 'ORGANIZER' && form.organizationMode === 'join' ? form.joinRequestMessage : undefined,
       );
-      toast.success(
-        form.organizationMode === 'join'
-          ? 'Регистрация выполнена. Заявка отправлена владельцу организации на подтверждение.'
-          : 'Регистрация прошла успешно',
-      );
-      navigate('/');
+      toast.success(response.message || 'Регистрация прошла успешно. Проверьте почту для подтверждения.');
+      navigate('/login');
     } catch (registerError: any) {
       setError(registerError?.message || 'Не удалось зарегистрироваться');
     } finally {

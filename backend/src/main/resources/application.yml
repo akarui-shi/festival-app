@@ -2,7 +2,7 @@ spring:
   application:
     name: festival-backend
   config:
-    import: optional:file:./.env[.properties]
+    import: optional:file:./.env[.properties],optional:file:./backend/.env[.properties]
 
   datasource:
     url: jdbc:postgresql://localhost:5432/festival_db
@@ -24,6 +24,25 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
     baseline-version: 0
+
+  mail:
+    host: ${MAIL_HOST:smtp.yandex.ru}
+    port: ${MAIL_PORT:465}
+    username: ${MAIL_USERNAME:festivalapp@yandex.ru}
+    password: ${MAIL_PASSWORD:ioysgjrvnnirrdbj}
+    protocol: smtp
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          ssl:
+            enable: ${MAIL_SMTP_SSL_ENABLE:false}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS_ENABLE:true}
+            required: ${MAIL_SMTP_STARTTLS_REQUIRED:false}
+          connectiontimeout: ${MAIL_SMTP_CONNECTION_TIMEOUT:15000}
+          timeout: ${MAIL_SMTP_TIMEOUT:15000}
+          writetimeout: ${MAIL_SMTP_WRITE_TIMEOUT:15000}
 
   security:
     oauth2:

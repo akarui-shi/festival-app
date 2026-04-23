@@ -4,6 +4,7 @@ import com.festivalapp.backend.dto.AuthResponse;
 import com.festivalapp.backend.dto.CurrentUserResponse;
 import com.festivalapp.backend.dto.LoginRequest;
 import com.festivalapp.backend.dto.RegisterRequest;
+import com.festivalapp.backend.dto.RegisterResponse;
 import com.festivalapp.backend.entity.City;
 import com.festivalapp.backend.entity.Organization;
 import com.festivalapp.backend.entity.OrganizationMember;
@@ -49,9 +50,10 @@ public class AuthService {
     private final CityRepository cityRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final EmailVerificationService emailVerificationService;
 
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public RegisterResponse register(RegisterRequest request) {
         String normalizedLogin = normalizeRequired(request.getLogin(), "Введите логин");
         String normalizedEmail = normalizeRequired(request.getEmail(), "Введите электронную почту");
         String normalizedPhone = normalizeOptional(request.getPhone());
@@ -63,6 +65,9 @@ public class AuthService {
         if (userRepository.existsByEmail(normalizedEmail)) {
             throw new BadRequestException("Электронная почта уже используется");
         }
+        if (userRepository.existsByPendingEmail(normalizedEmail)) {
+            throw new BadRequestException("Электронная почта уже ожидает подтверждения");
+        }
         if (normalizedPhone != null && userRepository.existsByPhone(normalizedPhone)) {
             throw new BadRequestException("Пользователь с таким номером телефона уже существует");
         }
@@ -72,6 +77,7 @@ public class AuthService {
         User user = User.builder()
             .login(normalizedLogin)
             .email(normalizedEmail)
+            .emailVerified(false)
             .phone(normalizedPhone)
             .passwordHash(passwordEncoder.encode(request.getPassword()))
             .firstName(defaultName(request.getFirstName(), normalizedLogin))
@@ -123,7 +129,13 @@ public class AuthService {
             }
         }
 
-        return issueAuthResponse(savedUser);
+        emailVerificationService.sendRegistrationVerification(savedUser);
+
+        return RegisterResponse.builder()
+            .message("Регистрация завершена. Проверьте почту и подтвердите email для входа.")
+            .email(savedUser.getEmail())
+            .emailVerificationRequired(true)
+            .build();
     }
 
     @Transactional
@@ -137,6 +149,10 @@ public class AuthService {
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new UnauthorizedException("Неверный логин/email или пароль");
+        }
+        if (!user.isEmailVerified()) {
+            emailVerificationService.sendRegistrationVerification(user);
+            throw new UnauthorizedException("Подтвердите email. Мы отправили новое письмо со ссылкой.");
         }
 
         user.setLastLoginAt(OffsetDateTime.now());
@@ -192,6 +208,8 @@ public class AuthService {
             .id(user.getId())
             .login(user.getLogin())
             .email(user.getEmail())
+            .emailVerified(user.isEmailVerified())
+            .pendingEmail(user.getPendingEmail())
             .phone(user.getPhone())
             .firstName(user.getFirstName())
             .lastName(user.getLastName())
