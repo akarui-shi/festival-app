@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <defs>
+    <linearGradient id="fest" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fef3c7"/>
+      <stop offset="100%" stop-color="#fed7aa"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#fest)"/>
+  <path d="M0 520 C180 430 320 610 520 520 C720 430 900 550 1200 460 L1200 800 L0 800 Z" fill="#f97316" opacity="0.45"/>
+  <path d="M0 620 C180 560 320 720 520 660 C720 600 900 690 1200 620 L1200 800 L0 800 Z" fill="#ea580c" opacity="0.55"/>
+  <rect x="200" y="180" width="140" height="240" rx="14" fill="#7c2d12" opacity="0.9"/>
+  <rect x="420" y="120" width="140" height="300" rx="14" fill="#9a3412" opacity="0.9"/>
+  <rect x="640" y="210" width="140" height="210" rx="14" fill="#b45309" opacity="0.9"/>
+  <rect x="860" y="160" width="140" height="260" rx="14" fill="#c2410c" opacity="0.9"/>
+  <circle cx="250" cy="130" r="38" fill="#22c55e"/>
+  <circle cx="490" cy="80" r="42" fill="#3b82f6"/>
+  <circle cx="710" cy="160" r="36" fill="#eab308"/>
+  <circle cx="930" cy="115" r="40" fill="#ec4899"/>
+</svg>

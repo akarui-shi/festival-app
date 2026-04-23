@@ -103,7 +103,6 @@ class OrganizerEventWizardServiceTest {
 
         when(eventCategoryRepository.findAllByEventId(anyLong())).thenReturn(List.of());
         when(eventImageRepository.findAllByEventIdOrderBySortOrderAscIdAsc(anyLong())).thenReturn(List.of());
-        when(eventArtistRepository.findAllByEventIdOrderByDisplayOrderAscIdAsc(anyLong())).thenReturn(List.of());
         when(sessionRepository.findAllByEventIdOrderByStartsAtAsc(anyLong())).thenReturn(List.of());
         when(ticketTypeRepository.findAllBySessionIdOrderByIdAsc(anyLong())).thenReturn(List.of());
 
@@ -261,11 +260,6 @@ class OrganizerEventWizardServiceTest {
             EventCategory.builder().event(event).category(category).build()
         ));
 
-        Image image = Image.builder().id(11L).fileUrl("/api/files/11").build();
-        when(eventImageRepository.findAllByEventIdOrderBySortOrderAscIdAsc(event.getId())).thenReturn(List.of(
-            EventImage.builder().event(event).image(image).primary(true).sortOrder(0).build()
-        ));
-
         Session session = Session.builder()
             .id(3000L)
             .event(event)
@@ -302,7 +296,6 @@ class OrganizerEventWizardServiceTest {
             .city(cityValue)
             .title("Событие")
             .status("черновик")
-            .moderationStatus("на_рассмотрении")
             .free(true)
             .startsAt(OffsetDateTime.now().plusDays(7))
             .endsAt(OffsetDateTime.now().plusDays(7).plusHours(2))
