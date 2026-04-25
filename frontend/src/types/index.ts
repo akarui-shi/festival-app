@@ -227,6 +227,7 @@ export interface SessionRegistration {
   registrationId: Id;
   userId?: Id | null;
   userFullName?: string | null;
+  userAvatarImageId?: number | null;
   quantity?: number | null;
   status?: string | null;
   qrToken?: string | null;
@@ -417,8 +418,20 @@ export interface OrganizerEventEngagement {
   sessionsCount?: number | null;
   averageSessionOccupancyPercent?: number | null;
   favoritesCount?: number | null;
+  waitlistCount?: number | null;
   reviewsCount?: number | null;
   averageRating?: number | null;
+}
+
+export interface WaitlistEntry {
+  id: Id;
+  userFullName?: string | null;
+  userAvatarImageId?: number | null;
+  sessionId?: Id | null;
+  sessionLabel?: string | null;
+  position: number;
+  status: string;
+  joinedAt?: string | null;
 }
 
 export interface OrganizerEventStats {

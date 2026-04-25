@@ -233,6 +233,7 @@ public class SessionService {
                     : ticket.getOrderItem().getOrder().getId())
                 .userId(ticket.getUser() == null ? null : ticket.getUser().getId())
                 .userFullName(ticket.getUser() == null ? null : (ticket.getUser().getFirstName() + " " + ticket.getUser().getLastName()).trim())
+                .userAvatarImageId(ticket.getUser() == null || ticket.getUser().getAvatarImage() == null ? null : ticket.getUser().getAvatarImage().getId())
                 .quantity(ticket.getOrderItem() == null ? 1 : ticket.getOrderItem().getQuantity())
                 .status(DomainStatusMapper.toRegistrationStatus(ticket.getStatus()))
                 .qrToken(ticket.getQrToken())

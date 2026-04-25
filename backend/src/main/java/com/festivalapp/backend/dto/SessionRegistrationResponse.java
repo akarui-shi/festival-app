@@ -13,6 +13,7 @@ public class SessionRegistrationResponse {
     private Long registrationId;
     private Long userId;
     private String userFullName;
+    private Long userAvatarImageId;
     private Integer quantity;
     private RegistrationStatus status;
     private String qrToken;

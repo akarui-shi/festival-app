@@ -22,6 +22,7 @@ public class OrganizerEventEngagementResponse {
     private int averageSessionOccupancyPercent;
 
     private long favoritesCount;
+    private long waitlistCount;
     private long reviewsCount;
     private double averageRating;
 

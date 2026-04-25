@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Calendar, Clock, Download, Plus, Star, Users } from 'lucide-react';
+import { Calendar, Clock, Download, Heart, ListOrdered, Plus, Star, Users } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, XAxis, YAxis } from 'recharts';
 import { toast } from 'sonner';
 import { ConfirmActionDialog } from '@/components/ConfirmActionDialog';
@@ -15,7 +15,8 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getRegistrationStatusBadge } from '@/lib/statuses';
-import type { Id, OrganizerEventStatsBundle, Session, SessionRegistration } from '@/types';
+import { imageSrc } from '@/lib/image';
+import type { Id, OrganizerEventStatsBundle, Session, SessionRegistration, WaitlistEntry } from '@/types';
 
 const WEEKDAY_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 const TIME_SLOTS = [
@@ -71,6 +72,7 @@ export default function EventStatsPage() {
   const [stats, setStats] = useState<OrganizerEventStatsBundle | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [registrations, setRegistrations] = useState<SessionRegistration[]>([]);
+  const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddSession, setShowAddSession] = useState(false);
   const [newSession, setNewSession] = useState({ date: '', startTime: '', endTime: '', maxParticipants: '50' });
@@ -82,10 +84,12 @@ export default function EventStatsPage() {
       organizerService.getEventStats(id),
       sessionService.getSessionsByEvent(id),
       registrationService.getRegistrationsByEvent(id),
-    ]).then(([statsResponse, sessionsResponse, registrationsResponse]) => {
+      registrationService.getWaitlistByEvent(id).catch(() => [] as WaitlistEntry[]),
+    ]).then(([statsResponse, sessionsResponse, registrationsResponse, waitlistResponse]) => {
       setStats(statsResponse);
       setSessions(sessionsResponse);
       setRegistrations(registrationsResponse);
+      setWaitlist(waitlistResponse);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [id]);
@@ -263,13 +267,27 @@ export default function EventStatsPage() {
         </a>
       </section>
 
-      <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
         <div className="metric-card">
           <div className="metric-icon">
-            <Users className="h-4 w-4 text-primary" />
+            <Users className="h-4 w-4 text-success" />
           </div>
-          <p className="text-xs text-muted-foreground">Записей</p>
-          <p className="text-xl font-semibold text-foreground">{stats.engagement.registrationsCount || 0}</p>
+          <p className="text-xs text-muted-foreground">Купили билет</p>
+          <p className="text-xl font-semibold text-foreground">{stats.engagement.activeParticipants || 0}</p>
+        </div>
+        <div className="metric-card">
+          <div className="metric-icon">
+            <ListOrdered className="h-4 w-4 text-warning" />
+          </div>
+          <p className="text-xs text-muted-foreground">В очереди</p>
+          <p className="text-xl font-semibold text-foreground">{stats.engagement.waitlistCount || waitlist.length || 0}</p>
+        </div>
+        <div className="metric-card">
+          <div className="metric-icon">
+            <Heart className="h-4 w-4 text-destructive" />
+          </div>
+          <p className="text-xs text-muted-foreground">В избранном</p>
+          <p className="text-xl font-semibold text-foreground">{stats.engagement.favoritesCount || 0}</p>
         </div>
         <div className="metric-card">
           <div className="metric-icon">
@@ -287,31 +305,10 @@ export default function EventStatsPage() {
         </div>
         <div className="metric-card">
           <div className="metric-icon">
-            <Clock className="h-4 w-4 text-success" />
-          </div>
-          <p className="text-xs text-muted-foreground">Активных участников</p>
-          <p className="text-xl font-semibold text-foreground">{stats.engagement.activeParticipants || 0}</p>
-        </div>
-        <div className="metric-card">
-          <div className="metric-icon">
-            <Users className="h-4 w-4 text-info" />
+            <Clock className="h-4 w-4 text-primary" />
           </div>
           <p className="text-xs text-muted-foreground">Заполняемость</p>
           <p className="text-xl font-semibold text-foreground">{occupancyPercent.toFixed(1)}%</p>
-        </div>
-        <div className="metric-card">
-          <div className="metric-icon">
-            <Calendar className="h-4 w-4 text-primary" />
-          </div>
-          <p className="text-xs text-muted-foreground">Занято мест</p>
-          <p className="text-xl font-semibold text-foreground">{occupiedSeats}</p>
-        </div>
-        <div className="metric-card">
-          <div className="metric-icon">
-            <Calendar className="h-4 w-4 text-warning" />
-          </div>
-          <p className="text-xs text-muted-foreground">Всего мест</p>
-          <p className="text-xl font-semibold text-foreground">{totalCapacity}</p>
         </div>
       </section>
 
@@ -533,24 +530,75 @@ export default function EventStatsPage() {
       </section>
 
       <section className="surface-panel space-y-4">
-        <h2 className="font-heading text-2xl text-foreground">Регистрации ({registrations.length})</h2>
+        <h2 className="font-heading text-2xl text-foreground">Купили билет ({registrations.length})</h2>
         {registrations.length === 0 ? (
-          <EmptyState icon={Users} title="Нет регистраций" description="Пользователи пока не записались на это событие" />
+          <EmptyState icon={Users} title="Нет участников" description="Пользователи пока не приобрели билеты на это мероприятие" />
         ) : (
           <div className="space-y-2">
             {registrations.map((r) => {
               const status = getRegistrationStatusBadge(r.status);
+              const userName = r.userFullName || 'Пользователь';
+              const initials = userName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || '?';
               return (
                 <div key={r.registrationId} className="surface-row flex items-center justify-between py-3 text-sm">
-                  <span>{r.userFullName || 'Пользователь'}</span>
+                  <div className="flex items-center gap-2.5">
+                    {r.userAvatarImageId != null ? (
+                      <img src={imageSrc(r.userAvatarImageId)} alt={userName} className="h-8 w-8 rounded-full object-cover" />
+                    ) : (
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/60 to-[hsl(var(--terracotta-dark)/0.5)] text-[11px] font-bold text-white">
+                        {initials}
+                      </div>
+                    )}
+                    <span>{userName}</span>
+                  </div>
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">
-                      {r.createdAt ? new Date(r.createdAt).toLocaleString('ru-RU') : 'Дата неизвестна'}
+                      {r.createdAt ? new Date(r.createdAt).toLocaleString('ru-RU') : ''}
                     </span>
-                    <Badge className={`${status.className} text-xs`}>
-                      {status.label}
-                    </Badge>
+                    <Badge className={`${status.className} text-xs`}>{status.label}</Badge>
                   </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="surface-panel space-y-4">
+        <h2 className="font-heading text-2xl text-foreground">
+          Очередь ожидания ({waitlist.length})
+        </h2>
+        <p className="text-xs text-muted-foreground">Пользователи, ожидающие освобождения места.</p>
+        {waitlist.length === 0 ? (
+          <EmptyState icon={ListOrdered} title="Очередь пуста" description="Никто не ожидает освобождения места" />
+        ) : (
+          <div className="space-y-2">
+            {waitlist.map((entry) => {
+              const userName = entry.userFullName || 'Пользователь';
+              const initials = userName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || '?';
+              return (
+                <div key={entry.id} className="surface-row flex items-center justify-between py-3 text-sm">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-warning/15 text-[10px] font-bold text-warning">
+                      {entry.position}
+                    </span>
+                    {entry.userAvatarImageId != null ? (
+                      <img src={imageSrc(entry.userAvatarImageId)} alt={userName} className="h-8 w-8 rounded-full object-cover" />
+                    ) : (
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-warning/40 to-warning/20 text-[11px] font-bold text-warning">
+                        {initials}
+                      </div>
+                    )}
+                    <div>
+                      <span className="font-medium text-foreground">{userName}</span>
+                      {entry.sessionLabel && (
+                        <span className="ml-2 text-xs text-muted-foreground">{entry.sessionLabel}</span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {entry.joinedAt ? new Date(entry.joinedAt).toLocaleString('ru-RU') : ''}
+                  </span>
                 </div>
               );
             })}
