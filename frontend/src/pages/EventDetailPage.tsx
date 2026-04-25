@@ -755,9 +755,22 @@ export default function EventDetailPage() {
                 {reviews.map((review) => (
                   <div key={review.commentId || review.id} className="rounded-2xl border border-border bg-card p-4 shadow-soft">
                     <div className="mb-2 flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-foreground">
-                        {review.userDisplayName || `${review.user?.firstName || ''} ${review.user?.lastName || ''}`.trim() || 'Пользователь'}
-                      </p>
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        {review.userAvatarImageId != null || review.user?.avatarImageId != null ? (
+                          <img
+                            src={imageSrc((review.userAvatarImageId ?? review.user?.avatarImageId)!)}
+                            alt={review.userDisplayName || 'Аватар пользователя'}
+                            className="h-8 w-8 shrink-0 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/60 to-[hsl(var(--terracotta-dark)/0.5)] text-[11px] font-bold text-white">
+                            {(review.userDisplayName || 'Пользователь').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                        <p className="truncate text-sm font-semibold text-foreground">
+                          {review.userDisplayName || `${review.user?.firstName || ''} ${review.user?.lastName || ''}`.trim() || 'Пользователь'}
+                        </p>
+                      </div>
                       <StarRating rating={review.rating} size="sm" />
                     </div>
                     <p className="text-sm text-muted-foreground">{review.text || review.comment}</p>

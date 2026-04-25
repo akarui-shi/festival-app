@@ -251,6 +251,7 @@ export interface Review {
   eventId?: Id | null;
   userId?: Id | null;
   userDisplayName?: string | null;
+  userAvatarImageId?: number | null;
   text?: string | null;
   rating?: number | null;
   moderationStatus?: string | null;

@@ -6,13 +6,8 @@ import { LoadingState } from '@/components/StateDisplays';
 import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { StarRating } from '@/components/StarRating';
+import { imageSrc } from '@/lib/image';
 import type { Review } from '@/types';
-
-function statusInfo(status?: string | null): { label: string; className: string } {
-  if (status === 'одобрено') return { label: 'Одобрен', className: 'bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))]' };
-  if (status === 'на_рассмотрении') return { label: 'На модерации', className: 'bg-[hsl(var(--warning)/0.1)] text-[hsl(var(--warning))]' };
-  return { label: 'Отклонён', className: 'bg-destructive/10 text-destructive' };
-}
 
 export default function AdminReviews() {
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -36,7 +31,7 @@ export default function AdminReviews() {
       <section className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="page-title">Комментарии</h1>
-          <p className="mt-1 text-muted-foreground">Контроль качества и модерация пользовательского контента</p>
+          <p className="mt-1 text-muted-foreground">Комментарии публикуются сразу. Админ может удалить неподходящий контент.</p>
         </div>
         <span className="rounded-full bg-muted px-3 py-1 text-sm font-medium text-muted-foreground">
           Всего: {reviews.length}
@@ -45,8 +40,8 @@ export default function AdminReviews() {
 
       <div className="space-y-2.5">
         {reviews.map((review) => {
-          const badge = statusInfo(review.moderationStatus);
           const initials = (review.userDisplayName || '?').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
+          const avatarImageId = review.userAvatarImageId ?? review.user?.avatarImageId ?? null;
 
           return (
             <div
@@ -54,17 +49,22 @@ export default function AdminReviews() {
               className="flex gap-4 rounded-2xl border border-border bg-card p-4 shadow-soft transition-colors hover:border-primary/15"
             >
               {/* Avatar */}
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/60 to-[hsl(var(--terracotta-dark)/0.5)] text-xs font-bold text-white">
-                {initials}
-              </div>
+              {avatarImageId != null ? (
+                <img
+                  src={imageSrc(avatarImageId)}
+                  alt={review.userDisplayName || 'Аватар пользователя'}
+                  className="h-9 w-9 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/60 to-[hsl(var(--terracotta-dark)/0.5)] text-xs font-bold text-white">
+                  {initials}
+                </div>
+              )}
 
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold text-foreground">{review.userDisplayName || 'Пользователь'}</span>
                   <StarRating rating={review.rating || 0} size="sm" />
-                  <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${badge.className}`}>
-                    {badge.label}
-                  </span>
                 </div>
                 <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{review.text}</p>
               </div>

@@ -5,6 +5,7 @@ import com.festivalapp.backend.dto.CommentResponse;
 import com.festivalapp.backend.dto.CommentUpdateRequest;
 import com.festivalapp.backend.entity.Comment;
 import com.festivalapp.backend.entity.Event;
+import com.festivalapp.backend.entity.Image;
 import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.exception.BadRequestException;
@@ -42,7 +43,7 @@ public class CommentService {
             .event(event)
             .content(text)
             .rating(request.getRating())
-            .moderationStatus("на_рассмотрении")
+            .moderationStatus("одобрено")
             .createdAt(now)
             .updatedAt(now)
             .build());
@@ -53,10 +54,7 @@ public class CommentService {
     @Transactional(readOnly = true)
     public List<CommentResponse> getByEvent(Long eventId, boolean includeUnmoderated) {
         List<Comment> comments = commentRepository.findAllByEventIdOrderByCreatedAtDesc(eventId);
-        return comments.stream()
-            .filter(comment -> includeUnmoderated || "одобрено".equalsIgnoreCase(comment.getModerationStatus()))
-            .map(this::toResponse)
-            .toList();
+        return comments.stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
@@ -82,7 +80,7 @@ public class CommentService {
         if (request.getRating() != null) {
             comment.setRating(request.getRating());
         }
-        comment.setModerationStatus("на_рассмотрении");
+        comment.setModerationStatus("одобрено");
         comment.setUpdatedAt(OffsetDateTime.now());
 
         return toResponse(commentRepository.save(comment));
@@ -103,11 +101,13 @@ public class CommentService {
     }
 
     private CommentResponse toResponse(Comment comment) {
+        Image avatarImage = comment.getUser() == null ? null : comment.getUser().getAvatarImage();
         return CommentResponse.builder()
             .commentId(comment.getId())
             .eventId(comment.getEvent() == null ? null : comment.getEvent().getId())
             .userId(comment.getUser() == null ? null : comment.getUser().getId())
             .userDisplayName(comment.getUser() == null ? null : (comment.getUser().getFirstName() + " " + comment.getUser().getLastName()).trim())
+            .userAvatarImageId(avatarImage == null ? null : avatarImage.getId())
             .text(comment.getContent())
             .rating(comment.getRating())
             .moderationStatus(comment.getModerationStatus())

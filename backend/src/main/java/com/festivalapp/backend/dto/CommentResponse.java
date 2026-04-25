@@ -13,6 +13,7 @@ public class CommentResponse {
     private Long eventId;
     private Long userId;
     private String userDisplayName;
+    private Long userAvatarImageId;
     private String text;
     private Integer rating;
     private String moderationStatus;
