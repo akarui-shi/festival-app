@@ -163,6 +163,8 @@ export interface Event {
   registrationsCount?: number;
   averageRating?: number;
   reviewsCount?: number;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface Session {

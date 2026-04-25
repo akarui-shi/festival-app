@@ -57,7 +57,10 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -135,16 +138,98 @@ public class EventService {
     @Transactional(readOnly = true)
     public List<EventShortResponse> getRecommendations(String actorIdentifier, Long cityId, Integer limit) {
         int safeLimit = limit == null || limit <= 0 ? 8 : Math.min(limit, 50);
-        List<Event> events = eventRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc().stream()
+
+        Set<Long> preferredCategoryIds = new HashSet<>();
+        if (StringUtils.hasText(actorIdentifier)) {
+            userRepository.findByLoginOrEmailWithRoles(actorIdentifier).ifPresent(user ->
+                favoriteRepository.findAllByUserIdOrderByCreatedAtDesc(user.getId()).forEach(fav -> {
+                    Event favEvent = hydrateEvent(fav.getEvent());
+                    favEvent.getEventCategories().stream()
+                        .map(ec -> ec.getCategory().getId())
+                        .forEach(preferredCategoryIds::add);
+                })
+            );
+        }
+
+        List<Event> published = eventRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc().stream()
             .map(this::hydrateEvent)
             .filter(e -> cityId == null || (e.getCity() != null && Objects.equals(e.getCity().getId(), cityId)))
             .filter(e -> DomainStatusMapper.toEventStatus(e.getStatus()) == EventStatus.PUBLISHED)
-            .sorted(Comparator.comparingLong((Event event) -> favoriteRepository.countByEventId(event.getId())).reversed()
-                .thenComparing(Event::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
-            .limit(safeLimit)
             .toList();
 
-        return events.stream().map(this::toShortResponse).toList();
+        Comparator<Event> sorter;
+        if (preferredCategoryIds.isEmpty()) {
+            sorter = Comparator.comparingLong((Event e) -> favoriteRepository.countByEventId(e.getId())).reversed()
+                .thenComparing(Event::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder()));
+        } else {
+            sorter = Comparator.<Event, Integer>comparing(e -> {
+                Set<Long> ids = e.getEventCategories().stream()
+                    .map(ec -> ec.getCategory().getId())
+                    .collect(Collectors.toSet());
+                return (int) preferredCategoryIds.stream().filter(ids::contains).count();
+            }).reversed()
+            .thenComparing(Comparator.comparingLong((Event e) -> favoriteRepository.countByEventId(e.getId())).reversed());
+        }
+
+        return published.stream()
+            .sorted(sorter)
+            .limit(safeLimit)
+            .map(this::toShortResponse)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<EventShortResponse> getSimilarEvents(Long eventId, Integer limit) {
+        int safeLimit = limit == null || limit <= 0 ? 4 : Math.min(limit, 12);
+
+        Event current = hydrateEvent(loadEvent(eventId));
+        Set<Long> categoryIds = current.getEventCategories().stream()
+            .map(ec -> ec.getCategory().getId())
+            .collect(Collectors.toSet());
+        Long cityId = current.getCity() != null ? current.getCity().getId() : null;
+
+        return eventRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc().stream()
+            .filter(e -> !e.getId().equals(eventId))
+            .map(this::hydrateEvent)
+            .filter(e -> DomainStatusMapper.toEventStatus(e.getStatus()) == EventStatus.PUBLISHED)
+            .filter(e -> {
+                if (categoryIds.isEmpty()) return true;
+                Set<Long> eCatIds = e.getEventCategories().stream()
+                    .map(ec -> ec.getCategory().getId())
+                    .collect(Collectors.toSet());
+                return !Collections.disjoint(categoryIds, eCatIds);
+            })
+            .sorted(Comparator.<Event, Integer>comparing(e -> {
+                Long eCityId = e.getCity() != null ? e.getCity().getId() : null;
+                return Objects.equals(eCityId, cityId) ? 0 : 1;
+            }).thenComparing(Comparator.comparingLong((Event e) -> favoriteRepository.countByEventId(e.getId())).reversed()))
+            .limit(safeLimit)
+            .map(this::toShortResponse)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> getPlatformStats() {
+        List<Event> published = eventRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc().stream()
+            .filter(e -> DomainStatusMapper.toEventStatus(e.getStatus()) == EventStatus.PUBLISHED)
+            .toList();
+
+        long totalEvents = published.size();
+        long totalRegistrations = 0;
+        Set<Long> activeCityIds = new HashSet<>();
+
+        for (Event event : published) {
+            if (event.getCity() != null) activeCityIds.add(event.getCity().getId());
+            for (Session session : sessionRepository.findAllByEventIdOrderByStartsAtAsc(event.getId())) {
+                totalRegistrations += ticketRepository.countBySessionIdAndStatus(session.getId(), "активен");
+            }
+        }
+
+        Map<String, Long> stats = new HashMap<>();
+        stats.put("totalEvents", totalEvents);
+        stats.put("totalRegistrations", totalRegistrations);
+        stats.put("totalCities", (long) activeCityIds.size());
+        return stats;
     }
 
     @Transactional(readOnly = true)
@@ -656,7 +741,23 @@ public class EventService {
             .sessionsCount(sessionsCount)
             .registrationsCount(registrationsCount)
             .artists(artists)
+            .latitude(resolveLatitude(mainSession))
+            .longitude(resolveLongitude(mainSession))
             .build();
+    }
+
+    private BigDecimal resolveLatitude(Session session) {
+        if (session == null) return null;
+        if (session.getLatitude() != null) return session.getLatitude();
+        if (session.getVenue() != null) return session.getVenue().getLatitude();
+        return null;
+    }
+
+    private BigDecimal resolveLongitude(Session session) {
+        if (session == null) return null;
+        if (session.getLongitude() != null) return session.getLongitude();
+        if (session.getVenue() != null) return session.getVenue().getLongitude();
+        return null;
     }
 
     private EventDetailsResponse toDetailsResponse(Event event) {

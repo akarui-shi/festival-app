@@ -138,18 +138,15 @@ export default function OrganizerAnalytics() {
         value: Number(point.value || 0),
       }));
     }
-    return buildDemoSeries(14, 320, 140);
+    return [];
   }, [analytics.visitsByDay, hasMetrikaData]);
 
   const registrationsByDay = useMemo(() => {
     const raw = analytics.registrationsByDay || [];
-    if (raw.length > 0) {
-      return raw.map((point) => ({
-        label: formatLabel(point.date),
-        value: Number(point.value || 0),
-      }));
-    }
-    return buildDemoSeries(14, 42, 18);
+    return raw.map((point) => ({
+      label: formatLabel(point.date),
+      value: Number(point.value || 0),
+    }));
   }, [analytics.registrationsByDay]);
 
   const trafficSources = useMemo(() => {
@@ -160,18 +157,12 @@ export default function OrganizerAnalytics() {
         value: Number(source.visits || 0),
       }));
     }
-
-    return [
-      { source: 'Поиск', value: 380 },
-      { source: 'Прямые', value: 260 },
-      { source: 'Соцсети', value: 170 },
-      { source: 'Рефералы', value: 90 },
-    ];
+    return [];
   }, [analytics.trafficSources, hasMetrikaData]);
 
   const usingDemoForMetrika = !hasMetrikaData;
-  const totalViews = Number(kpi.pageViews ?? visitsByDay.reduce((sum, point) => sum + point.value, 0));
-  const uniqueVisitors = Number(kpi.uniqueVisitors ?? Math.round(totalViews * 0.72));
+  const totalViews = Number(kpi.pageViews ?? 0);
+  const uniqueVisitors = Number(kpi.uniqueVisitors ?? 0);
   const activeParticipants = Number(
     kpi.activeParticipants ?? engagements.reduce((sum, item) => sum + (item.activeParticipants || 0), 0),
   );
@@ -382,50 +373,64 @@ export default function OrganizerAnalytics() {
         <div className="surface-panel xl:col-span-2">
           <h2 className="font-heading text-xl text-foreground">Трафик по дням</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Линия показывает, как менялась посещаемость карточек ваших мероприятий по дням.
+            Посещаемость карточек мероприятий по дням (Яндекс.Метрика).
           </p>
-          <ChartContainer
-            className="mt-4 h-[260px] w-full"
-            config={{ visits: { label: 'Визиты', color: '#C17F59' } }}
-          >
-            <LineChart data={visitsByDay} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-              <CartesianGrid vertical={false} />
-              <XAxis dataKey="label" tickLine={false} axisLine={false} />
-              <YAxis tickLine={false} axisLine={false} width={40} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Line type="monotone" dataKey="value" stroke="var(--color-visits)" strokeWidth={2.5} dot={false} />
-            </LineChart>
-          </ChartContainer>
+          {visitsByDay.length > 0 ? (
+            <ChartContainer
+              className="mt-4 h-[260px] w-full"
+              config={{ visits: { label: 'Визиты', color: '#C17F59' } }}
+            >
+              <LineChart data={visitsByDay} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                <YAxis tickLine={false} axisLine={false} width={40} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Line type="monotone" dataKey="value" stroke="var(--color-visits)" strokeWidth={2.5} dot={false} />
+              </LineChart>
+            </ChartContainer>
+          ) : (
+            <div className="mt-4 flex h-[260px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-center">
+              <p className="text-sm font-medium text-foreground">Данные трафика недоступны</p>
+              <p className="mt-1 text-xs text-muted-foreground">Подключите Яндекс.Метрику в настройках сервера</p>
+            </div>
+          )}
         </div>
 
         <div className="surface-panel">
           <h2 className="font-heading text-xl text-foreground">Источники трафика</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Распределение, откуда пользователи переходят на ваши мероприятия.
+            Откуда пользователи переходят на ваши мероприятия.
           </p>
-          <ChartContainer
-            className="mt-4 h-[260px] w-full"
-            config={{
-              value: { label: 'Визиты', color: '#C17F59' },
-              p1: { label: 'Поиск', color: '#C17F59' },
-              p2: { label: 'Прямые', color: '#CFA07D' },
-              p3: { label: 'Соцсети', color: '#D9B49A' },
-              p4: { label: 'Рефералы', color: '#E5CFC0' },
-            }}
-          >
-            <PieChart>
-              <ChartTooltip content={<ChartTooltipContent nameKey="source" />} />
-              <Pie data={trafficSources} dataKey="value" nameKey="source" innerRadius={46} outerRadius={90} paddingAngle={2}>
-                {trafficSources.map((_, index) => (
-                  <Cell
-                    key={`source-${index}`}
-                    fill={['#C17F59', '#CFA07D', '#D9B49A', '#E5CFC0', '#B56A3F'][index % 5]}
-                  />
-                ))}
-              </Pie>
-              <ChartLegend content={<ChartLegendContent nameKey="source" />} />
-            </PieChart>
-          </ChartContainer>
+          {trafficSources.length > 0 ? (
+            <ChartContainer
+              className="mt-4 h-[260px] w-full"
+              config={{
+                value: { label: 'Визиты', color: '#C17F59' },
+                p1: { label: 'Поиск', color: '#C17F59' },
+                p2: { label: 'Прямые', color: '#CFA07D' },
+                p3: { label: 'Соцсети', color: '#D9B49A' },
+                p4: { label: 'Рефералы', color: '#E5CFC0' },
+              }}
+            >
+              <PieChart>
+                <ChartTooltip content={<ChartTooltipContent nameKey="source" />} />
+                <Pie data={trafficSources} dataKey="value" nameKey="source" innerRadius={46} outerRadius={90} paddingAngle={2}>
+                  {trafficSources.map((_, index) => (
+                    <Cell
+                      key={`source-${index}`}
+                      fill={['#C17F59', '#CFA07D', '#D9B49A', '#E5CFC0', '#B56A3F'][index % 5]}
+                    />
+                  ))}
+                </Pie>
+                <ChartLegend content={<ChartLegendContent nameKey="source" />} />
+              </PieChart>
+            </ChartContainer>
+          ) : (
+            <div className="mt-4 flex h-[260px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-center">
+              <p className="text-sm font-medium text-foreground">Нет данных</p>
+              <p className="mt-1 text-xs text-muted-foreground">Требуется Яндекс.Метрика</p>
+            </div>
+          )}
         </div>
       </section>
 

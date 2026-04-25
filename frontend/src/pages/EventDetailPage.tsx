@@ -20,6 +20,7 @@ import { imageSrc } from '@/lib/image';
 import { LoadingState, ErrorState } from '@/components/StateDisplays';
 import { StarRating } from '@/components/StarRating';
 import { EventLocationMap } from '@/components/EventLocationMap';
+import { EventCard } from '@/components/EventCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -167,6 +168,7 @@ export default function EventDetailPage() {
   const [ticketDialogSessionId, setTicketDialogSessionId] = useState<string | null>(null);
   const [selectedTicketQuantities, setSelectedTicketQuantities] = useState<Record<string, number>>({});
   const [registeringSessionId, setRegisteringSessionId] = useState<string | null>(null);
+  const [similarEvents, setSimilarEvents] = useState<Event[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -189,6 +191,8 @@ export default function EventDetailPage() {
       })
       .catch(() => setError('Не удалось загрузить мероприятие'))
       .finally(() => setLoading(false));
+
+    eventService.getSimilarEvents(id, 4).then(setSimilarEvents).catch(() => {});
   }, [id]);
 
   useEffect(() => {
@@ -666,6 +670,17 @@ export default function EventDetailPage() {
                 ))}
               </div>
             </div>
+
+            {similarEvents.length > 0 && (
+              <div className="mt-8">
+                <h2 className="font-heading text-xl text-foreground">Похожие мероприятия</h2>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  {similarEvents.map((similar) => (
+                    <EventCard key={similar.id} event={similar} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="lg:col-span-1">

@@ -112,6 +112,36 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
         } else {
             log.info("Ryazan demo seeding is disabled");
         }
+
+        patchMissingSessionCoordinates();
+    }
+
+    private void patchMissingSessionCoordinates() {
+        List<Session> sessions = sessionRepository.findAllByOrderByStartsAtAsc();
+        int patched = 0;
+        for (Session session : sessions) {
+            if (session.getLatitude() != null && session.getLongitude() != null) continue;
+
+            Venue venue = session.getVenue();
+            if (venue == null) {
+                String address = session.getManualAddress();
+                if (address != null && !address.isBlank() && session.getEvent() != null
+                        && session.getEvent().getCity() != null) {
+                    venue = venueRepository.findFirstByAddressIgnoreCaseAndCityId(
+                        address.trim(), session.getEvent().getCity().getId()).orElse(null);
+                }
+            }
+
+            if (venue != null && venue.getLatitude() != null && venue.getLongitude() != null) {
+                session.setLatitude(venue.getLatitude());
+                session.setLongitude(venue.getLongitude());
+                sessionRepository.save(session);
+                patched++;
+            }
+        }
+        if (patched > 0) {
+            log.info("Patched {} sessions with missing coordinates", patched);
+        }
     }
 
     private void seedKolomnaDemoData() {
@@ -666,6 +696,10 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
             if (sessionSpec.venueAddress() != null && !sessionSpec.venueAddress().isBlank()) {
                 venue = venueRepository.findFirstByAddressIgnoreCaseAndCityId(sessionSpec.venueAddress(), city.getId()).orElse(null);
             }
+            Venue coordVenue = venue;
+            if (coordVenue == null && sessionSpec.manualAddress() != null && !sessionSpec.manualAddress().isBlank()) {
+                coordVenue = venueRepository.findFirstByAddressIgnoreCaseAndCityId(sessionSpec.manualAddress(), city.getId()).orElse(null);
+            }
 
             Session session = sessionRepository.save(Session.builder()
                 .event(event)
@@ -676,6 +710,8 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
                 .manualAddress(venue == null ? sessionSpec.manualAddress() : null)
                 .seatLimit(sessionSpec.seatLimit())
                 .status("запланирован")
+                .latitude(coordVenue != null ? coordVenue.getLatitude() : null)
+                .longitude(coordVenue != null ? coordVenue.getLongitude() : null)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build());

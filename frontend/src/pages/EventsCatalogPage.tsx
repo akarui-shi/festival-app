@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CalendarRange, Search, SlidersHorizontal, Tag, X } from 'lucide-react';
+import { CalendarRange, LayoutList, Map, Search, SlidersHorizontal, Tag, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { EventsCatalogMap } from '@/components/EventsCatalogMap';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { EventCard } from '@/components/EventCard';
@@ -79,6 +80,7 @@ export default function EventsCatalogPage() {
   const [draftFilters, setDraftFilters] = useState<CatalogFilters>(() => parseFilters(searchParams));
   const [appliedFilters, setAppliedFilters] = useState<CatalogFilters>(() => parseFilters(searchParams));
   const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
   const {
     search,
@@ -444,7 +446,43 @@ export default function EventsCatalogPage() {
           </div>
         )}
 
-        {filteredEvents.length > 0 ? (
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {filteredEvents.length > 0 ? `Найдено: ${filteredEvents.length}` : ''}
+          </p>
+          <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1">
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
+                viewMode === 'list'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              aria-label="Список"
+            >
+              <LayoutList className="h-4 w-4" />
+              <span className="hidden sm:inline">Список</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('map')}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
+                viewMode === 'map'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              aria-label="Карта"
+            >
+              <Map className="h-4 w-4" />
+              <span className="hidden sm:inline">Карта</span>
+            </button>
+          </div>
+        </div>
+
+        {viewMode === 'map' ? (
+          <EventsCatalogMap events={filteredEvents} />
+        ) : filteredEvents.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {filteredEvents.map((event) => (
               <EventCard
