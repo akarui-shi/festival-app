@@ -110,8 +110,16 @@ export const eventService = {
     }
   },
 
-  async getRecommendations(): Promise<Event[]> {
-    return apiGet<Event[]>('/events/recommendations', { limit: 4 });
+  async getRecommendations(cityId?: number | string): Promise<Event[]> {
+    return apiGet<Event[]>('/events/recommendations', { limit: 8, ...(cityId ? { cityId } : {}) });
+  },
+
+  async getSimilarEvents(id: Id, limit = 4): Promise<Event[]> {
+    return apiGet<Event[]>(`/events/${id}/similar`, { limit });
+  },
+
+  async getPlatformStats(): Promise<{ totalEvents: number; totalRegistrations: number; totalCities: number }> {
+    return apiGet('/events/platform-stats');
   },
 
   async createEvent(data: EventUpsertPayload): Promise<Event> {

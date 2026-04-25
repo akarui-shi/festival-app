@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CalendarDays, MapPin, Sparkles } from 'lucide-react';
+import { ArrowRight, CalendarDays, MapPin, Sparkles, Star, Ticket, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -54,6 +54,8 @@ export default function HomePage() {
   const { user, isAuthenticated, updateUser } = useAuth();
   const { selectedCity, loading: cityLoading } = useCity();
   const [events, setEvents] = useState<Event[]>([]);
+  const [recommendations, setRecommendations] = useState<Event[]>([]);
+  const [platformStats, setPlatformStats] = useState<{ totalEvents: number; totalRegistrations: number; totalCities: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingSubscription, setUpdatingSubscription] = useState(false);
 
@@ -66,31 +68,33 @@ export default function HomePage() {
     setLoading(true);
     const selectedCityId = selectedCity?.id == null ? null : String(selectedCity.id);
 
-    eventService
-      .getEvents({
-        size: 120,
-        cityId: selectedCity?.id || undefined,
-        status: 'PUBLISHED',
-      })
-      .then((response) => {
+    Promise.all([
+      eventService.getEvents({ size: 120, cityId: selectedCity?.id || undefined, status: 'PUBLISHED' }),
+      eventService.getRecommendations(selectedCity?.id),
+      eventService.getPlatformStats(),
+    ])
+      .then(([response, recs, stats]) => {
         if (!active) return;
 
         if (!selectedCityId) {
           setEvents([]);
-          return;
+          setRecommendations([]);
+        } else {
+          const filtered = response.content.filter((event) => {
+            const eventCityId = event.cityId ?? event.city?.id;
+            return eventCityId != null && String(eventCityId) === selectedCityId;
+          });
+          setEvents(filtered);
+          setRecommendations(recs.filter((e) => {
+            const id = e.cityId ?? e.city?.id;
+            return id != null && String(id) === selectedCityId;
+          }).slice(0, 4));
         }
 
-        const filtered = response.content.filter((event) => {
-          const eventCityId = event.cityId ?? event.city?.id;
-          return eventCityId != null && String(eventCityId) === selectedCityId;
-        });
-
-        setEvents(filtered);
+        setPlatformStats(stats);
       })
       .finally(() => {
-        if (active) {
-          setLoading(false);
-        }
+        if (active) setLoading(false);
       });
 
     return () => {
@@ -237,6 +241,59 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
+
+      {platformStats && (
+        <section className="border-y border-border bg-card">
+          <div className="container mx-auto grid grid-cols-3 divide-x divide-border px-4 py-8">
+            <div className="flex flex-col items-center gap-2 px-4 text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                <CalendarDays className="h-5 w-5 text-primary" />
+              </div>
+              <p className="text-3xl font-bold text-foreground">{platformStats.totalEvents}</p>
+              <p className="text-sm text-muted-foreground">мероприятий</p>
+            </div>
+            <div className="flex flex-col items-center gap-2 px-4 text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                <Ticket className="h-5 w-5 text-primary" />
+              </div>
+              <p className="text-3xl font-bold text-foreground">{platformStats.totalRegistrations}</p>
+              <p className="text-sm text-muted-foreground">регистраций</p>
+            </div>
+            <div className="flex flex-col items-center gap-2 px-4 text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                <Building2 className="h-5 w-5 text-primary" />
+              </div>
+              <p className="text-3xl font-bold text-foreground">{platformStats.totalCities}</p>
+              <p className="text-sm text-muted-foreground">городов</p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {recommendations.length > 0 && (
+        <section className="container mx-auto px-4 py-16">
+          <div className="mb-8 flex items-end justify-between">
+            <div>
+              <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                <Star className="h-3.5 w-3.5" />
+                Персонально для вас
+              </div>
+              <h2 className="font-heading text-2xl text-foreground sm:text-3xl">Рекомендуем</h2>
+              <p className="mt-1 text-muted-foreground">
+                {isAuthenticated ? 'Подборка на основе ваших предпочтений' : 'Самые популярные мероприятия'}
+              </p>
+            </div>
+            <Link to="/events" className="hidden items-center gap-1 text-sm font-semibold text-primary hover:underline sm:flex">
+              Все мероприятия <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {recommendations.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="container mx-auto px-4 py-10">
         <div className="rounded-2xl border border-border bg-card p-6 shadow-card">

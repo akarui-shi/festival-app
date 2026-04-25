@@ -28,6 +28,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.time.LocalDate;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/events")
@@ -82,6 +83,17 @@ public class EventController {
                                                                        @AuthenticationPrincipal UserDetails principal) {
         String actorIdentifier = principal != null ? principal.getUsername() : null;
         return ResponseEntity.ok(eventService.getRecommendations(actorIdentifier, cityId, limit));
+    }
+
+    @GetMapping("/platform-stats")
+    public ResponseEntity<Map<String, Long>> getPlatformStats() {
+        return ResponseEntity.ok(eventService.getPlatformStats());
+    }
+
+    @GetMapping("/{id}/similar")
+    public ResponseEntity<List<EventShortResponse>> getSimilar(@PathVariable Long id,
+                                                               @RequestParam(required = false) Integer limit) {
+        return ResponseEntity.ok(eventService.getSimilarEvents(id, limit));
     }
 
     @GetMapping("/{id}")
