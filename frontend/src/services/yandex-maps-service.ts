@@ -25,6 +25,15 @@ function extractComponent(components: Array<{ kind?: string; name?: string }> | 
   return matched?.name || '';
 }
 
+function extractRegion(components: Array<{ kind?: string; name?: string }> | undefined): string {
+  if (!components) return '';
+  const provinces = components.filter((item) => item.kind === 'province' && item.name);
+  // Skip federal districts like "Южный федеральный округ" — prefer oblast/krai
+  const meaningful = provinces.filter((p) => !p.name!.toLowerCase().includes('федеральный округ'));
+  const picked = meaningful.length > 0 ? meaningful[meaningful.length - 1] : provinces[provinces.length - 1];
+  return picked?.name || '';
+}
+
 function parseGeoObject(geoObject: any, idPrefix: string, index: number): YandexAddressSuggestion | null {
   const coordinates = geoObject?.geometry?.getCoordinates?.();
   if (!coordinates || coordinates.length < 2) {
@@ -36,8 +45,8 @@ function parseGeoObject(geoObject: any, idPrefix: string, index: number): Yandex
   const components = addressData?.Components as Array<{ kind?: string; name?: string }> | undefined;
   const label = metadata?.text || geoObject?.getAddressLine?.() || '';
   const address = addressData?.formatted || label;
-  const cityName = extractComponent(components, ['locality', 'area']);
-  const region = extractComponent(components, ['province', 'area']);
+  const cityName = extractComponent(components, ['locality']) || extractComponent(components, ['area']);
+  const region = extractRegion(components);
   const country = extractComponent(components, ['country']);
 
   return {
@@ -118,6 +127,19 @@ export const yandexMapsService = {
       }
     });
 
+    return suggestions;
+  },
+
+  async searchCitySuggestions(query: string, limit = 6): Promise<YandexAddressSuggestion[]> {
+    const normalizedQuery = query.trim();
+    if (!normalizedQuery) return [];
+    const ymaps = await loadYandexMapsApi();
+    const result = await ymaps.geocode(normalizedQuery, { results: limit, kind: 'locality' });
+    const suggestions: YandexAddressSuggestion[] = [];
+    result.geoObjects.each((geoObject: any, index: number) => {
+      const parsed = parseGeoObject(geoObject, 'city', index);
+      if (parsed) suggestions.push(parsed);
+    });
     return suggestions;
   },
 
