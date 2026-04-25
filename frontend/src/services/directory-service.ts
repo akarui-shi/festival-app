@@ -1,5 +1,5 @@
-import type { Category, City, Venue } from '@/types';
-import { apiDelete, apiGet, apiPatch, apiPost } from './api-client';
+import type { Category, City, Id, Venue } from '@/types';
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from './api-client';
 
 export const directoryService = {
   async getCategories(): Promise<Category[]> {
@@ -50,5 +50,20 @@ export const directoryService = {
       latitude: data.latitude == null ? undefined : Number(data.latitude),
       longitude: data.longitude == null ? undefined : Number(data.longitude),
     });
+  },
+
+  async updateVenue(id: Id, data: Partial<Venue>): Promise<Venue> {
+    return apiPut<Venue>(`/admin/venues/${id}`, {
+      name: data.name,
+      address: data.address,
+      cityId: data.cityId == null ? undefined : Number(data.cityId),
+      capacity: data.capacity,
+      latitude: data.latitude == null ? undefined : Number(data.latitude),
+      longitude: data.longitude == null ? undefined : Number(data.longitude),
+    });
+  },
+
+  async deleteVenue(id: Id): Promise<void> {
+    await apiDelete(`/admin/venues/${id}`);
   },
 };
