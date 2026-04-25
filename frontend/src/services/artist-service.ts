@@ -1,5 +1,5 @@
 import type { Artist, Id } from '@/types';
-import { apiGet, apiPost, apiPut } from './api-client';
+import { apiDelete, apiGet, apiPost, apiPut } from './api-client';
 
 function normalizeArtist(artist: Artist): Artist {
   const imageIds = Array.isArray(artist.imageIds)
@@ -33,5 +33,9 @@ export const artistService = {
   async updateArtist(id: Id, payload: Partial<Artist>): Promise<Artist> {
     const response = await apiPut<Artist>(`/artists/${id}`, payload);
     return normalizeArtist(response);
+  },
+
+  async deleteArtist(id: Id): Promise<void> {
+    await apiDelete(`/artists/${id}`);
   },
 };

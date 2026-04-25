@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, ChevronDown, ImagePlus, Mic2, Plus, Save, Search, Trash2, Upload } from 'lucide-react';
+import {Check, ChevronDown, ExternalLink, ImagePlus, Mic2, Plus, Save, Search, Trash2, Upload} from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { artistService } from '@/services/artist-service';
 import { fileUploadService } from '@/services/file-upload-service';
@@ -60,6 +61,7 @@ export default function AdminArtists() {
   const [artists, setArtists] = useState<Artist[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingArtistId, setDeletingArtistId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [editingArtistId, setEditingArtistId] = useState<string | null>(null);
   const [newArtist, setNewArtist] = useState<ArtistDraft>({
@@ -227,6 +229,29 @@ export default function AdminArtists() {
     }
   };
 
+  const onDeleteArtist = async (artistId: string | number, artistName: string) => {
+    const confirmed = window.confirm(`Удалить артиста «${artistName}»? Это действие нельзя отменить.`);
+    if (!confirmed) return;
+
+    const key = String(artistId);
+    setDeletingArtistId(key);
+    try {
+      await artistService.deleteArtist(artistId);
+      setArtists((prev) => prev.filter((artist) => String(artist.id) !== key));
+      setEditDrafts((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      setEditingArtistId((prev) => (prev === key ? null : prev));
+      toast.success('Артист удален');
+    } catch {
+      toast.error('Не удалось удалить артиста');
+    } finally {
+      setDeletingArtistId(null);
+    }
+  };
+
   if (loading) return <LoadingState />;
 
   return (
@@ -252,8 +277,8 @@ export default function AdminArtists() {
             <Input value={newArtist.genre} onChange={(e) => setNewArtist((prev) => ({ ...prev, genre: e.target.value }))} placeholder="Джаз" />
           </div>
           <div className="space-y-2">
-            <Label>Фотографии</Label>
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm">
+            <Label className="block">Фотографии</Label>
+            <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border bg-background px-3 text-sm">
               <ImagePlus className="h-4 w-4" />
               Добавить фото
               <input
@@ -354,6 +379,12 @@ export default function AdminArtists() {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" asChild>
+                      <Link to={`/artists/${artist.id}`} target="_blank" rel="noreferrer" className="gap-1.5">
+                        Открыть
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Link>
+                    </Button>
                     <Button
                       type="button"
                       variant="outline"
@@ -367,6 +398,17 @@ export default function AdminArtists() {
                     <Button type="button" size="sm" className="gap-1.5" onClick={() => onSaveArtist(artist.id)} disabled={saving}>
                       <Save className="h-4 w-4" />
                       Сохранить
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => onDeleteArtist(artist.id, draft.name || 'без имени')}
+                      disabled={deletingArtistId === key}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Удалить
                     </Button>
                   </div>
                 </div>
@@ -395,8 +437,8 @@ export default function AdminArtists() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Фотографии</Label>
-                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm">
+                      <Label className="block">Фотографии</Label>
+                      <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border bg-background px-3 text-sm">
                         <Upload className="h-4 w-4" />
                         Добавить фото
                         <input
