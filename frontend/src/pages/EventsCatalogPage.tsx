@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CalendarRange, LayoutList, Map, Search, SlidersHorizontal, Tag, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -81,6 +81,9 @@ export default function EventsCatalogPage() {
   const [appliedFilters, setAppliedFilters] = useState<CatalogFilters>(() => parseFilters(searchParams));
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   const {
     search,
@@ -191,6 +194,37 @@ export default function EventsCatalogPage() {
     setSearchParams(nextParams, { replace: true });
   }, [appliedFilters, setSearchParams]);
 
+  useEffect(() => {
+    const query = draftFilters.search.trim();
+    if (query.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      eventService
+        .getEvents({ search: query, size: 6, status: 'PUBLISHED', cityId: selectedCity?.id || undefined })
+        .then((res) => {
+          const titles = [...new Set(res.content.map((e) => e.title))].slice(0, 6);
+          setSuggestions(titles);
+          setShowSuggestions(titles.length > 0);
+        })
+        .catch(() => setSuggestions([]));
+    }, 280);
+
+    return () => clearTimeout(timer);
+  }, [draftFilters.search, selectedCity?.id]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
   const filteredEvents = useMemo(() => events, [events]);
 
   const loading = eventsLoading || categoriesLoading;
@@ -300,17 +334,47 @@ export default function EventsCatalogPage() {
 
         <div className="surface-panel mb-8 space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
+            <div ref={searchContainerRef} className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={draftFilters.search}
-                onChange={(event) => updateDraftFilter('search', event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') applyFilters();
+                onChange={(event) => {
+                  updateDraftFilter('search', event.target.value);
+                  setShowSuggestions(true);
                 }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    setShowSuggestions(false);
+                    applyFilters();
+                  }
+                  if (event.key === 'Escape') setShowSuggestions(false);
+                }}
+                onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
                 placeholder="Поиск мероприятий, организаций и артистов…"
                 className="pl-9"
+                autoComplete="off"
               />
+              {showSuggestions && suggestions.length > 0 && (
+                <ul className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+                  {suggestions.map((title) => (
+                    <li key={title}>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-foreground hover:bg-muted"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          updateDraftFilter('search', title);
+                          setShowSuggestions(false);
+                          setAppliedFilters(normalizeFilters({ ...draftFilters, search: title }));
+                        }}
+                      >
+                        <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        {title}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             <div className="flex gap-2">
               <Button variant={isDirty ? 'default' : 'outline'} onClick={applyFilters}>

@@ -172,4 +172,12 @@ export const authService = {
   logout(): void {
     clearSession();
   },
+
+  async getMyInterests(): Promise<number[]> {
+    return apiGet<number[]>('/users/me/interests');
+  },
+
+  async updateMyInterests(categoryIds: number[]): Promise<void> {
+    await apiPut<void>('/users/me/interests', categoryIds);
+  },
 };

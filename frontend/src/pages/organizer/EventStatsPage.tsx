@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Calendar, Clock, Plus, Star, Users } from 'lucide-react';
+import { Calendar, Clock, Download, Plus, Star, Users } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, XAxis, YAxis } from 'recharts';
 import { toast } from 'sonner';
 import { ConfirmActionDialog } from '@/components/ConfirmActionDialog';
@@ -246,11 +246,21 @@ export default function EventStatsPage() {
   if (loading) return <LoadingState />;
   if (!stats) return <ErrorState message="Не найдено" />;
 
+  const exportUrl = `/api/organizer/events/${id}/attendees/export`;
+
   return (
     <div className="space-y-8">
-      <section>
-        <h1 className="page-title">{stats.engagement.eventTitle}</h1>
-        <p className="mt-1 text-muted-foreground">Статистика и управление сеансами</p>
+      <section className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="page-title">{stats.engagement.eventTitle}</h1>
+          <p className="mt-1 text-muted-foreground">Статистика и управление сеансами</p>
+        </div>
+        <a href={exportUrl} download>
+          <Button variant="outline" size="sm" className="gap-2 shrink-0">
+            <Download className="h-4 w-4" />
+            Экспорт CSV
+          </Button>
+        </a>
       </section>
 
       <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">

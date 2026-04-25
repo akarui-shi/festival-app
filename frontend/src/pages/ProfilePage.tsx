@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Building2, ChevronDown, ChevronUp, KeyRound, Loader2, Upload, User } from 'lucide-react';
+import { Building2, ChevronDown, ChevronUp, Heart, KeyRound, Loader2, Upload, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PublicLayout } from '@/layouts/PublicLayout';
@@ -9,8 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { authService } from '@/services/auth-service';
+import { directoryService } from '@/services/directory-service';
 import { fileUploadService } from '@/services/file-upload-service';
 import { imageSrc } from '@/lib/image';
+import type { Category } from '@/types';
 
 function buildProfileForm(user: {
   login?: string | null;
@@ -59,6 +61,9 @@ export default function ProfilePage() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordSectionOpen, setPasswordSectionOpen] = useState(false);
   const [form, setForm] = useState(buildProfileForm(user));
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedInterests, setSelectedInterests] = useState<number[]>([]);
+  const [savingInterests, setSavingInterests] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -79,6 +84,31 @@ export default function ProfilePage() {
     if (!user) return;
     setForm(buildProfileForm(user));
   }, [user?.id]);
+
+  useEffect(() => {
+    directoryService.getCategories().then(setCategories).catch(() => {});
+    if (user) {
+      authService.getMyInterests().then(setSelectedInterests).catch(() => {});
+    }
+  }, [user?.id]);
+
+  const toggleInterest = (categoryId: number) => {
+    setSelectedInterests((prev) =>
+      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId],
+    );
+  };
+
+  const saveInterests = async () => {
+    setSavingInterests(true);
+    try {
+      await authService.updateMyInterests(selectedInterests);
+      toast.success('Интересы сохранены');
+    } catch {
+      toast.error('Не удалось сохранить интересы');
+    } finally {
+      setSavingInterests(false);
+    }
+  };
 
   const normalizedForm = normalizeProfileForm(form);
   const currentUserForm = normalizeProfileForm(buildProfileForm(user));
@@ -347,6 +377,45 @@ export default function ProfilePage() {
                     />
                   </div>
                 </section>
+
+                {categories.length > 0 && (
+                  <section className="rounded-xl border border-border p-4">
+                    <p className="font-heading text-lg text-foreground">Мои интересы</p>
+                    <p className="mb-4 mt-1 text-xs text-muted-foreground">
+                      Выберите категории — они улучшат персональные рекомендации мероприятий.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {categories.map((category) => {
+                        const active = selectedInterests.includes(Number(category.id));
+                        return (
+                          <button
+                            key={category.id}
+                            type="button"
+                            onClick={() => toggleInterest(Number(category.id))}
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm transition-all ${
+                              active
+                                ? 'border-primary bg-primary text-primary-foreground'
+                                : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                            }`}
+                          >
+                            {active && <Heart className="h-3 w-3 fill-current" />}
+                            {category.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-4">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => void saveInterests()}
+                        disabled={savingInterests}
+                      >
+                        {savingInterests ? 'Сохранение…' : 'Сохранить интересы'}
+                      </Button>
+                    </div>
+                  </section>
+                )}
 
                 <section className="rounded-xl border border-border p-4">
                   <p className="font-heading text-lg text-foreground">Уведомления</p>
