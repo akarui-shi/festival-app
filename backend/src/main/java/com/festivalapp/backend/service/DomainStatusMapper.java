@@ -19,6 +19,7 @@ public final class DomainStatusMapper {
             case PUBLISHED -> "опубликовано";
             case ARCHIVED -> "завершено";
             case REJECTED -> "отклонено";
+            case CANCELLED -> "отменено";
         };
     }
 
@@ -31,7 +32,8 @@ public final class DomainStatusMapper {
             case "на_рассмотрении" -> EventStatus.PENDING_APPROVAL;
             case "опубликовано" -> EventStatus.PUBLISHED;
             case "завершено" -> EventStatus.ARCHIVED;
-            case "отклонено", "отменено" -> EventStatus.REJECTED;
+            case "отклонено" -> EventStatus.REJECTED;
+            case "отменено" -> EventStatus.CANCELLED;
             default -> EventStatus.DRAFT;
         };
     }
