@@ -1,4 +1,4 @@
-import type { Id, Order, SessionRegistration, Ticket } from '@/types';
+import type { Id, Order, SessionRegistration, Ticket, WaitlistEntry } from '@/types';
 import { apiDelete, apiGet, apiPost } from './api-client';
 
 export interface RegistrationItemInput {
@@ -52,5 +52,9 @@ export const registrationService = {
       sessions.map(async (session) => apiGet<SessionRegistration[]>(`/sessions/${session.id}/registrations`)),
     );
     return response.flat();
+  },
+
+  async getWaitlistByEvent(eventId: Id): Promise<WaitlistEntry[]> {
+    return apiGet<WaitlistEntry[]>(`/organizer/events/${eventId}/waitlist`);
   },
 };

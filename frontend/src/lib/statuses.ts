@@ -47,6 +47,7 @@ const PUBLICATION_STATUS_LABELS: Record<string, string> = {
 };
 
 const REGISTRATION_STATUS_LABELS: Record<string, string> = {
+  CREATED: 'Подтверждено',
   ACTIVE: 'Активен',
   CONFIRMED: 'Подтверждено',
   ATTENDED: 'Посещено',
@@ -96,7 +97,7 @@ function publicationStatusClass(key: string): string {
 }
 
 function registrationStatusClass(key: string): string {
-  if (['ACTIVE', 'CONFIRMED', 'ATTENDED', 'USED', 'АКТИВЕН', 'ПОДТВЕРЖДЕНО', 'ПОСЕЩЕНО', 'ИСПОЛЬЗОВАН'].includes(key)) {
+  if (['CREATED', 'ACTIVE', 'CONFIRMED', 'ATTENDED', 'USED', 'АКТИВЕН', 'ПОДТВЕРЖДЕНО', 'ПОСЕЩЕНО', 'ИСПОЛЬЗОВАН'].includes(key)) {
     return 'bg-primary/10 text-primary';
   }
   if (['PENDING_PAYMENT', 'PENDING', 'ОЖИДАЕТ_ОПЛАТЫ'].includes(key)) {

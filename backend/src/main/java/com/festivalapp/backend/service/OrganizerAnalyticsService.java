@@ -20,6 +20,7 @@ import com.festivalapp.backend.repository.EventRepository;
 import com.festivalapp.backend.repository.FavoriteRepository;
 import com.festivalapp.backend.repository.OrganizationMemberRepository;
 import com.festivalapp.backend.repository.SessionRepository;
+import com.festivalapp.backend.repository.SessionWaitlistRepository;
 import com.festivalapp.backend.repository.TicketRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,7 @@ public class OrganizerAnalyticsService {
     private final SessionRepository sessionRepository;
     private final TicketRepository ticketRepository;
     private final FavoriteRepository favoriteRepository;
+    private final SessionWaitlistRepository sessionWaitlistRepository;
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
@@ -158,6 +160,9 @@ public class OrganizerAnalyticsService {
         }
 
         long favoritesCount = favoriteRepository.countByEventId(event.getId());
+        long waitlistCount = sessions.stream()
+            .mapToLong(s -> sessionWaitlistRepository.countBySessionIdAndStatus(s.getId(), "WAITING"))
+            .sum();
         long reviewsCount = commentRepository.countByEventId(event.getId());
         Double avgRating = commentRepository.averageRatingByEventId(event.getId());
         List<AnalyticsSessionLoadResponse> sessionLoads = buildSessionLoads(sessions);
@@ -178,6 +183,7 @@ public class OrganizerAnalyticsService {
             .sessionsCount(sessions.size())
             .averageSessionOccupancyPercent(avgOccupancy)
             .favoritesCount(favoritesCount)
+            .waitlistCount(waitlistCount)
             .reviewsCount(reviewsCount)
             .averageRating(avgRating == null ? 0.0 : avgRating)
             .registrationsByDay(buildDailySeries(range, daily))

@@ -3,6 +3,7 @@ package com.festivalapp.backend.controller;
 import com.festivalapp.backend.dto.EventDetailsResponse;
 import com.festivalapp.backend.dto.OrganizerEventStatsResponse;
 import com.festivalapp.backend.dto.EventShortResponse;
+import com.festivalapp.backend.dto.WaitlistEntryResponse;
 import com.festivalapp.backend.entity.Session;
 import com.festivalapp.backend.entity.Ticket;
 import com.festivalapp.backend.entity.User;
@@ -10,6 +11,7 @@ import com.festivalapp.backend.exception.UnauthorizedException;
 import com.festivalapp.backend.repository.SessionRepository;
 import com.festivalapp.backend.repository.TicketRepository;
 import com.festivalapp.backend.service.EventService;
+import com.festivalapp.backend.service.WaitlistService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -34,6 +36,7 @@ public class OrganizerController {
     private static final DateTimeFormatter CSV_DT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
     private final EventService eventService;
+    private final WaitlistService waitlistService;
     private final SessionRepository sessionRepository;
     private final TicketRepository ticketRepository;
 
@@ -61,6 +64,16 @@ public class OrganizerController {
             throw new UnauthorizedException("Unauthorized user");
         }
         return ResponseEntity.ok(eventService.getOrganizerEventStats(id, principal.getUsername()));
+    }
+
+    @GetMapping("/events/{id}/waitlist")
+    public ResponseEntity<List<WaitlistEntryResponse>> getEventWaitlist(@PathVariable Long id,
+                                                                        @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) {
+            throw new UnauthorizedException("Unauthorized user");
+        }
+        eventService.getOrganizerEventById(id, principal.getUsername());
+        return ResponseEntity.ok(waitlistService.getEventWaitlistEntries(id));
     }
 
     @GetMapping("/events/{id}/attendees/export")

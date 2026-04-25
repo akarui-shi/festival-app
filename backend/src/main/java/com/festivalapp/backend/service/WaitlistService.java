@@ -1,5 +1,6 @@
 package com.festivalapp.backend.service;
 
+import com.festivalapp.backend.dto.WaitlistEntryResponse;
 import com.festivalapp.backend.entity.Session;
 import com.festivalapp.backend.entity.SessionWaitlist;
 import com.festivalapp.backend.entity.User;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -92,6 +94,45 @@ public class WaitlistService {
         return Map.of("inQueue", true, "position", position, "queueSize", queueSize);
     }
 
+    @Transactional(readOnly = true)
+    public List<WaitlistEntryResponse> getEventWaitlistEntries(Long eventId) {
+        List<Session> sessions = sessionRepository.findAllByEventIdOrderByStartsAtAsc(eventId);
+        List<WaitlistEntryResponse> result = new ArrayList<>();
+
+        for (Session session : sessions) {
+            List<SessionWaitlist> entries = waitlistRepository
+                .findAllBySessionIdAndStatusOrderByCreatedAtAsc(session.getId(), "WAITING");
+
+            String sessionLabel = StringUtils.hasText(session.getSessionTitle())
+                ? session.getSessionTitle()
+                : "Сеанс #" + session.getId();
+
+            for (int i = 0; i < entries.size(); i++) {
+                SessionWaitlist entry = entries.get(i);
+                User user = entry.getUser();
+                String fullName = user != null
+                    ? (trim(user.getFirstName()) + " " + trim(user.getLastName())).trim()
+                    : "Пользователь";
+                Long avatarImageId = user != null && user.getAvatarImage() != null
+                    ? user.getAvatarImage().getId()
+                    : null;
+
+                result.add(WaitlistEntryResponse.builder()
+                    .id(entry.getId())
+                    .userFullName(fullName)
+                    .userAvatarImageId(avatarImageId)
+                    .sessionId(session.getId())
+                    .sessionLabel(sessionLabel)
+                    .position((long) i + 1)
+                    .status(entry.getStatus())
+                    .joinedAt(entry.getCreatedAt())
+                    .build());
+            }
+        }
+
+        return result;
+    }
+
     @Transactional
     public void notifyFirstInQueue(Long sessionId) {
         List<SessionWaitlist> queue = waitlistRepository
@@ -130,5 +171,9 @@ public class WaitlistService {
 
         notificationService.sendEmailMessage(user.getEmail(), subject, body);
         log.info("Waitlist notification sent to {} for session {}", user.getEmail(), sessionId);
+    }
+
+    private static String trim(String value) {
+        return value != null ? value.trim() : "";
     }
 }
