@@ -15,4 +15,6 @@ public interface EventArtistRepository extends JpaRepository<EventArtist, Long> 
     List<EventArtist> findAllByArtistIdOrderByIdAsc(Long artistId);
 
     void deleteByEventId(Long eventId);
+
+    void deleteByArtistId(Long artistId);
 }

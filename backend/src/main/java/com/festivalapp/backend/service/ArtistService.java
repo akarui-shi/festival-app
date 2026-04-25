@@ -140,6 +140,23 @@ public class ArtistService {
     }
 
     @Transactional
+    public void delete(Long id, String actorIdentifier) {
+        User actor = resolveActor(actorIdentifier);
+        assertCanManage(actor);
+
+        Artist artist = artistRepository.findByIdAndDeletedAtIsNull(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Artist not found"));
+
+        eventArtistRepository.deleteByArtistId(artist.getId());
+        artistImageRepository.deleteByArtistId(artist.getId());
+
+        OffsetDateTime now = OffsetDateTime.now();
+        artist.setDeletedAt(now);
+        artist.setUpdatedAt(now);
+        artistRepository.save(artist);
+    }
+
+    @Transactional
     public List<Artist> resolveArtists(List<String> newArtistNames, List<Long> artistIds) {
         List<Artist> resolved = artistIds == null || artistIds.isEmpty()
             ? new java.util.ArrayList<>()
