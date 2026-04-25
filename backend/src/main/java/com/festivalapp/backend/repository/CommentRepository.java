@@ -10,13 +10,13 @@ import java.util.Optional;
 
 public interface CommentRepository extends JpaRepository<Comment, Long> {
 
-    @EntityGraph(attributePaths = {"user", "event"})
+    @EntityGraph(attributePaths = {"user", "user.avatarImage", "event"})
     List<Comment> findAllByEventIdOrderByCreatedAtDesc(Long eventId);
 
-    @EntityGraph(attributePaths = {"user", "event"})
+    @EntityGraph(attributePaths = {"user", "user.avatarImage", "event"})
     List<Comment> findAllByOrderByCreatedAtDesc();
 
-    @EntityGraph(attributePaths = {"user", "event"})
+    @EntityGraph(attributePaths = {"user", "user.avatarImage", "event"})
     Optional<Comment> findById(Long id);
 
     long countByEventId(Long eventId);

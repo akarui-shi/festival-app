@@ -3,7 +3,6 @@ package com.festivalapp.backend.service;
 import com.festivalapp.backend.dto.ModerationDecisionRequest;
 import com.festivalapp.backend.dto.ModerationResponse;
 import com.festivalapp.backend.entity.Artist;
-import com.festivalapp.backend.entity.Comment;
 import com.festivalapp.backend.entity.Event;
 import com.festivalapp.backend.entity.EventStatus;
 import com.festivalapp.backend.entity.Moderation;
@@ -13,7 +12,6 @@ import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
 import com.festivalapp.backend.repository.ArtistRepository;
-import com.festivalapp.backend.repository.CommentRepository;
 import com.festivalapp.backend.repository.EventRepository;
 import com.festivalapp.backend.repository.ModerationRepository;
 import com.festivalapp.backend.repository.OrganizationRepository;
@@ -37,7 +35,6 @@ public class ModerationService {
     private final OrganizationRepository organizationRepository;
     private final ArtistRepository artistRepository;
     private final PublicationRepository publicationRepository;
-    private final CommentRepository commentRepository;
     private final AdminAuditService adminAuditService;
     private final EventNotificationService eventNotificationService;
 
@@ -53,7 +50,7 @@ public class ModerationService {
             case "ОРГАНИЗАЦИЯ" -> moderateOrganization(request.getEntityId(), decision);
             case "АРТИСТ" -> moderateArtist(request.getEntityId(), decision);
             case "ПУБЛИКАЦИЯ" -> moderatePublication(request.getEntityId(), decision);
-            case "КОММЕНТАРИЙ" -> moderateComment(request.getEntityId(), decision);
+            case "КОММЕНТАРИЙ" -> throw new BadRequestException("Модерация комментариев отключена. Удалите комментарий при необходимости.");
             default -> throw new BadRequestException("Неподдерживаемый тип сущности: " + request.getEntityType());
         }
 
@@ -133,14 +130,6 @@ public class ModerationService {
         }
         publication.setUpdatedAt(OffsetDateTime.now());
         publicationRepository.save(publication);
-    }
-
-    private void moderateComment(Long commentId, String decision) {
-        Comment comment = commentRepository.findById(commentId)
-            .orElseThrow(() -> new ResourceNotFoundException("Comment not found"));
-        comment.setModerationStatus("одобрено".equals(decision) ? "одобрено" : "отклонено");
-        comment.setUpdatedAt(OffsetDateTime.now());
-        commentRepository.save(comment);
     }
 
     private ModerationResponse toResponse(Moderation moderation) {

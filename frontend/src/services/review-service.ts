@@ -28,13 +28,4 @@ export const reviewService = {
   async getAllReviews(): Promise<Review[]> {
     return apiGet<Review[]>('/admin/comments');
   },
-
-  async moderateReview(id: Id, decision: 'APPROVED' | 'REJECTED', moderatorComment?: string): Promise<void> {
-    await apiPost('/admin/moderation/decisions', {
-      entityType: 'Комментарий',
-      entityId: Number(id),
-      decision: decision === 'APPROVED' ? 'одобрено' : 'отклонено',
-      moderatorComment,
-    });
-  },
 };

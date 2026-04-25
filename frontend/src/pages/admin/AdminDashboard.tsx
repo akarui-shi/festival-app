@@ -46,7 +46,7 @@ export default function AdminDashboard() {
           reviews: reviews.length,
           publications: pubs.length,
           pendingEvents: events.filter((event) => event.status === 'PENDING_APPROVAL').length,
-          pendingReviews: reviews.filter((review) => review.moderationStatus === 'на_рассмотрении').length,
+          pendingReviews: 0,
           pendingPubs: pubs.filter((publication) => publication.status === 'PENDING').length,
         });
         setAnalytics(analyticsResponse);
@@ -92,7 +92,7 @@ export default function AdminDashboard() {
 
   const pendingItems = [
     { label: 'Мероприятий на модерации', count: stats.pendingEvents, link: '/admin/events', urgent: stats.pendingEvents > 0 },
-    { label: 'Комментариев на модерации', count: stats.pendingReviews, link: '/admin/comments', urgent: stats.pendingReviews > 0 },
+    { label: 'Комментариев на удаление', count: stats.pendingReviews, link: '/admin/comments', urgent: stats.pendingReviews > 0 },
     { label: 'Публикаций на модерации', count: stats.pendingPubs, link: '/admin/publications', urgent: stats.pendingPubs > 0 },
   ];
 
