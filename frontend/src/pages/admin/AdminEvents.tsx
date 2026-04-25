@@ -29,7 +29,7 @@ function normalizeEventStatus(event: Event): EventFilterKey | 'OTHER' {
   if (key === 'ARCHIVED') return 'ARCHIVED';
   if (key === 'PENDING' || key === 'PENDING_APPROVAL' || key === 'НА_РАССМОТРЕНИИ') return 'PENDING';
   if (key === 'ОПУБЛИКОВАНО') return 'PUBLISHED';
-  if (key === 'ОТКЛОНЕНО' || key === 'ОТМЕНЕНО') return 'REJECTED';
+  if (key === 'ОТКЛОНЕНО' || key === 'ОТМЕНЕНО' || key === 'CANCELLED' || key === 'CANCELED') return 'REJECTED';
   if (key === 'ЗАВЕРШЕНО' || key === 'АРХИВИРОВАНО') return 'ARCHIVED';
 
   return 'OTHER';

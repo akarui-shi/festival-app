@@ -1070,8 +1070,11 @@ public class EventService {
                 || "on_moderation".equalsIgnoreCase(raw)) {
                 return EventStatus.PENDING_APPROVAL;
             }
-            if ("отклонено".equalsIgnoreCase(raw) || "отменено".equalsIgnoreCase(raw)) {
+            if ("отклонено".equalsIgnoreCase(raw)) {
                 return EventStatus.REJECTED;
+            }
+            if ("отменено".equalsIgnoreCase(raw) || "cancelled".equalsIgnoreCase(raw)) {
+                return EventStatus.CANCELLED;
             }
             if ("завершено".equalsIgnoreCase(raw) || "архив".equalsIgnoreCase(raw)) {
                 return EventStatus.ARCHIVED;
