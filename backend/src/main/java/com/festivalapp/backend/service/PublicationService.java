@@ -145,6 +145,13 @@ public class PublicationService {
         return toDetails(publication);
     }
 
+    @Transactional(readOnly = true)
+    public PublicationDetailsResponse getByIdForAdmin(Long id) {
+        Publication publication = publicationRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Publication not found"));
+        return toDetails(publication);
+    }
+
     @Transactional
     public PublicationDetailsResponse update(Long id, PublicationUpdateRequest request, String actorIdentifier) {
         User actor = resolveActor(actorIdentifier);

@@ -19,10 +19,8 @@ export default function ArtistPage() {
 
   useEffect(() => {
     if (!id) return;
-
     setLoading(true);
-    artistService
-      .getArtistById(id)
+    artistService.getArtistById(id)
       .then((response) => {
         setArtist(response);
         setEvents(response.events || []);
@@ -34,90 +32,101 @@ export default function ArtistPage() {
 
   const artistImageIds = artist
     ? (() => {
-      const ids = artist.imageIds && artist.imageIds.length > 0
-        ? artist.imageIds
-        : artist.imageId != null ? [Number(artist.imageId)] : [];
-      return ids.filter((value, index, array) => array.indexOf(value) === index);
-    })()
+        const ids = artist.imageIds && artist.imageIds.length > 0 ? artist.imageIds : artist.imageId != null ? [Number(artist.imageId)] : [];
+        return ids.filter((v, i, arr) => arr.indexOf(v) === i);
+      })()
     : [];
   const activeImageId = artist ? (selectedImageId ?? artist.primaryImageId ?? artistImageIds[0] ?? null) : null;
 
-  if (loading) {
-    return (
-      <PublicLayout>
-        <LoadingState />
-      </PublicLayout>
-    );
-  }
-
-  if (error || !artist) {
-    return (
-      <PublicLayout>
-        <ErrorState message={error || 'Артист не найден'} />
-      </PublicLayout>
-    );
-  }
+  if (loading) return <PublicLayout><LoadingState /></PublicLayout>;
+  if (error || !artist) return <PublicLayout><ErrorState message={error || 'Артист не найден'} /></PublicLayout>;
 
   return (
     <PublicLayout>
-      <div className="container mx-auto px-4 py-8">
-        <Link
-          to="/events"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          К мероприятиям
-        </Link>
+      {/* Hero */}
+      <section className="relative overflow-hidden border-b border-border">
+        {/* Background: use first photo as blurred backdrop or gradient */}
+        {activeImageId ? (
+          <>
+            <div
+              className="absolute inset-0 bg-cover bg-center opacity-20 blur-xl scale-105"
+              style={{ backgroundImage: `url(${imageSrc(activeImageId)})` }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background" />
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--warm-cream))] via-background to-[hsl(var(--golden-light)/0.2)]" />
+        )}
 
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-card sm:p-8">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-              <Mic2 className="h-6 w-6 text-primary" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="font-heading text-3xl text-foreground sm:text-4xl">{artist.stageName || artist.name}</h1>
-              <p className="mt-1 text-sm text-muted-foreground">{artist.genre || 'Жанр не указан'}</p>
-              <p className="mt-3 whitespace-pre-line text-muted-foreground">
-                {artist.description || 'Описание артиста пока не заполнено.'}
-              </p>
-            </div>
-          </div>
+        <div className="container relative mx-auto px-4 py-12">
+          <Link to="/events" className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary">
+            <ArrowLeft className="h-4 w-4" />К мероприятиям
+          </Link>
 
-          {artistImageIds.length > 0 && (
-            <div className="mt-6 space-y-3">
-              <div className="overflow-hidden rounded-xl border border-border bg-muted/20">
-                <img
-                  src={imageSrc(activeImageId)}
-                  alt={artist.stageName || artist.name}
-                  className="h-64 w-full object-cover sm:h-80"
-                />
-              </div>
-              {artistImageIds.length > 1 && (
-                <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-                  {artistImageIds.map((imageId) => (
-                    <button
-                      key={imageId}
-                      type="button"
-                      onClick={() => setSelectedImageId(imageId)}
-                      className={`overflow-hidden rounded-lg border ${activeImageId === imageId ? 'border-primary' : 'border-border'}`}
-                    >
-                      <img src={imageSrc(imageId)} alt="Фото артиста" className="h-16 w-full object-cover sm:h-20" />
-                    </button>
-                  ))}
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-end">
+            {/* Photo */}
+            <div className="relative h-32 w-32 shrink-0 overflow-hidden rounded-2xl border-4 border-card shadow-card sm:h-40 sm:w-40">
+              {activeImageId ? (
+                <img src={imageSrc(activeImageId)} alt={artist.stageName || artist.name} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/15 to-primary/5">
+                  <Mic2 className="h-12 w-12 text-primary/60" />
                 </div>
               )}
             </div>
-          )}
-        </section>
 
-        <section className="mt-8">
-          <h2 className="font-heading text-2xl text-foreground">Мероприятия с участием артиста</h2>
+            <div className="min-w-0">
+              {artist.genre && (
+                <div className="section-label mb-2">
+                  <Mic2 className="h-3.5 w-3.5" />
+                  {artist.genre}
+                </div>
+              )}
+              <h1 className="font-heading text-4xl tracking-tight text-foreground sm:text-5xl">
+                {artist.stageName || artist.name}
+              </h1>
+              {artist.stageName && artist.name !== artist.stageName && (
+                <p className="mt-1 text-sm text-muted-foreground">{artist.name}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
 
-          {events.length > 0 ? (
-            <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {events.map((event) => (
-                <EventCard key={event.id} event={event} />
+      <div className="container mx-auto px-4 py-10 space-y-10">
+        {/* Bio */}
+        {artist.description && (
+          <section className="surface-panel">
+            <p className="whitespace-pre-line text-[15px] leading-7 text-foreground/90">{artist.description}</p>
+          </section>
+        )}
+
+        {/* Gallery */}
+        {artistImageIds.length > 1 && (
+          <section>
+            <h2 className="mb-4 font-heading text-xl text-foreground">Фотографии</h2>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+              {artistImageIds.map((imageId) => (
+                <button
+                  key={imageId}
+                  type="button"
+                  onClick={() => setSelectedImageId(imageId)}
+                  className={`overflow-hidden rounded-xl border-2 transition-all ${activeImageId === imageId ? 'border-primary shadow-soft' : 'border-border hover:border-primary/40'}`}
+                >
+                  <img src={imageSrc(imageId)} alt="" className="aspect-square w-full object-cover" />
+                </button>
               ))}
+            </div>
+          </section>
+        )}
+
+        {/* Events */}
+        <section>
+          <h2 className="mb-1 font-heading text-2xl text-foreground">Мероприятия с участием артиста</h2>
+          <p className="mb-6 text-muted-foreground">Ближайшие и прошедшие события</p>
+          {events.length > 0 ? (
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {events.map((event) => <EventCard key={event.id} event={event} />)}
             </div>
           ) : (
             <EmptyState icon={Mic2} title="Пока нет мероприятий" description="Скоро здесь появятся события с участием артиста" />

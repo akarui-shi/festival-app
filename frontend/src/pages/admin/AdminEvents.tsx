@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Calendar, ExternalLink, Filter, Search } from 'lucide-react';
+import { Calendar, ExternalLink, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { eventService } from '@/services/event-service';
+import { imageSrc } from '@/lib/image';
 import { LoadingState } from '@/components/StateDisplays';
 import { EmptyState } from '@/components/EmptyState';
 import { Badge } from '@/components/ui/badge';
@@ -23,15 +24,11 @@ const FILTER_LABELS: Record<EventFilterKey, string> = {
 
 function normalizeEventStatus(event: Event): EventFilterKey | 'OTHER' {
   const key = String(event.status || '').trim().toUpperCase();
-
-  if (key === 'PUBLISHED') return 'PUBLISHED';
+  if (key === 'PUBLISHED' || key === 'ОПУБЛИКОВАНО') return 'PUBLISHED';
   if (key === 'REJECTED') return 'REJECTED';
-  if (key === 'ARCHIVED') return 'ARCHIVED';
+  if (key === 'ARCHIVED' || key === 'ЗАВЕРШЕНО' || key === 'АРХИВИРОВАНО') return 'ARCHIVED';
   if (key === 'PENDING' || key === 'PENDING_APPROVAL' || key === 'НА_РАССМОТРЕНИИ') return 'PENDING';
-  if (key === 'ОПУБЛИКОВАНО') return 'PUBLISHED';
   if (key === 'ОТКЛОНЕНО' || key === 'ОТМЕНЕНО' || key === 'CANCELLED' || key === 'CANCELED') return 'REJECTED';
-  if (key === 'ЗАВЕРШЕНО' || key === 'АРХИВИРОВАНО') return 'ARCHIVED';
-
   return 'OTHER';
 }
 
@@ -49,46 +46,38 @@ export default function AdminEvents() {
   }, []);
 
   const counts = useMemo(() => {
-    return events.reduce<Record<EventFilterKey, number>>((acc, event) => {
-      const status = normalizeEventStatus(event);
-      acc.ALL += 1;
-      if (status === 'PENDING') acc.PENDING += 1;
-      if (status === 'PUBLISHED') acc.PUBLISHED += 1;
-      if (status === 'REJECTED') acc.REJECTED += 1;
-      if (status === 'ARCHIVED') acc.ARCHIVED += 1;
-      return acc;
-    }, { ALL: 0, PENDING: 0, PUBLISHED: 0, REJECTED: 0, ARCHIVED: 0 });
+    return events.reduce<Record<EventFilterKey, number>>(
+      (acc, event) => {
+        const status = normalizeEventStatus(event);
+        acc.ALL += 1;
+        if (status === 'PENDING') acc.PENDING += 1;
+        if (status === 'PUBLISHED') acc.PUBLISHED += 1;
+        if (status === 'REJECTED') acc.REJECTED += 1;
+        if (status === 'ARCHIVED') acc.ARCHIVED += 1;
+        return acc;
+      },
+      { ALL: 0, PENDING: 0, PUBLISHED: 0, REJECTED: 0, ARCHIVED: 0 },
+    );
   }, [events]);
 
   const filteredEvents = useMemo(() => {
     const q = query.trim().toLowerCase();
     return events
-      .filter((event) => {
-        if (filter === 'ALL') return true;
-        return normalizeEventStatus(event) === filter;
-      })
+      .filter((event) => filter === 'ALL' || normalizeEventStatus(event) === filter)
       .filter((event) => {
         if (!q) return true;
-        const haystack = [
-          event.title,
-          event.shortDescription,
-          event.organizationName,
-          event.cityName,
-          ...(event.categories || []).map((category) => category.name),
-        ]
+        return [event.title, event.shortDescription, event.organizationName, event.cityName, ...(event.categories || []).map((c) => c.name)]
           .filter(Boolean)
           .join(' ')
-          .toLowerCase();
-        return haystack.includes(q);
+          .toLowerCase()
+          .includes(q);
       })
       .sort((a, b) => {
-        const statusA = normalizeEventStatus(a);
-        const statusB = normalizeEventStatus(b);
-        if (statusA === 'PENDING' && statusB !== 'PENDING') return -1;
-        if (statusA !== 'PENDING' && statusB === 'PENDING') return 1;
-        const aDate = a.createdAt ? Date.parse(a.createdAt) : 0;
-        const bDate = b.createdAt ? Date.parse(b.createdAt) : 0;
-        return bDate - aDate;
+        const sa = normalizeEventStatus(a);
+        const sb = normalizeEventStatus(b);
+        if (sa === 'PENDING' && sb !== 'PENDING') return -1;
+        if (sa !== 'PENDING' && sb === 'PENDING') return 1;
+        return (b.createdAt ? Date.parse(b.createdAt) : 0) - (a.createdAt ? Date.parse(a.createdAt) : 0);
       });
   }, [events, filter, query]);
 
@@ -107,35 +96,39 @@ export default function AdminEvents() {
   return (
     <div className="space-y-6">
       <section>
-        <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Мероприятия</h1>
+        <h1 className="page-title">Мероприятия</h1>
         <p className="mt-1 text-muted-foreground">Очередь модерации, быстрые фильтры и публикация в один клик</p>
       </section>
 
-      <section className="rounded-xl border border-border bg-card p-4 shadow-soft">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
-            <Filter className="h-4 w-4" />
-            Статус:
-          </div>
+      {/* Filters */}
+      <section className="surface-soft space-y-3">
+        <div className="flex flex-wrap gap-2">
           {(Object.keys(FILTER_LABELS) as EventFilterKey[]).map((key) => (
-            <Button
+            <button
               key={key}
               type="button"
-              size="sm"
-              variant={filter === key ? 'default' : 'outline'}
               onClick={() => setFilter(key)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-all duration-150 ${
+                filter === key
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'border border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground'
+              }`}
             >
-              {FILTER_LABELS[key]} ({counts[key]})
-            </Button>
+              {FILTER_LABELS[key]}
+              <span className={`rounded-full px-1.5 py-0 text-xs font-bold ${filter === key ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'}`}>
+                {counts[key]}
+              </span>
+            </button>
           ))}
         </div>
 
-        <div className="mt-3 flex items-center gap-2">
-          <Search className="h-4 w-4 text-muted-foreground" />
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Поиск по названию, городу, организации, категории"
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Поиск по названию, городу, организации..."
+            className="pl-9"
           />
         </div>
       </section>
@@ -143,41 +136,55 @@ export default function AdminEvents() {
       {filteredEvents.length === 0 ? (
         <EmptyState icon={Calendar} title="Ничего не найдено" description="Смените фильтр или строку поиска" />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {filteredEvents.map((event) => {
             const status = getEventStatusBadge(event.status || 'PENDING');
             const normalizedStatus = normalizeEventStatus(event);
-            const categoryText = (event.categories || []).map((category) => category.name).join(', ') || 'Категории не указаны';
+            const thumbnail = imageSrc(event.coverImageId == null ? null : Number(event.coverImageId), '/placeholder-event.svg');
+            const categoryText = (event.categories || []).map((c) => c.name).filter(Boolean).join(', ');
             const createdAtLabel = event.createdAt
-              ? new Date(event.createdAt).toLocaleString('ru-RU', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })
-              : 'Дата не указана';
+              ? new Date(event.createdAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+              : null;
 
             return (
               <div
                 key={event.id}
-                className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-soft md:flex-row md:items-start md:justify-between"
+                className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 shadow-soft transition-all duration-200 hover:border-primary/15 hover:shadow-card md:flex-row md:items-center"
               >
-                <div className="flex-1">
-                  <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-foreground">{event.title}</span>
-                    <Badge className={`${status.className} border-0 text-xs`}>{status.label}</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{event.shortDescription || 'Краткое описание отсутствует'}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {categoryText} · {event.cityName || 'Город не указан'} · {event.organizationName || 'Организация не указана'}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Создано: {createdAtLabel} · Сеансов: {event.sessionsCount ?? event.sessionDates?.length ?? 0} · Записей: {event.registrationsCount ?? 0}
-                  </p>
+                {/* Thumbnail */}
+                <div className="relative hidden h-16 w-24 shrink-0 overflow-hidden rounded-xl bg-muted md:block">
+                  <img
+                    src={thumbnail}
+                    alt={event.title}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/placeholder-event.svg'; }}
+                  />
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                {/* Info */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-foreground">{event.title}</span>
+                    <Badge className={`${status.className} border-0 text-[11px] px-2 py-0`}>{status.label}</Badge>
+                  </div>
+                  {event.shortDescription && (
+                    <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{event.shortDescription}</p>
+                  )}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {[categoryText || null, event.cityName || null, event.organizationName || null].filter(Boolean).join(' · ')}
+                  </p>
+                  {createdAtLabel && (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Создано: {createdAtLabel}
+                      {(event.sessionsCount ?? 0) > 0 && ` · ${event.sessionsCount} сеансов`}
+                      {(event.registrationsCount ?? 0) > 0 && ` · ${event.registrationsCount} записей`}
+                    </p>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-wrap items-center gap-2 md:shrink-0">
                   <Button size="sm" variant="outline" asChild>
                     <Link to={`/events/${event.id}`} target="_blank" rel="noreferrer" className="gap-1.5">
                       Открыть
@@ -186,10 +193,18 @@ export default function AdminEvents() {
                   </Button>
                   {normalizedStatus === 'PENDING' && (
                     <>
-                      <Button size="sm" onClick={() => changeStatus(String(event.id), 'PUBLISHED')}>
+                      <Button
+                        size="sm"
+                        className="bg-[hsl(var(--success))] text-white hover:bg-[hsl(var(--success)/0.85)] shadow-sm"
+                        onClick={() => changeStatus(String(event.id), 'PUBLISHED')}
+                      >
                         Опубликовать
                       </Button>
-                      <Button size="sm" variant="destructive" onClick={() => changeStatus(String(event.id), 'REJECTED')}>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => changeStatus(String(event.id), 'REJECTED')}
+                      >
                         Отклонить
                       </Button>
                     </>

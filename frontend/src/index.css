@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Source+Sans+3:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -9,61 +9,62 @@
     --background: 30 33% 97%;
     --foreground: 20 25% 15%;
 
-    --card: 30 30% 98%;
+    --card: 30 30% 99%;
     --card-foreground: 20 25% 15%;
 
-    --popover: 30 30% 98%;
+    --popover: 30 30% 99%;
     --popover-foreground: 20 25% 15%;
 
-    --primary: 16 45% 50%;
+    --primary: 16 48% 48%;
     --primary-foreground: 30 33% 97%;
 
     --secondary: 38 55% 75%;
     --secondary-foreground: 20 25% 15%;
 
-    --muted: 30 20% 93%;
-    --muted-foreground: 20 10% 50%;
+    --muted: 30 18% 93%;
+    --muted-foreground: 20 12% 46%;
 
     --accent: 38 60% 65%;
     --accent-foreground: 20 25% 15%;
 
-    --destructive: 0 65% 55%;
+    --destructive: 0 65% 52%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 20% 88%;
-    --input: 30 20% 88%;
-    --ring: 16 45% 50%;
+    --border: 30 18% 87%;
+    --input: 30 18% 87%;
+    --ring: 16 48% 48%;
 
     --radius: 0.75rem;
 
-    --terracotta: 16 45% 50%;
-    --terracotta-light: 16 40% 65%;
-    --terracotta-dark: 16 50% 38%;
-    --golden: 38 55% 65%;
-    --golden-light: 38 50% 80%;
-    --golden-dark: 38 60% 50%;
-    --warm-cream: 35 40% 95%;
-    --warm-sand: 30 25% 90%;
+    --terracotta: 16 48% 48%;
+    --terracotta-light: 16 42% 63%;
+    --terracotta-dark: 16 52% 36%;
+    --golden: 38 55% 63%;
+    --golden-light: 38 50% 79%;
+    --golden-dark: 38 60% 48%;
+    --warm-cream: 35 38% 95%;
+    --warm-sand: 30 22% 91%;
 
-    --shadow-soft: 0 2px 12px -2px hsl(20 25% 15% / 0.08);
-    --shadow-card: 0 4px 20px -4px hsl(20 25% 15% / 0.1);
-    --shadow-hover: 0 8px 30px -6px hsl(16 45% 50% / 0.15);
+    --shadow-soft: 0 2px 8px -2px hsl(20 25% 15% / 0.07), 0 1px 3px -1px hsl(20 25% 15% / 0.05);
+    --shadow-card: 0 4px 16px -4px hsl(20 25% 15% / 0.10), 0 2px 6px -2px hsl(20 25% 15% / 0.06);
+    --shadow-hover: 0 10px 32px -6px hsl(16 48% 48% / 0.18), 0 4px 12px -4px hsl(16 48% 48% / 0.10);
+    --shadow-lifted: 0 20px 48px -12px hsl(20 25% 15% / 0.16);
 
-    --success: 142 60% 40%;
+    --success: 142 58% 38%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
+    --warning: 38 92% 48%;
     --warning-foreground: 0 0% 100%;
-    --info: 210 70% 50%;
+    --info: 210 68% 48%;
     --info-foreground: 0 0% 100%;
 
     --sidebar-background: 30 25% 96%;
-    --sidebar-foreground: 20 15% 30%;
-    --sidebar-primary: 16 45% 50%;
+    --sidebar-foreground: 20 15% 28%;
+    --sidebar-primary: 16 48% 48%;
     --sidebar-primary-foreground: 30 33% 97%;
     --sidebar-accent: 38 40% 90%;
     --sidebar-accent-foreground: 20 25% 15%;
-    --sidebar-border: 30 20% 88%;
-    --sidebar-ring: 16 45% 50%;
+    --sidebar-border: 30 18% 87%;
+    --sidebar-ring: 16 48% 48%;
 
     --font-heading: 'Playfair Display', Georgia, serif;
     --font-body: 'Source Sans 3', 'Inter', system-ui, sans-serif;
@@ -72,16 +73,16 @@
   .dark {
     --background: 20 20% 8%;
     --foreground: 30 20% 92%;
-    --card: 20 18% 12%;
+    --card: 20 18% 11%;
     --card-foreground: 30 20% 92%;
-    --popover: 20 18% 12%;
+    --popover: 20 18% 11%;
     --popover-foreground: 30 20% 92%;
     --primary: 16 45% 55%;
     --primary-foreground: 30 33% 97%;
     --secondary: 38 40% 30%;
     --secondary-foreground: 30 20% 92%;
-    --muted: 20 15% 18%;
-    --muted-foreground: 30 15% 60%;
+    --muted: 20 15% 17%;
+    --muted-foreground: 30 15% 58%;
     --accent: 38 50% 40%;
     --accent-foreground: 30 20% 92%;
     --destructive: 0 60% 45%;
@@ -109,28 +110,60 @@
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
   * {
     @apply border-border;
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
     font-family: var(--font-body);
+    font-feature-settings: 'kern' 1, 'liga' 1;
+    text-rendering: optimizeLegibility;
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
+  h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
     font-weight: 700;
+    letter-spacing: -0.01em;
   }
 
-  a,
-  button {
+  a, button {
     @apply transition-colors duration-200;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  ::selection {
+    background-color: hsl(var(--primary) / 0.15);
+    color: hsl(var(--foreground));
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.4);
+  }
+
+  input[type='date']::-webkit-calendar-picker-indicator {
+    opacity: 0.5;
+    cursor: pointer;
   }
 }
 
@@ -148,7 +181,7 @@
   }
 
   .page-title {
-    @apply font-heading text-3xl text-foreground sm:text-4xl;
+    @apply font-heading text-3xl tracking-tight text-foreground sm:text-4xl;
   }
 
   .page-description {
@@ -164,11 +197,11 @@
   }
 
   .surface-row {
-    @apply rounded-xl border border-border bg-background/60 p-4 transition-colors hover:bg-muted/60;
+    @apply rounded-xl border border-border bg-background/60 p-4 transition-all duration-200 hover:border-primary/20 hover:bg-muted/40 hover:shadow-soft;
   }
 
   .metric-card {
-    @apply rounded-2xl border border-border bg-card p-5 shadow-soft;
+    @apply rounded-2xl border border-border bg-card p-5 shadow-soft transition-shadow duration-200 hover:shadow-card;
   }
 
   .metric-icon {
@@ -177,6 +210,33 @@
 
   .data-table-shell {
     @apply overflow-x-auto rounded-2xl border border-border bg-card shadow-card;
+  }
+
+  /* Section label pill */
+  .section-label {
+    @apply mb-3 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary;
+  }
+
+  /* Tag pill for categories/filters */
+  .tag-pill {
+    @apply rounded-full border border-border px-3.5 py-1.5 text-sm transition-all duration-150 hover:border-primary/40 hover:text-foreground;
+  }
+
+  .tag-pill-active {
+    @apply border-primary bg-primary text-primary-foreground;
+  }
+
+  /* Nav link */
+  .nav-link {
+    @apply relative rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 after:absolute after:inset-x-3 after:bottom-0.5 after:h-0.5 after:rounded-full after:bg-primary after:opacity-0 after:transition-opacity;
+  }
+
+  .nav-link-active {
+    @apply text-primary after:opacity-100;
+  }
+
+  .nav-link-inactive {
+    @apply text-muted-foreground hover:text-foreground;
   }
 }
 
@@ -189,7 +249,37 @@
     @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
   }
 
+  .text-gradient-warm {
+    @apply bg-gradient-to-r from-[hsl(var(--terracotta-dark))] via-primary to-[hsl(var(--golden-dark))] bg-clip-text text-transparent;
+  }
+
+  .bg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  }
+
   .ymap-clean [class*='map-copyrights-promo'] {
     display: none !important;
+  }
+
+  /* Shimmer loading animation */
+  .skeleton {
+    @apply relative overflow-hidden bg-muted;
+  }
+
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0;
+    background: linear-gradient(90deg, transparent 0%, hsl(var(--card)) 50%, transparent 100%);
+    animation: shimmer 1.6s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  /* Count-up number style */
+  .stat-number {
+    @apply font-heading text-4xl font-bold tracking-tight text-gradient-warm tabular-nums;
   }
 }

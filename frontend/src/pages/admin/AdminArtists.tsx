@@ -232,11 +232,11 @@ export default function AdminArtists() {
   return (
     <div className="space-y-6">
       <section>
-        <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Артисты</h1>
+        <h1 className="page-title">Артисты</h1>
         <p className="mt-1 text-muted-foreground">Удобное управление карточками артистов и их фотогалереями</p>
       </section>
 
-      <section className="rounded-xl border border-border bg-card p-4 shadow-soft">
+      <section className="rounded-2xl border border-border bg-card p-5 shadow-soft">
         <h2 className="font-medium text-foreground">Новый артист</h2>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <div>
@@ -315,10 +315,10 @@ export default function AdminArtists() {
         </Button>
       </section>
 
-      <section className="rounded-xl border border-border bg-card p-4 shadow-soft">
-        <div className="flex items-center gap-2">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по имени, сценическому имени или жанру" />
+      <section className="surface-soft">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по имени, сценическому имени или жанру" className="pl-9" />
         </div>
       </section>
 
@@ -333,15 +333,15 @@ export default function AdminArtists() {
             const previewImageId = draft.primaryImageId ?? draft.imageIds[0] ?? null;
 
             return (
-              <div key={artist.id} className="rounded-xl border border-border bg-card p-4 shadow-soft">
+              <div key={artist.id} className="rounded-2xl border border-border bg-card p-4 shadow-soft transition-colors hover:border-primary/15">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="h-12 w-12 overflow-hidden rounded-lg border border-border bg-muted/30">
+                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-border bg-muted/30">
                       {previewImageId ? (
                         <img src={imageSrc(previewImageId)} alt={draft.name} className="h-full w-full object-cover" />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                          <Mic2 className="h-5 w-5" />
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/15 to-primary/5">
+                          <Mic2 className="h-5 w-5 text-primary/60" />
                         </div>
                       )}
                     </div>

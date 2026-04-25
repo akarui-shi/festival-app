@@ -5,6 +5,7 @@ import com.festivalapp.backend.dto.EventShortResponse;
 import com.festivalapp.backend.dto.EventStatusUpdateRequest;
 import com.festivalapp.backend.dto.ModerationDecisionRequest;
 import com.festivalapp.backend.dto.ModerationResponse;
+import com.festivalapp.backend.dto.PublicationDetailsResponse;
 import com.festivalapp.backend.dto.PublicationShortResponse;
 import com.festivalapp.backend.entity.EventStatus;
 import com.festivalapp.backend.entity.PublicationStatus;
@@ -45,6 +46,11 @@ public class AdminModerationController {
     @GetMapping("/publications")
     public ResponseEntity<List<PublicationShortResponse>> getPublications(@RequestParam(required = false) PublicationStatus status) {
         return ResponseEntity.ok(publicationService.getAllForAdmin(status));
+    }
+
+    @GetMapping("/publications/{id}")
+    public ResponseEntity<PublicationDetailsResponse> getPublicationById(@PathVariable Long id) {
+        return ResponseEntity.ok(publicationService.getByIdForAdmin(id));
     }
 
     @GetMapping("/events")
