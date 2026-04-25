@@ -38,8 +38,16 @@ export const publicationService = {
   },
 
   async getPublicationById(id: Id): Promise<Publication> {
-    const response = await apiGet<Publication>(`/publications/${id}`);
-    return normalizePublication(response);
+    try {
+      const response = await apiGet<Publication>(`/publications/${id}`);
+      return normalizePublication(response);
+    } catch (publicError) {
+      if (publicError instanceof ApiError && (publicError.status === 404 || publicError.status === 403)) {
+        const response = await apiGet<Publication>(`/admin/publications/${id}`);
+        return normalizePublication(response);
+      }
+      throw publicError;
+    }
   },
 
   async createPublication(data: Partial<Publication>): Promise<Publication> {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
+import { CheckCircle2, Clock, Loader2, XCircle } from 'lucide-react';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { Button } from '@/components/ui/button';
 import { registrationService } from '@/services/registration-service';
@@ -29,71 +29,67 @@ export default function PaymentResultPage() {
         if (cancelled) return;
         const orderStatus = String(order.status || '').toLowerCase();
         const paymentStatus = String(order.paymentStatus || '').toLowerCase();
-
         if (orderStatus === 'оплачен' || paymentStatus === 'succeeded' || paymentStatus === 'paid') {
-          setResultState('success');
-          return;
+          setResultState('success'); return;
         }
-
         if (orderStatus === 'ожидает_оплаты' || paymentStatus === 'pending' || paymentStatus === 'waiting_for_capture') {
-          setResultState('pending');
-          return;
+          setResultState('pending'); return;
         }
-
         setResultState('error');
       })
-      .catch(() => {
-        if (!cancelled) {
-          setResultState('error');
-        }
-      });
+      .catch(() => { if (!cancelled) setResultState('error'); });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [hasOrderId, orderId, paymentId, statusFromQuery]);
 
   const success = resultState === 'success';
   const pending = resultState === 'pending';
   const loading = resultState === 'loading';
 
+  const iconBg = success ? 'bg-[hsl(var(--success)/0.1)]' : pending ? 'bg-[hsl(var(--warning)/0.1)]' : loading ? 'bg-primary/10' : 'bg-destructive/10';
+  const iconColor = success ? 'text-[hsl(var(--success))]' : pending ? 'text-[hsl(var(--warning))]' : loading ? 'text-primary' : 'text-destructive';
+
   return (
     <PublicLayout>
-      <div className="container mx-auto flex min-h-[70vh] items-center justify-center px-4 py-8">
-        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-card">
-          {loading ? (
-            <Loader2 className="mx-auto h-14 w-14 animate-spin text-primary" />
-          ) : success ? (
-            <CheckCircle2 className="mx-auto h-14 w-14 text-primary" />
-          ) : (
-            <XCircle className="mx-auto h-14 w-14 text-destructive" />
-          )}
-          <h1 className="mt-4 font-heading text-2xl text-foreground">
-            {loading
-              ? 'Проверяем статус оплаты'
-              : success
-                ? 'Оплата прошла успешно'
-                : pending
-                  ? 'Оплата еще обрабатывается'
-                  : 'Оплата не завершена'}
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {loading
-              ? 'Подождите несколько секунд, проверяем платёж у провайдера.'
-              : success
-              ? 'Билет сформирован и отправлен вам на почту. Он доступен в разделе «Мои билеты».'
-              : pending
-                ? 'Средства могут зачисляться с задержкой. Вы можете обновить страницу или проверить заказ в разделе «Мои билеты».'
-                : 'Вы можете попробовать оплатить заказ повторно из раздела «Мои билеты».'}
-          </p>
+      <div className="relative flex min-h-[80vh] items-center justify-center overflow-hidden px-4 py-12">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[hsl(var(--warm-cream))] via-background to-[hsl(var(--golden-light)/0.2)]" />
 
-          <div className="mt-6 space-y-3">
-            <Button asChild className="w-full">
-              <Link to="/tickets">Мои билеты</Link>
-            </Button>
-            <Button asChild className="w-full" variant="outline">
-              <Link to="/events">К афише</Link>
-            </Button>
+        <div className="relative w-full max-w-[420px]">
+          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-lifted">
+            <div className="border-b border-border bg-gradient-to-br from-[hsl(var(--warm-cream)/0.6)] to-card px-8 py-8 text-center">
+              <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl ${iconBg}`}>
+                {loading && <Loader2 className={`h-8 w-8 animate-spin ${iconColor}`} />}
+                {success && <CheckCircle2 className={`h-8 w-8 ${iconColor}`} />}
+                {pending && <Clock className={`h-8 w-8 ${iconColor}`} />}
+                {!loading && !success && !pending && <XCircle className={`h-8 w-8 ${iconColor}`} />}
+              </div>
+              <h1 className="font-heading text-2xl text-foreground">
+                {loading ? 'Проверяем статус оплаты'
+                  : success ? 'Оплата прошла успешно'
+                  : pending ? 'Платёж обрабатывается'
+                  : 'Оплата не завершена'}
+              </h1>
+            </div>
+
+            <div className="px-8 py-6 text-center">
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {loading ? 'Подождите несколько секунд, проверяем платёж у провайдера.'
+                  : success ? 'Билет сформирован и отправлен вам на почту. Он доступен в разделе «Мои билеты».'
+                  : pending ? 'Средства могут зачисляться с задержкой. Проверьте заказ в разделе «Мои билеты».'
+                  : 'Вы можете попробовать оплатить заказ повторно из раздела «Мои билеты».'}
+              </p>
+
+              {!loading && (
+                <div className="mt-6 space-y-2.5">
+                  <Button asChild className="w-full shadow-sm shadow-primary/20">
+                    <Link to="/tickets">Мои билеты</Link>
+                  </Button>
+                  <Button asChild variant="outline" className="w-full">
+                    <Link to="/events">К афише</Link>
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

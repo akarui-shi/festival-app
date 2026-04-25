@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -49,13 +49,8 @@ export default function RegisterPage() {
       setOrganizations([]);
       return;
     }
-
     const query = form.organizationSearch.trim();
-    if (query.length < 2) {
-      setOrganizations([]);
-      return;
-    }
-
+    if (query.length < 2) { setOrganizations([]); return; }
     organizationService.getOrganizations(query)
       .then((response) => setOrganizations(response))
       .catch(() => setOrganizations([]));
@@ -63,54 +58,23 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (form.role !== 'ORGANIZER') {
-      setForm((prev) => ({
-        ...prev,
-        organizationMode: 'create',
-        organizationSearch: '',
-        organizationId: '',
-        joinRequestMessage: '',
-      }));
+      setForm((prev) => ({ ...prev, organizationMode: 'create', organizationSearch: '', organizationId: '', joinRequestMessage: '' }));
     }
   }, [form.role]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-
-    if (!form.firstName || !form.lastName || !form.email || !form.password || !form.confirmPassword) {
-      setError('Заполните все поля');
-      return;
-    }
-
-    if (form.password.length < 6) {
-      setError('Пароль должен быть не менее 6 символов');
-      return;
-    }
-
-    if (form.password !== form.confirmPassword) {
-      setError('Пароли не совпадают');
-      return;
-    }
-
-    if (form.role === 'ORGANIZER' && form.organizationMode === 'create' && !form.companyName.trim()) {
-      setError('Для организатора укажите название организации');
-      return;
-    }
-
-    if (form.role === 'ORGANIZER' && form.organizationMode === 'join' && !form.organizationId) {
-      setError('Выберите организацию для присоединения');
-      return;
-    }
+    if (!form.firstName || !form.lastName || !form.email || !form.password || !form.confirmPassword) { setError('Заполните все поля'); return; }
+    if (form.password.length < 6) { setError('Пароль должен быть не менее 6 символов'); return; }
+    if (form.password !== form.confirmPassword) { setError('Пароли не совпадают'); return; }
+    if (form.role === 'ORGANIZER' && form.organizationMode === 'create' && !form.companyName.trim()) { setError('Укажите название организации'); return; }
+    if (form.role === 'ORGANIZER' && form.organizationMode === 'join' && !form.organizationId) { setError('Выберите организацию'); return; }
 
     setError('');
     setLoading(true);
     try {
       const response = await register(
-        form.email,
-        form.password,
-        form.firstName,
-        form.lastName,
-        form.newEventsNotificationsEnabled,
-        form.role,
+        form.email, form.password, form.firstName, form.lastName, form.newEventsNotificationsEnabled, form.role,
         form.role === 'ORGANIZER' && form.organizationMode === 'create' ? form.companyName : undefined,
         form.role === 'ORGANIZER' && form.organizationMode === 'join' ? Number(form.organizationId) : undefined,
         form.role === 'ORGANIZER' && form.organizationMode === 'join' ? form.joinRequestMessage : undefined,
@@ -124,234 +88,179 @@ export default function RegisterPage() {
     }
   };
 
+  const roleTabClass = (active: boolean) =>
+    `flex-1 rounded-xl border px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+      active ? 'border-primary bg-primary/10 text-primary shadow-sm' : 'border-border text-muted-foreground hover:border-primary/30 hover:text-foreground'
+    }`;
+
   return (
     <PublicLayout>
-      <div className="container mx-auto flex min-h-[70vh] items-center justify-center px-4 py-8">
-        <div className="w-full max-w-md">
-          <Link to="/" className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary">
+      <div className="relative flex min-h-screen items-start justify-center overflow-hidden px-4 py-10">
+        {/* Background */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[hsl(var(--warm-cream))] via-background to-[hsl(var(--golden-light)/0.2)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_-10%,hsl(var(--terracotta)/0.07),transparent)]" />
+
+        <div className="relative w-full max-w-[460px]">
+          <Link to="/" className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary">
             <ArrowLeft className="h-4 w-4" />
             На главную
           </Link>
 
-          <div className="rounded-2xl border border-border bg-card p-8 shadow-card">
-            <div className="mb-6 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-                <span className="font-heading text-xl text-primary-foreground">К</span>
+          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-lifted">
+            {/* Header */}
+            <div className="border-b border-border bg-gradient-to-br from-[hsl(var(--warm-cream)/0.6)] to-card px-8 py-7 text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-[hsl(var(--terracotta-dark))] shadow-md">
+                <span className="font-heading text-2xl font-bold text-primary-foreground">К</span>
               </div>
               <h1 className="font-heading text-2xl text-foreground">Создать аккаунт</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Зарегистрируйтесь, чтобы сохранять мероприятия</p>
+              <p className="mt-1.5 text-sm text-muted-foreground">Зарегистрируйтесь, чтобы сохранять мероприятия</p>
             </div>
 
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              <div className="space-y-2">
-                <Label>Тип аккаунта</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => updateField('role', 'RESIDENT')}
-                    className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
-                      form.role === 'RESIDENT'
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border text-muted-foreground hover:border-primary/40'
-                    }`}
-                  >
-                    Житель
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => updateField('role', 'ORGANIZER')}
-                    className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
-                      form.role === 'ORGANIZER'
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border text-muted-foreground hover:border-primary/40'
-                    }`}
-                  >
-                    Организатор
-                  </button>
-                </div>
-              </div>
-
-              {form.role === 'ORGANIZER' && (
-                <div className="space-y-2">
-                  <Label>Организация</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => updateField('organizationMode', 'create')}
-                      className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
-                        form.organizationMode === 'create'
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-border text-muted-foreground hover:border-primary/40'
-                      }`}
-                    >
-                      Создать новую
+            <div className="px-8 py-6">
+              <form className="space-y-4" onSubmit={handleSubmit}>
+                {/* Role selector */}
+                <div className="space-y-1.5">
+                  <Label>Тип аккаунта</Label>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => updateField('role', 'RESIDENT')} className={roleTabClass(form.role === 'RESIDENT')}>
+                      Житель
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => updateField('organizationMode', 'join')}
-                      className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
-                        form.organizationMode === 'join'
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-border text-muted-foreground hover:border-primary/40'
-                      }`}
-                    >
-                      Присоединиться
+                    <button type="button" onClick={() => updateField('role', 'ORGANIZER')} className={roleTabClass(form.role === 'ORGANIZER')}>
+                      Организатор
                     </button>
                   </div>
                 </div>
-              )}
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">Имя</Label>
-                  <Input
-                    id="firstName"
-                    value={form.firstName}
-                    onChange={(event) => updateField('firstName', event.target.value)}
-                    placeholder="Иван"
-                  />
+                {/* Organization mode */}
+                {form.role === 'ORGANIZER' && (
+                  <div className="space-y-1.5">
+                    <Label>Организация</Label>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => updateField('organizationMode', 'create')} className={roleTabClass(form.organizationMode === 'create')}>
+                        Создать новую
+                      </button>
+                      <button type="button" onClick={() => updateField('organizationMode', 'join')} className={roleTabClass(form.organizationMode === 'join')}>
+                        Присоединиться
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Name */}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="firstName">Имя</Label>
+                    <Input id="firstName" value={form.firstName} onChange={(e) => updateField('firstName', e.target.value)} placeholder="Иван" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="lastName">Фамилия</Label>
+                    <Input id="lastName" value={form.lastName} onChange={(e) => updateField('lastName', e.target.value)} placeholder="Петров" />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Фамилия</Label>
-                  <Input
-                    id="lastName"
-                    value={form.lastName}
-                    onChange={(event) => updateField('lastName', event.target.value)}
-                    placeholder="Петров"
-                  />
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" type="email" value={form.email} onChange={(e) => updateField('email', e.target.value)} placeholder="your@email.com" />
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={form.email}
-                  onChange={(event) => updateField('email', event.target.value)}
-                  placeholder="your@email.com"
-                />
-              </div>
+                {/* New org name */}
+                {form.role === 'ORGANIZER' && form.organizationMode === 'create' && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="companyName">Название организации</Label>
+                    <Input id="companyName" value={form.companyName} onChange={(e) => updateField('companyName', e.target.value)} placeholder="Название организации" />
+                  </div>
+                )}
 
-              {form.role === 'ORGANIZER' && form.organizationMode === 'create' && (
-                <div className="space-y-2">
-                  <Label htmlFor="companyName">Название новой организации</Label>
-                  <Input
-                    id="companyName"
-                    value={form.companyName}
-                    onChange={(event) => updateField('companyName', event.target.value)}
-                    placeholder="Название организации"
-                  />
-                </div>
-              )}
-
-              {form.role === 'ORGANIZER' && form.organizationMode === 'join' && (
-                <>
-                  <div className="relative space-y-2">
-                    <Label htmlFor="organizationSearch">Поиск организации</Label>
-                    <Input
-                      id="organizationSearch"
-                      value={form.organizationSearch}
-                      onFocus={() => setShowOrganizationSuggestions(true)}
-                      onChange={(event) => {
-                        updateField('organizationSearch', event.target.value);
-                        updateField('organizationId', '');
-                        setShowOrganizationSuggestions(true);
-                      }}
-                      placeholder="Введите название"
-                    />
-                    {showOrganizationSuggestions && organizations.length > 0 && (
-                      <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-md border border-border bg-card shadow-lg">
-                        {organizations.map((organization) => (
-                          <button
-                            key={organization.id}
-                            type="button"
-                            className="block w-full px-3 py-2 text-left text-sm hover:bg-muted"
-                            onClick={() => {
-                              updateField('organizationSearch', organization.name);
-                              updateField('organizationId', String(organization.id));
-                              setShowOrganizationSuggestions(false);
-                            }}
-                          >
-                            <p className="font-medium text-foreground">{organization.name}</p>
-                            {organization.description && (
-                              <p className="line-clamp-1 text-xs text-muted-foreground">{organization.description}</p>
-                            )}
-                          </button>
-                        ))}
-                      </div>
+                {/* Join org search */}
+                {form.role === 'ORGANIZER' && form.organizationMode === 'join' && (
+                  <>
+                    <div className="relative space-y-1.5">
+                      <Label htmlFor="organizationSearch">Поиск организации</Label>
+                      <Input
+                        id="organizationSearch"
+                        value={form.organizationSearch}
+                        onFocus={() => setShowOrganizationSuggestions(true)}
+                        onChange={(e) => { updateField('organizationSearch', e.target.value); updateField('organizationId', ''); setShowOrganizationSuggestions(true); }}
+                        placeholder="Введите название"
+                      />
+                      {showOrganizationSuggestions && organizations.length > 0 && (
+                        <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-border bg-card shadow-card">
+                          {organizations.map((org) => (
+                            <button
+                              key={org.id}
+                              type="button"
+                              className="block w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-muted"
+                              onClick={() => { updateField('organizationSearch', org.name); updateField('organizationId', String(org.id)); setShowOrganizationSuggestions(false); }}
+                            >
+                              <p className="font-medium text-foreground">{org.name}</p>
+                              {org.description && <p className="line-clamp-1 text-xs text-muted-foreground">{org.description}</p>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {form.organizationSearch.trim().length >= 2 && organizations.length === 0 && (
+                        <p className="text-xs text-muted-foreground">Организации не найдены</p>
+                      )}
+                    </div>
+                    {form.organizationId && (
+                      <p className="rounded-xl border border-primary/25 bg-primary/5 px-3.5 py-2 text-sm font-medium text-primary">
+                        Выбрано: {form.organizationSearch}
+                      </p>
                     )}
-                    {form.organizationSearch.trim().length >= 2 && organizations.length === 0 && (
-                      <p className="text-xs text-muted-foreground">По вашему запросу организации не найдены</p>
-                    )}
-                  </div>
-                  {form.organizationId && (
-                    <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
-                      Выбрана организация: {form.organizationSearch}
-                    </p>
-                  )}
-                  <div className="space-y-2">
-                    <Label htmlFor="joinRequestMessage">Комментарий к заявке</Label>
-                    <Input
-                      id="joinRequestMessage"
-                      value={form.joinRequestMessage}
-                      onChange={(event) => updateField('joinRequestMessage', event.target.value)}
-                      placeholder="Коротко о себе (необязательно)"
+                    <div className="space-y-1.5">
+                      <Label htmlFor="joinRequestMessage">Комментарий к заявке</Label>
+                      <Input id="joinRequestMessage" value={form.joinRequestMessage} onChange={(e) => updateField('joinRequestMessage', e.target.value)} placeholder="Коротко о себе (необязательно)" />
+                    </div>
+                  </>
+                )}
+
+                {/* Passwords */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="password">Пароль</Label>
+                  <Input id="password" type="password" value={form.password} onChange={(e) => updateField('password', e.target.value)} placeholder="Минимум 6 символов" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirmPassword">Подтверждение пароля</Label>
+                  <Input id="confirmPassword" type="password" value={form.confirmPassword} onChange={(e) => updateField('confirmPassword', e.target.value)} placeholder="Повторите пароль" />
+                </div>
+
+                {/* Notifications toggle */}
+                <div className="rounded-xl border border-border bg-muted/40 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Уведомления о мероприятиях</p>
+                      <p className="text-xs text-muted-foreground">Анонсы новых событий на email</p>
+                    </div>
+                    <Switch
+                      checked={form.newEventsNotificationsEnabled}
+                      onCheckedChange={(checked) => updateBooleanField('newEventsNotificationsEnabled', checked)}
+                      aria-label="Подписка на уведомления"
                     />
                   </div>
-                </>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Пароль</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={form.password}
-                  onChange={(event) => updateField('password', event.target.value)}
-                  placeholder="Минимум 6 символов"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Подтверждение пароля</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={form.confirmPassword}
-                  onChange={(event) => updateField('confirmPassword', event.target.value)}
-                  placeholder="Повторите пароль"
-                />
-              </div>
-
-              <div className="rounded-lg border border-border bg-muted/40 p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Уведомления о новых мероприятиях</p>
-                    <p className="text-xs text-muted-foreground">Будем присылать анонсы новых событий на email</p>
-                  </div>
-                  <Switch
-                    checked={form.newEventsNotificationsEnabled}
-                    onCheckedChange={(checked) => updateBooleanField('newEventsNotificationsEnabled', checked)}
-                    aria-label="Подписка на уведомления о новых мероприятиях"
-                  />
                 </div>
-              </div>
 
-              {error && <p className="text-sm text-destructive">{error}</p>}
+                {error && (
+                  <p className="rounded-lg bg-destructive/8 px-3 py-2 text-sm text-destructive">{error}</p>
+                )}
 
-              <Button className="w-full" type="submit" disabled={loading}>
-                {loading ? 'Регистрация…' : 'Зарегистрироваться'}
-              </Button>
-            </form>
+                <Button className="w-full shadow-sm shadow-primary/20" type="submit" disabled={loading}>
+                  {loading ? 'Регистрация…' : 'Зарегистрироваться'}
+                </Button>
+              </form>
 
-            <p className="mt-6 text-center text-sm text-muted-foreground">
-              Уже есть аккаунт?{' '}
-              <Link to="/login" className="font-semibold text-primary hover:underline">
-                Войти
-              </Link>
-            </p>
+              <p className="mt-5 text-center text-sm text-muted-foreground">
+                Уже есть аккаунт?{' '}
+                <Link to="/login" className="font-semibold text-primary hover:underline">
+                  Войти
+                </Link>
+              </p>
+            </div>
           </div>
+
+          <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
+            <Sparkles className="h-3.5 w-3.5" />
+            Культурные события малых городов России
+          </p>
         </div>
       </div>
     </PublicLayout>

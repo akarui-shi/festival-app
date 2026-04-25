@@ -115,7 +115,7 @@ export default function OrganizerPublications() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Публикации организации</h1>
+          <h1 className="page-title">Публикации организации</h1>
           <p className="mt-1 text-muted-foreground">Публикуйте новости и материалы по мероприятиям вашей организации</p>
         </div>
         <Button onClick={() => setShowForm((prev) => !prev)} className="gap-1.5" disabled={organizerEvents.length === 0}>
@@ -245,7 +245,7 @@ export default function OrganizerPublications() {
             return (
               <div
                 key={publicationId}
-                className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-soft transition-colors hover:border-primary/15 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
                   <div className="mb-1 flex items-center gap-2">

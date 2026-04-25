@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertCircle, Calendar, FileText, MessageSquare, Users } from 'lucide-react';
-import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, XAxis, YAxis } from 'recharts';
+import { AlertCircle, ArrowRight, Calendar, FileText, MessageSquare, Users } from 'lucide-react';
+import { Bar, BarChart, CartesianGrid, Line, LineChart, Pie, PieChart, Cell, XAxis, YAxis } from 'recharts';
 import { adminService } from '@/services/admin-service';
 import { eventService } from '@/services/event-service';
 import { reviewService } from '@/services/review-service';
@@ -10,34 +10,11 @@ import { LoadingState } from '@/components/StateDisplays';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { OrganizerAnalyticsOverview } from '@/types';
 
-interface ChartPoint {
-  label: string;
-  value: number;
-}
-
 function formatLabel(rawDate?: string | null): string {
   if (!rawDate) return '—';
   const parsed = new Date(rawDate);
   if (Number.isNaN(parsed.getTime())) return rawDate;
   return new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: '2-digit' }).format(parsed);
-}
-
-function buildDemoSeries(days: number, base: number, delta: number): ChartPoint[] {
-  const now = new Date();
-  const result: ChartPoint[] = [];
-
-  for (let i = days - 1; i >= 0; i -= 1) {
-    const date = new Date(now);
-    date.setDate(now.getDate() - i);
-    const wave = Math.cos((days - i) / 2.4) * delta;
-    const noise = ((days - i) % 5) * (delta / 7);
-    result.push({
-      label: new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: '2-digit' }).format(date),
-      value: Math.max(0, Math.round(base + wave + noise)),
-    });
-  }
-
-  return result;
 }
 
 export default function AdminDashboard() {
@@ -74,25 +51,49 @@ export default function AdminDashboard() {
         });
         setAnalytics(analyticsResponse);
       })
-      .catch(() => {
-        setError('Не удалось загрузить аналитику администратора. Попробуйте обновить страницу.');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+      .catch(() => setError('Не удалось загрузить аналитику. Попробуйте обновить страницу.'))
+      .finally(() => setLoading(false));
   }, []);
 
   const cards = [
-    { label: 'Пользователей', value: stats.users, icon: Users, color: 'text-primary' },
-    { label: 'Мероприятий', value: stats.events, icon: Calendar, color: 'text-info' },
-    { label: 'Комментариев', value: stats.reviews, icon: MessageSquare, color: 'text-warning' },
-    { label: 'Публикаций', value: stats.publications, icon: FileText, color: 'text-success' },
+    {
+      label: 'Пользователей',
+      value: stats.users,
+      icon: Users,
+      from: 'from-primary/15',
+      to: 'to-primary/5',
+      textColor: 'text-primary',
+    },
+    {
+      label: 'Мероприятий',
+      value: stats.events,
+      icon: Calendar,
+      from: 'from-[hsl(var(--info)/0.15)]',
+      to: 'to-[hsl(var(--info)/0.05)]',
+      textColor: 'text-[hsl(var(--info))]',
+    },
+    {
+      label: 'Комментариев',
+      value: stats.reviews,
+      icon: MessageSquare,
+      from: 'from-[hsl(var(--warning)/0.15)]',
+      to: 'to-[hsl(var(--warning)/0.05)]',
+      textColor: 'text-[hsl(var(--warning))]',
+    },
+    {
+      label: 'Публикаций',
+      value: stats.publications,
+      icon: FileText,
+      from: 'from-[hsl(var(--success)/0.15)]',
+      to: 'to-[hsl(var(--success)/0.05)]',
+      textColor: 'text-[hsl(var(--success))]',
+    },
   ];
 
   const pendingItems = [
-    { label: 'Мероприятий на модерации', count: stats.pendingEvents, link: '/admin/events' },
-    { label: 'Комментариев на модерации', count: stats.pendingReviews, link: '/admin/comments' },
-    { label: 'Публикаций на модерации', count: stats.pendingPubs, link: '/admin/publications' },
+    { label: 'Мероприятий на модерации', count: stats.pendingEvents, link: '/admin/events', urgent: stats.pendingEvents > 0 },
+    { label: 'Комментариев на модерации', count: stats.pendingReviews, link: '/admin/comments', urgent: stats.pendingReviews > 0 },
+    { label: 'Публикаций на модерации', count: stats.pendingPubs, link: '/admin/publications', urgent: stats.pendingPubs > 0 },
   ];
 
   const effectiveAnalytics = analytics || {};
@@ -120,8 +121,6 @@ export default function AdminDashboard() {
     return [];
   }, [effectiveAnalytics.trafficSources, hasMetrikaData]);
 
-  const usingDemoForMetrika = !hasMetrikaData;
-
   if (loading) return <LoadingState />;
 
   if (error) {
@@ -133,48 +132,92 @@ export default function AdminDashboard() {
     );
   }
 
+  const totalPending = stats.pendingEvents + stats.pendingReviews + stats.pendingPubs;
+
   return (
-    <div className="space-y-8">
-      <section>
-        <h1 className="page-title">Обзор системы</h1>
-        <p className="mt-1 text-muted-foreground">Ключевые показатели платформы и очередь модерации</p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {usingDemoForMetrika
-            ? 'Яндекс Метрика пока не подключена. Для графиков трафика показаны демо-данные.'
-            : (metrikaStatus?.message || 'Данные Яндекс Метрики загружены.')}
-        </p>
+    <div className="space-y-6">
+      <section className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="page-title">Обзор системы</h1>
+          <p className="mt-1 text-muted-foreground">Ключевые показатели платформы и очередь модерации</p>
+        </div>
+        {!hasMetrikaData && (
+          <p className="rounded-lg bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground">
+            Яндекс Метрика не подключена
+          </p>
+        )}
       </section>
 
-      <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      {/* Metric cards */}
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {cards.map((card) => (
-          <div key={card.label} className="metric-card">
-            <div className="metric-icon">
-              <card.icon className={`h-4 w-4 ${card.color}`} />
+          <div
+            key={card.label}
+            className="overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-soft transition-shadow duration-200 hover:shadow-card"
+          >
+            <div className={`mb-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br ${card.from} ${card.to}`}>
+              <card.icon className={`h-5 w-5 ${card.textColor}`} />
             </div>
-            <p className="text-2xl font-semibold text-foreground">{card.value}</p>
+            <p className="font-heading text-3xl font-bold tracking-tight text-foreground">{card.value}</p>
             <p className="mt-1 text-xs text-muted-foreground">{card.label}</p>
           </div>
         ))}
       </section>
 
+      {/* Attention queue */}
+      <section className="surface-panel">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <h2 className="font-heading text-xl text-foreground">Требует внимания</h2>
+            {totalPending > 0 && (
+              <span className="inline-flex h-5 items-center justify-center rounded-full bg-destructive/10 px-2 text-xs font-bold text-destructive">
+                {totalPending}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {pendingItems.map((item) => (
+            <Link
+              key={item.label}
+              to={item.link}
+              className="group flex items-center justify-between rounded-xl border border-border bg-background/60 p-3.5 transition-all duration-200 hover:border-primary/20 hover:bg-muted/40 hover:shadow-soft"
+            >
+              <div className="flex items-center gap-3">
+                <AlertCircle className={`h-4 w-4 shrink-0 ${item.urgent ? 'text-[hsl(var(--warning))]' : 'text-muted-foreground'}`} />
+                <span className="text-sm font-medium text-foreground">{item.label}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`font-heading text-xl font-bold ${item.urgent ? 'text-foreground' : 'text-muted-foreground'}`}>
+                  {item.count}
+                </span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* Charts */}
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <div className="surface-panel xl:col-span-2">
           <h2 className="font-heading text-xl text-foreground">Трафик по дням</h2>
           {visitsByDay.length > 0 ? (
             <ChartContainer
-              className="mt-4 h-[260px] w-full"
+              className="mt-4 h-[240px] w-full"
               config={{ visits: { label: 'Визиты', color: '#C17F59' } }}
             >
               <LineChart data={visitsByDay} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} width={40} />
+                <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeDasharray="3 3" />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+                <YAxis tickLine={false} axisLine={false} width={36} tick={{ fontSize: 11 }} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Line type="monotone" dataKey="value" stroke="var(--color-visits)" strokeWidth={2.5} dot={false} />
+                <Line type="monotone" dataKey="value" stroke="var(--color-visits)" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
               </LineChart>
             </ChartContainer>
           ) : (
-            <div className="mt-4 flex h-[260px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-center">
+            <div className="mt-4 flex h-[240px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-center">
               <p className="text-sm font-medium text-foreground">Данные трафика недоступны</p>
               <p className="mt-1 text-xs text-muted-foreground">Подключите Яндекс.Метрику через переменные окружения</p>
             </div>
@@ -185,7 +228,7 @@ export default function AdminDashboard() {
           <h2 className="font-heading text-xl text-foreground">Источники трафика</h2>
           {trafficSources.length > 0 ? (
             <ChartContainer
-              className="mt-4 h-[260px] w-full"
+              className="mt-4 h-[240px] w-full"
               config={{
                 value: { label: 'Визиты', color: '#C17F59' },
                 p1: { label: 'Поиск', color: '#C17F59' },
@@ -198,17 +241,14 @@ export default function AdminDashboard() {
                 <ChartTooltip content={<ChartTooltipContent nameKey="source" />} />
                 <Pie data={trafficSources} dataKey="value" nameKey="source" innerRadius={46} outerRadius={90} paddingAngle={2}>
                   {trafficSources.map((_, index) => (
-                    <Cell
-                      key={`source-${index}`}
-                      fill={['#C17F59', '#CFA07D', '#D9B49A', '#E5CFC0', '#B56A3F'][index % 5]}
-                    />
+                    <Cell key={`source-${index}`} fill={['#C17F59', '#CFA07D', '#D9B49A', '#E5CFC0', '#B56A3F'][index % 5]} />
                   ))}
                 </Pie>
                 <ChartLegend content={<ChartLegendContent nameKey="source" />} />
               </PieChart>
             </ChartContainer>
           ) : (
-            <div className="mt-4 flex h-[260px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-center">
+            <div className="mt-4 flex h-[240px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-center">
               <p className="text-sm font-medium text-foreground">Нет данных</p>
               <p className="mt-1 text-xs text-muted-foreground">Требуется Яндекс.Метрика</p>
             </div>
@@ -219,36 +259,17 @@ export default function AdminDashboard() {
       <section className="surface-panel">
         <h2 className="font-heading text-xl text-foreground">Регистрации по дням</h2>
         <ChartContainer
-          className="mt-4 h-[240px] w-full"
+          className="mt-4 h-[220px] w-full"
           config={{ registrations: { label: 'Регистрации', color: '#C17F59' } }}
         >
           <BarChart data={registrationsByDay} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-            <CartesianGrid vertical={false} />
-            <XAxis dataKey="label" tickLine={false} axisLine={false} />
-            <YAxis tickLine={false} axisLine={false} width={40} />
+            <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeDasharray="3 3" />
+            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+            <YAxis tickLine={false} axisLine={false} width={36} tick={{ fontSize: 11 }} />
             <ChartTooltip content={<ChartTooltipContent />} />
             <Bar dataKey="value" radius={[6, 6, 0, 0]} fill="var(--color-registrations)" />
           </BarChart>
         </ChartContainer>
-      </section>
-
-      <section className="surface-panel">
-        <h2 className="font-heading text-2xl text-foreground">Требует внимания</h2>
-        <div className="mt-4 space-y-2">
-          {pendingItems.map((item) => (
-            <Link
-              key={item.label}
-              to={item.link}
-              className="surface-row flex items-center justify-between"
-            >
-              <div className="flex items-center gap-2.5">
-                <AlertCircle className="h-4 w-4 text-warning" />
-                <span className="text-sm font-medium text-foreground">{item.label}</span>
-              </div>
-              <span className="text-xl font-semibold text-foreground">{item.count}</span>
-            </Link>
-          ))}
-        </div>
       </section>
     </div>
   );

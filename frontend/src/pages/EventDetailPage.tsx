@@ -473,15 +473,57 @@ export default function EventDetailPage() {
 
   return (
     <PublicLayout>
-      <div className="container mx-auto px-4 py-6">
-        <Link
-          to="/events"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Все мероприятия
-        </Link>
+      {/* Hero */}
+      <section className="relative overflow-hidden border-b border-border">
+        {currentImage ? (
+          <>
+            <div
+              className="absolute inset-0 bg-cover bg-center opacity-20 blur-2xl scale-110"
+              style={{ backgroundImage: `url(${currentImage})` }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-background/75 to-background" />
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--warm-cream))] via-background to-[hsl(var(--golden-light)/0.2)]" />
+        )}
 
+        <div className="container relative mx-auto px-4 pb-8 pt-6">
+          <Link
+            to="/events"
+            className="mb-5 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Все мероприятия
+          </Link>
+
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            {(event.categories || []).map((category) => (
+              <Badge key={category.id} variant="secondary">{category.name}</Badge>
+            ))}
+            <Badge variant="outline">6+</Badge>
+            {(event.free || event.isFree) && <Badge className="bg-primary text-primary-foreground">Бесплатно</Badge>}
+            {!event.free && !event.isFree && (
+              <Badge className="bg-primary/10 text-primary border-0">{formatPrice(event)}</Badge>
+            )}
+          </div>
+
+          <h1 className="font-heading text-3xl leading-tight tracking-tight text-foreground sm:text-4xl lg:text-5xl">
+            {event.title}
+          </h1>
+
+          <div className="mt-3 flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <Star className="h-4 w-4 fill-golden text-golden" />
+              <span className="text-sm font-semibold text-foreground">
+                {event.averageRating ? event.averageRating.toFixed(1) : '0.0'}
+              </span>
+            </div>
+            <span className="text-sm text-muted-foreground">{event.reviewsCount || 0} отзывов</span>
+          </div>
+        </div>
+      </section>
+
+      <div className="container mx-auto px-4 py-6">
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <div className="relative overflow-hidden rounded-2xl border border-border bg-card">
@@ -494,7 +536,7 @@ export default function EventDetailPage() {
                 <>
                   <button
                     type="button"
-                    className="absolute left-6 top-[50%] z-10 -translate-y-1/2 rounded-full border border-border bg-card/90 p-2"
+                    className="absolute left-4 top-[50%] z-10 -translate-y-1/2 rounded-full border border-border bg-card/90 p-2 shadow-soft transition-colors hover:bg-card"
                     onClick={() => setActiveImageIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length)}
                     aria-label="Предыдущее изображение"
                   >
@@ -502,7 +544,7 @@ export default function EventDetailPage() {
                   </button>
                   <button
                     type="button"
-                    className="absolute right-6 top-[50%] z-10 -translate-y-1/2 rounded-full border border-border bg-card/90 p-2"
+                    className="absolute right-4 top-[50%] z-10 -translate-y-1/2 rounded-full border border-border bg-card/90 p-2 shadow-soft transition-colors hover:bg-card"
                     onClick={() => setActiveImageIndex((prev) => (prev + 1) % galleryImages.length)}
                     aria-label="Следующее изображение"
                   >
@@ -518,7 +560,7 @@ export default function EventDetailPage() {
                     type="button"
                     key={`${image}-${index}`}
                     onClick={() => setActiveImageIndex(index)}
-                    className={`h-16 w-24 shrink-0 overflow-hidden rounded-md border ${index === activeImageIndex ? 'border-primary' : 'border-border'}`}
+                    className={`h-16 w-24 shrink-0 overflow-hidden rounded-xl border-2 transition-all ${index === activeImageIndex ? 'border-primary shadow-soft' : 'border-border hover:border-primary/40'}`}
                   >
                     <img src={image} alt={`Изображение ${index + 1}`} className="h-full w-full object-cover" />
                   </button>
@@ -526,31 +568,7 @@ export default function EventDetailPage() {
               </div>
             )}
 
-            <div className="mt-6">
-              <div className="flex flex-wrap gap-2">
-                {(event.categories || []).map((category) => (
-                  <Badge key={category.id} variant="secondary">{category.name}</Badge>
-                ))}
-                <Badge variant="outline">6+</Badge>
-                {(event.free || event.isFree) && <Badge className="bg-primary text-primary-foreground">Бесплатно</Badge>}
-                {!event.free && !event.isFree && (
-                  <Badge className="bg-primary text-primary-foreground">{formatPrice(event)}</Badge>
-                )}
-              </div>
-              <h1 className="mt-3 font-heading text-3xl text-foreground sm:text-4xl">{event.title}</h1>
-
-              <div className="mt-3 flex items-center gap-3">
-                <div className="flex items-center gap-1">
-                  <Star className="h-4 w-4 fill-golden text-golden" />
-                  <span className="text-sm font-semibold text-foreground">
-                    {event.averageRating ? event.averageRating.toFixed(1) : '0.0'}
-                  </span>
-                </div>
-                <span className="text-sm text-muted-foreground">{event.reviewsCount || 0} отзывов</span>
-              </div>
-            </div>
-
-            <div className="mt-6 flex items-center gap-3 rounded-xl border border-border bg-card p-4">
+            <div className="mt-6 flex items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-soft">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                 <Building2 className="h-5 w-5 text-primary" />
               </div>
@@ -594,7 +612,7 @@ export default function EventDetailPage() {
               <h2 className="font-heading text-xl text-foreground">Сеансы</h2>
               <div className="mt-3 space-y-2">
                 {sessions.length === 0 && (
-                  <p className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+                  <p className="rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
                     Пока нет запланированных сеансов
                   </p>
                 )}
@@ -618,7 +636,7 @@ export default function EventDetailPage() {
                   return (
                     <div
                       key={session.id}
-                      className={`flex items-center justify-between rounded-xl border bg-card p-4 ${isSelected ? 'border-primary' : 'border-border'}`}
+                      className={`flex cursor-pointer items-center justify-between rounded-2xl border bg-card p-4 shadow-soft transition-colors hover:border-primary/20 ${isSelected ? 'border-primary' : 'border-border'}`}
                       onClick={() => setSelectedSessionId(String(session.id))}
                     >
                       <div className="flex items-center gap-4">
@@ -705,7 +723,7 @@ export default function EventDetailPage() {
               <h2 className="font-heading text-xl text-foreground">Отзывы</h2>
 
               {canLeaveReview && (
-                <div className="mt-3 rounded-xl border border-border bg-card p-4">
+                <div className="mt-3 rounded-2xl border border-border bg-card p-4 shadow-soft">
                   <p className="mb-2 text-sm text-muted-foreground">Оцените мероприятие</p>
                   <StarRating rating={newRating} onChange={setNewRating} />
                   <Textarea
@@ -721,21 +739,21 @@ export default function EventDetailPage() {
                 </div>
               )}
               {isAuthenticated && !canLeaveReview && (
-                <div className="mt-3 rounded-xl border border-border bg-card p-4">
+                <div className="mt-3 rounded-2xl border border-border bg-card p-4 shadow-soft">
                   <p className="text-sm text-muted-foreground">Отзывы могут оставлять только жители.</p>
                 </div>
               )}
 
               <div className="mt-3 space-y-3">
                 {reviews.length === 0 && (
-                  <div className="rounded-xl border border-border bg-card p-6 text-center">
+                  <div className="rounded-2xl border border-border bg-card p-6 text-center shadow-soft">
                     <Star className="mx-auto h-8 w-8 text-muted-foreground/40" />
                     <p className="mt-2 text-sm text-muted-foreground">Пока нет отзывов</p>
                   </div>
                 )}
 
                 {reviews.map((review) => (
-                  <div key={review.commentId || review.id} className="rounded-xl border border-border bg-card p-4">
+                  <div key={review.commentId || review.id} className="rounded-2xl border border-border bg-card p-4 shadow-soft">
                     <div className="mb-2 flex items-center justify-between gap-3">
                       <p className="text-sm font-semibold text-foreground">
                         {review.userDisplayName || `${review.user?.firstName || ''} ${review.user?.lastName || ''}`.trim() || 'Пользователь'}
@@ -885,7 +903,7 @@ export default function EventDetailPage() {
               );
 
               return (
-                <div key={ticketType.id} className="rounded-lg border border-border p-3">
+                <div key={ticketType.id} className="rounded-xl border border-border p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-foreground">{ticketType.name}</p>

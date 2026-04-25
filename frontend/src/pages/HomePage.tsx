@@ -134,33 +134,37 @@ export default function HomePage() {
 
   return (
     <PublicLayout>
-      <section className="relative overflow-hidden bg-gradient-to-br from-warm-cream via-background to-golden-light/20">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--terracotta)/0.06),transparent_70%)]" />
-        <div className="container relative mx-auto px-4 py-16 sm:py-24">
-          <div className="grid items-center gap-10 lg:grid-cols-2">
+      <section className="relative overflow-hidden">
+        {/* Background layers */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--warm-cream))] via-background to-[hsl(var(--golden-light)/0.25)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_70%_-10%,hsl(var(--terracotta)/0.08),transparent)]" />
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+
+        <div className="container relative mx-auto px-4 py-16 sm:py-24 lg:py-28">
+          <div className="grid items-center gap-12 lg:grid-cols-2">
+            {/* Text block */}
             <div className="animate-fade-in">
-              <div className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+              <div className="section-label">
                 <Sparkles className="h-3.5 w-3.5" />
                 Культурная жизнь малых городов
               </div>
-              <h1 className="font-heading text-4xl leading-tight text-foreground sm:text-5xl lg:text-6xl">
+              <h1 className="mt-1 font-heading text-4xl leading-[1.1] tracking-tight text-foreground sm:text-5xl lg:text-6xl">
                 Откройте для себя
-                <span className="block text-primary"> культурные события</span>
+                <span className="block text-gradient-warm"> культурные события</span>
               </h1>
-              <p className="mt-4 max-w-lg text-lg text-muted-foreground">
-                Находите фестивали, концерты, выставки и мастер-классы в уютных городах России.
-                Записывайтесь и делитесь впечатлениями.
+              <p className="mt-5 max-w-lg text-lg leading-relaxed text-muted-foreground">
+                Находите фестивали, концерты, выставки и мастер-классы в уютных городах России. Записывайтесь и делитесь впечатлениями.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link to="/events">
-                  <Button size="lg" className="gap-2">
+                  <Button size="lg" className="gap-2 shadow-md shadow-primary/20 transition-shadow hover:shadow-lg hover:shadow-primary/25">
                     Смотреть мероприятия
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
                 {!isAuthenticated && (
                   <Link to="/register">
-                    <Button variant="outline" size="lg">
+                    <Button variant="outline" size="lg" className="hover:border-primary/40">
                       Создать аккаунт
                     </Button>
                   </Link>
@@ -168,41 +172,44 @@ export default function HomePage() {
               </div>
             </div>
 
+            {/* Featured event card */}
             {upcomingEvent && (
-              <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
-                <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+              <div className="animate-slide-up" style={{ animationDelay: '0.15s' }}>
+                <Link
+                  to={`/events/${upcomingEvent.id}`}
+                  className="group block overflow-hidden rounded-2xl border border-border bg-card shadow-lifted transition-all duration-300 hover:-translate-y-1 hover:shadow-hover"
+                >
                   <div className="relative aspect-video overflow-hidden">
                     <img
                       src={imageSrc(upcomingEvent.coverImageId == null ? null : Number(upcomingEvent.coverImageId), '/placeholder-event.svg')}
                       alt={resolveEventTitle(upcomingEvent)}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
                     <div className="absolute bottom-4 left-4 right-4">
-                      <span className="mb-1 inline-block rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
+                      <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-primary/90 px-2.5 py-0.5 text-xs font-semibold text-white backdrop-blur-sm">
+                        <CalendarDays className="h-3 w-3" />
                         Ближайшее событие
                       </span>
-                      <h3 className="font-heading text-xl text-primary-foreground">{resolveEventTitle(upcomingEvent)}</h3>
+                      <h3 className="font-heading text-xl leading-snug text-white">{resolveEventTitle(upcomingEvent)}</h3>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between p-4">
-                    <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1.5">
-                        <CalendarDays className="h-4 w-4 text-primary" />
+                        <CalendarDays className="h-3.5 w-3.5 text-primary/60" />
                         {formatDate(resolveEventDate(upcomingEvent))}
                       </span>
                       <span className="flex items-center gap-1.5">
-                        <MapPin className="h-4 w-4 text-primary" />
+                        <MapPin className="h-3.5 w-3.5 text-primary/60" />
                         {resolveEventCityName(upcomingEvent)}
                       </span>
                     </div>
-                    <Link to={`/events/${upcomingEvent.id}`}>
-                      <Button variant="outline" size="sm" className="gap-1">
-                        Подробнее <ArrowRight className="h-3.5 w-3.5" />
-                      </Button>
-                    </Link>
+                    <span className="flex items-center gap-1 text-xs font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                      Подробнее <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
                   </div>
-                </div>
+                </Link>
               </div>
             )}
           </div>
@@ -212,30 +219,32 @@ export default function HomePage() {
       <section className="container mx-auto px-4 py-16">
         <div className="mb-8 flex items-end justify-between">
           <div>
-            <h2 className="font-heading text-2xl text-foreground sm:text-3xl">Популярные мероприятия</h2>
-            <p className="mt-1 text-muted-foreground">Самые интересные события в ближайшее время</p>
+            <h2 className="font-heading text-2xl tracking-tight text-foreground sm:text-3xl">Популярные мероприятия</h2>
+            <p className="mt-1.5 text-muted-foreground">Самые интересные события в ближайшее время</p>
           </div>
           <Link
             to="/events"
-            className="hidden items-center gap-1 text-sm font-semibold text-primary hover:underline sm:flex"
+            className="hidden items-center gap-1.5 text-sm font-semibold text-primary transition-colors hover:text-primary/80 sm:flex"
           >
             Все мероприятия <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
 
         {featuredEvents.length > 0 ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {featuredEvents.map((event) => (
               <EventCard key={event.id} event={event} />
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Пока нет опубликованных мероприятий</p>
+          <div className="rounded-2xl border border-border bg-card p-10 text-center text-muted-foreground">
+            Пока нет опубликованных мероприятий
+          </div>
         )}
 
         <div className="mt-8 text-center sm:hidden">
           <Link to="/events">
-            <Button variant="outline" className="gap-1">
+            <Button variant="outline" className="gap-2">
               Все мероприятия <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
@@ -243,70 +252,66 @@ export default function HomePage() {
       </section>
 
       {platformStats && (
-        <section className="border-y border-border bg-card">
-          <div className="container mx-auto grid grid-cols-3 divide-x divide-border px-4 py-8">
-            <div className="flex flex-col items-center gap-2 px-4 text-center">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                <CalendarDays className="h-5 w-5 text-primary" />
-              </div>
-              <p className="text-3xl font-bold text-foreground">{platformStats.totalEvents}</p>
-              <p className="text-sm text-muted-foreground">мероприятий</p>
-            </div>
-            <div className="flex flex-col items-center gap-2 px-4 text-center">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                <Ticket className="h-5 w-5 text-primary" />
-              </div>
-              <p className="text-3xl font-bold text-foreground">{platformStats.totalRegistrations}</p>
-              <p className="text-sm text-muted-foreground">регистраций</p>
-            </div>
-            <div className="flex flex-col items-center gap-2 px-4 text-center">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                <Building2 className="h-5 w-5 text-primary" />
-              </div>
-              <p className="text-3xl font-bold text-foreground">{platformStats.totalCities}</p>
-              <p className="text-sm text-muted-foreground">городов</p>
+        <section className="border-y border-border bg-gradient-to-r from-card via-card to-card">
+          <div className="container mx-auto px-4 py-10">
+            <div className="grid grid-cols-1 gap-px bg-border sm:grid-cols-3 overflow-hidden rounded-2xl shadow-soft">
+              {[
+                { icon: CalendarDays, value: platformStats.totalEvents, label: 'мероприятий', suffix: '+' },
+                { icon: Ticket, value: platformStats.totalRegistrations, label: 'регистраций', suffix: '+' },
+                { icon: Building2, value: platformStats.totalCities, label: 'городов', suffix: '' },
+              ].map(({ icon: Icon, value, label, suffix }) => (
+                <div key={label} className="flex flex-col items-center gap-3 bg-card px-6 py-8 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5">
+                    <Icon className="h-6 w-6 text-primary" />
+                  </div>
+                  <p className="stat-number">{value.toLocaleString('ru-RU')}{suffix}</p>
+                  <p className="text-sm text-muted-foreground">{label}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
       )}
 
       {recommendations.length > 0 && (
-        <section className="container mx-auto px-4 py-16">
-          <div className="mb-8 flex items-end justify-between">
-            <div>
-              <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                <Star className="h-3.5 w-3.5" />
-                Персонально для вас
+        <section className="bg-gradient-to-b from-[hsl(var(--warm-cream)/0.5)] to-transparent">
+          <div className="container mx-auto px-4 py-16">
+            <div className="mb-8 flex items-end justify-between">
+              <div>
+                <div className="section-label">
+                  <Star className="h-3.5 w-3.5" />
+                  Персонально для вас
+                </div>
+                <h2 className="font-heading text-2xl tracking-tight text-foreground sm:text-3xl">Рекомендуем</h2>
+                <p className="mt-1.5 text-muted-foreground">
+                  {isAuthenticated ? 'Подборка на основе ваших интересов и избранного' : 'Самые популярные мероприятия'}
+                </p>
               </div>
-              <h2 className="font-heading text-2xl text-foreground sm:text-3xl">Рекомендуем</h2>
-              <p className="mt-1 text-muted-foreground">
-                {isAuthenticated ? 'Подборка на основе ваших предпочтений' : 'Самые популярные мероприятия'}
-              </p>
+              <Link to="/events" className="hidden items-center gap-1.5 text-sm font-semibold text-primary transition-colors hover:text-primary/80 sm:flex">
+                Все мероприятия <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
-            <Link to="/events" className="hidden items-center gap-1 text-sm font-semibold text-primary hover:underline sm:flex">
-              Все мероприятия <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {recommendations.map((event) => (
-              <EventCard key={event.id} event={event} />
-            ))}
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {recommendations.map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))}
+            </div>
           </div>
         </section>
       )}
 
       <section className="container mx-auto px-4 py-10">
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/5 via-card to-card shadow-soft">
+          <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="font-heading text-2xl text-foreground">Уведомления о новых мероприятиях</h2>
-              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                Получайте анонсы новых событий по email и не пропускайте интересные мероприятия.
+              <h2 className="font-heading text-xl text-foreground">Уведомления о новых мероприятиях</h2>
+              <p className="mt-1 max-w-lg text-sm text-muted-foreground">
+                Получайте анонсы событий по email раньше всех — не пропускайте ничего интересного.
               </p>
             </div>
 
             {isAuthenticated ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 rounded-xl border border-border bg-card/80 px-4 py-2.5 shadow-soft">
                 <span className="text-sm text-muted-foreground">{notificationsEnabled ? 'Включено' : 'Выключено'}</span>
                 <Switch
                   checked={notificationsEnabled}
@@ -316,12 +321,12 @@ export default function HomePage() {
                 />
               </div>
             ) : (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex shrink-0 flex-wrap gap-2">
                 <Link to="/register?subscribe=1">
-                  <Button>Подписаться</Button>
+                  <Button className="gap-2 shadow-sm shadow-primary/20">Подписаться</Button>
                 </Link>
                 <Link to="/login">
-                  <Button variant="outline">Войти</Button>
+                  <Button variant="outline" className="hover:border-primary/40">Войти</Button>
                 </Link>
               </div>
             )}
@@ -329,14 +334,21 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-gradient-to-r from-primary/5 via-golden-light/10 to-primary/5">
-        <div className="container mx-auto px-4 py-16 text-center">
-          <h2 className="font-heading text-2xl text-foreground sm:text-3xl">Вы организатор мероприятий?</h2>
-          <p className="mx-auto mt-2 max-w-md text-muted-foreground">
-            Создавайте события, управляйте записями и привлекайте аудиторию на нашей платформе
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-[hsl(var(--golden-light)/0.12)] to-primary/5" />
+        <div className="container relative mx-auto px-4 py-20 text-center">
+          <div className="section-label mx-auto">
+            <Sparkles className="h-3.5 w-3.5" />
+            Для организаторов
+          </div>
+          <h2 className="mt-2 font-heading text-3xl tracking-tight text-foreground sm:text-4xl">
+            Вы организуете мероприятия?
+          </h2>
+          <p className="mx-auto mt-3 max-w-md text-muted-foreground">
+            Создавайте события, управляйте записями участников и привлекайте новую аудиторию на нашей платформе.
           </p>
-          <Link to="/register" className="mt-6 inline-block">
-            <Button size="lg" className="gap-2">
+          <Link to="/register" className="mt-8 inline-block">
+            <Button size="lg" className="gap-2 shadow-lg shadow-primary/20 transition-shadow hover:shadow-xl hover:shadow-primary/25">
               Начать бесплатно <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>

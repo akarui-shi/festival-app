@@ -322,17 +322,21 @@ export default function EventsCatalogPage() {
 
   return (
     <PublicLayout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="font-heading text-3xl text-foreground sm:text-4xl">Мероприятия</h1>
-          <p className="mt-1 text-muted-foreground">
+      <section className="relative overflow-hidden border-b border-border">
+        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--warm-cream))] via-background to-[hsl(var(--golden-light)/0.2)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_80%_-20%,hsl(var(--terracotta)/0.06),transparent)]" />
+        <div className="container relative mx-auto px-4 py-10">
+          <h1 className="page-title">Мероприятия</h1>
+          <p className="mt-1.5 text-muted-foreground">
             {selectedCity
               ? `Подборка мероприятий: ${selectedCityLabel}`
               : 'Найдите интересные культурные события рядом с вами'}
           </p>
         </div>
+      </section>
 
-        <div className="surface-panel mb-8 space-y-4">
+      <div className="container mx-auto px-4 py-8">
+        <div className="surface-panel mb-8 space-y-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div ref={searchContainerRef} className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -355,12 +359,12 @@ export default function EventsCatalogPage() {
                 autoComplete="off"
               />
               {showSuggestions && suggestions.length > 0 && (
-                <ul className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+                <ul className="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-border bg-card py-1 shadow-card">
                   {suggestions.map((title) => (
                     <li key={title}>
                       <button
                         type="button"
-                        className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-foreground hover:bg-muted"
+                        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => {
                           updateDraftFilter('search', title);
@@ -368,8 +372,8 @@ export default function EventsCatalogPage() {
                           setAppliedFilters(normalizeFilters({ ...draftFilters, search: title }));
                         }}
                       >
-                        <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                        {title}
+                        <Search className="h-3.5 w-3.5 shrink-0 text-primary/50" />
+                        <span className="truncate">{title}</span>
                       </button>
                     </li>
                   ))}
@@ -399,32 +403,23 @@ export default function EventsCatalogPage() {
 
           <div className={`space-y-4 ${showFilters ? 'block' : 'hidden sm:block'}`}>
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => updateDraftFilter('categoryId', '')}
-                className={`rounded-full border px-3.5 py-1.5 text-sm transition-all ${
-                  draftFilters.categoryId === ''
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                }`}
-              >
-                Все категории
-              </button>
-
-              {categories.map((category) => (
-                <button
-                  type="button"
-                  key={category.id}
-                  onClick={() => updateDraftFilter('categoryId', String(category.id))}
-                  className={`rounded-full border px-3.5 py-1.5 text-sm transition-all ${
-                    draftFilters.categoryId === String(category.id)
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                  }`}
-                >
-                  {category.name}
-                </button>
-              ))}
+              {[{ id: '', name: 'Все категории' }, ...categories].map((category) => {
+                const active = draftFilters.categoryId === String(category.id === '' ? '' : category.id);
+                return (
+                  <button
+                    type="button"
+                    key={category.id}
+                    onClick={() => updateDraftFilter('categoryId', category.id === '' ? '' : String(category.id))}
+                    className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all duration-150 ${
+                      active
+                        ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                        : 'border-border bg-background text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-foreground'
+                    }`}
+                  >
+                    {category.name}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
