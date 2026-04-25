@@ -44,6 +44,7 @@ import com.festivalapp.backend.repository.OrganizationRepository;
 import com.festivalapp.backend.repository.SessionRepository;
 import com.festivalapp.backend.repository.TicketRepository;
 import com.festivalapp.backend.repository.TicketTypeRepository;
+import com.festivalapp.backend.repository.UserInterestRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import com.festivalapp.backend.repository.VenueRepository;
 import lombok.RequiredArgsConstructor;
@@ -86,6 +87,7 @@ public class EventService {
     private final OrganizationRepository organizationRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
     private final UserRepository userRepository;
+    private final UserInterestRepository userInterestRepository;
     private final FavoriteRepository favoriteRepository;
     private final CommentRepository commentRepository;
     private final TicketRepository ticketRepository;
@@ -109,14 +111,26 @@ public class EventService {
                                            String status,
                                            String sortBy,
                                            String sortDir) {
+        Set<Long> ftsIds = null;
+        String searchQuery = StringUtils.hasText(q) ? q.trim() : (StringUtils.hasText(title) ? title.trim() : null);
+        if (StringUtils.hasText(searchQuery)) {
+            try {
+                ftsIds = new HashSet<>(eventRepository.findIdsByFullText(searchQuery));
+            } catch (Exception ignored) {
+                // fall back to in-memory search if FTS fails (e.g. empty tsquery)
+            }
+        }
+        final Set<Long> ftsIdsFinal = ftsIds;
+
         List<Event> events = eventRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc();
 
         return events.stream()
+            .filter(e -> ftsIdsFinal == null || ftsIdsFinal.contains(e.getId()))
             .map(this::hydrateEvent)
             .filter(event -> matchesFilters(
                 event,
                 title,
-                q,
+                ftsIdsFinal != null ? null : q,
                 categoryId,
                 venueId,
                 cityId,
@@ -141,14 +155,16 @@ public class EventService {
 
         Set<Long> preferredCategoryIds = new HashSet<>();
         if (StringUtils.hasText(actorIdentifier)) {
-            userRepository.findByLoginOrEmailWithRoles(actorIdentifier).ifPresent(user ->
+            userRepository.findByLoginOrEmailWithRoles(actorIdentifier).ifPresent(user -> {
+                userInterestRepository.findAllByUserId(user.getId())
+                    .forEach(ui -> preferredCategoryIds.add(ui.getCategoryId()));
                 favoriteRepository.findAllByUserIdOrderByCreatedAtDesc(user.getId()).forEach(fav -> {
                     Event favEvent = hydrateEvent(fav.getEvent());
                     favEvent.getEventCategories().stream()
                         .map(ec -> ec.getCategory().getId())
                         .forEach(preferredCategoryIds::add);
-                })
-            );
+                });
+            });
         }
 
         List<Event> published = eventRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc().stream()

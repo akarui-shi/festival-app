@@ -29,4 +29,15 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     @EntityGraph(attributePaths = {"organization", "organization.city", "createdByUser", "city"})
     @Query("select e from Event e where e.id = :id and e.deletedAt is null")
     Optional<Event> findByIdForUpdate(@Param("id") Long id);
+
+    @Query(value = """
+        SELECT id FROM events
+        WHERE deleted_at IS NULL
+          AND to_tsvector('russian',
+                coalesce(title,'') || ' ' ||
+                coalesce(short_description,'') || ' ' ||
+                coalesce(full_description,''))
+              @@ plainto_tsquery('russian', :q)
+        """, nativeQuery = true)
+    List<Long> findIdsByFullText(@Param("q") String q);
 }

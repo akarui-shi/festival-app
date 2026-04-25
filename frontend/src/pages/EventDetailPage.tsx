@@ -39,6 +39,8 @@ import { sessionService } from '@/services/session-service';
 import { reviewService } from '@/services/review-service';
 import { registrationService } from '@/services/registration-service';
 import { favoriteService } from '@/services/favorite-service';
+import { waitlistService } from '@/services/waitlist-service';
+import type { WaitlistStatus } from '@/services/waitlist-service';
 import type { Event, Id, Review, Session, SessionTicketType } from '@/types';
 import type { RegistrationItemInput } from '@/services/registration-service';
 
@@ -169,6 +171,8 @@ export default function EventDetailPage() {
   const [selectedTicketQuantities, setSelectedTicketQuantities] = useState<Record<string, number>>({});
   const [registeringSessionId, setRegisteringSessionId] = useState<string | null>(null);
   const [similarEvents, setSimilarEvents] = useState<Event[]>([]);
+  const [waitlistStatus, setWaitlistStatus] = useState<Record<string, WaitlistStatus>>({});
+  const [joiningWaitlist, setJoiningWaitlist] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -224,6 +228,51 @@ export default function EventDetailPage() {
       );
     });
   }, [id, user, isResident]);
+
+  const loadWaitlistStatus = async (sessionIds: string[]) => {
+    if (!user || sessionIds.length === 0) return;
+    const statuses: Record<string, WaitlistStatus> = {};
+    await Promise.allSettled(
+      sessionIds.map(async (sid) => {
+        try {
+          statuses[sid] = await waitlistService.getStatus(sid);
+        } catch { /* ignore */ }
+      }),
+    );
+    setWaitlistStatus(statuses);
+  };
+
+  useEffect(() => {
+    if (!user || sessions.length === 0) return;
+    void loadWaitlistStatus(sessions.map((s) => String(s.id)));
+  }, [user?.id, sessions]);
+
+  const joinWaitlist = async (sessionId: string) => {
+    if (!user) { toast.info('Войдите, чтобы встать в очередь'); return; }
+    setJoiningWaitlist(sessionId);
+    try {
+      const result = await waitlistService.join(sessionId);
+      setWaitlistStatus((prev) => ({ ...prev, [sessionId]: { ...result, inQueue: true } }));
+      toast.success(result.alreadyInQueue ? `Вы уже в очереди (позиция ${result.position})` : `Вы в очереди — позиция ${result.position}`);
+    } catch {
+      toast.error('Не удалось встать в очередь');
+    } finally {
+      setJoiningWaitlist(null);
+    }
+  };
+
+  const leaveWaitlist = async (sessionId: string) => {
+    setJoiningWaitlist(sessionId);
+    try {
+      await waitlistService.leave(sessionId);
+      setWaitlistStatus((prev) => ({ ...prev, [sessionId]: { inQueue: false, queueSize: Math.max(0, (prev[sessionId]?.queueSize ?? 1) - 1) } }));
+      toast.success('Вы покинули очередь');
+    } catch {
+      toast.error('Не удалось покинуть очередь');
+    } finally {
+      setJoiningWaitlist(null);
+    }
+  };
 
   const toggleFavorite = async () => {
     if (!user || !id) return;
@@ -596,6 +645,34 @@ export default function EventDetailPage() {
                         {canRegisterForEvent ? (
                           isRegistered ? (
                             <Badge className="bg-primary/10 text-primary">Вы записаны</Badge>
+                          ) : isFull ? (
+                            <div className="flex flex-col items-end gap-1">
+                              {waitlistStatus[String(session.id)]?.inQueue ? (
+                                <>
+                                  <Badge variant="outline" className="text-xs">
+                                    Очередь: #{waitlistStatus[String(session.id)]?.position}
+                                  </Badge>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 px-2 text-xs text-muted-foreground"
+                                    disabled={joiningWaitlist === String(session.id)}
+                                    onClick={(e) => { e.stopPropagation(); void leaveWaitlist(String(session.id)); }}
+                                  >
+                                    Покинуть очередь
+                                  </Button>
+                                </>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={joiningWaitlist === String(session.id)}
+                                  onClick={(e) => { e.stopPropagation(); void joinWaitlist(String(session.id)); }}
+                                >
+                                  {joiningWaitlist === String(session.id) ? '...' : 'В очередь'}
+                                </Button>
+                              )}
+                            </div>
                           ) : (
                             <Button
                               size="sm"
@@ -603,11 +680,11 @@ export default function EventDetailPage() {
                                 e.stopPropagation();
                                 void openRegistrationForSession(session);
                               }}
-                              disabled={isFull || !isOpen || registeringSessionId === String(session.id)}
+                              disabled={!isOpen || registeringSessionId === String(session.id)}
                             >
                               {registeringSessionId === String(session.id)
                                 ? 'Оформляем...'
-                                : !isOpen ? 'Регистрация закрыта' : isFull ? 'Мест нет' : 'Записаться'}
+                                : !isOpen ? 'Регистрация закрыта' : 'Записаться'}
                             </Button>
                           )
                         ) : isAuthenticated ? (

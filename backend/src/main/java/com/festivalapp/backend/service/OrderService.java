@@ -33,9 +33,11 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -51,6 +53,7 @@ public class OrderService {
     private final PaymentRepository paymentRepository;
     private final PaymentGatewayService paymentGatewayService;
     private final NotificationService notificationService;
+    private final WaitlistService waitlistService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -268,6 +271,7 @@ public class OrderService {
         }
 
         List<OrderItem> items = orderItemRepository.findAllByOrderId(order.getId());
+        Set<Long> affectedSessionIds = new java.util.HashSet<>();
         for (OrderItem item : items) {
             List<Ticket> tickets = ticketRepository.findAllByOrderItemId(item.getId());
             for (Ticket ticket : tickets) {
@@ -275,9 +279,13 @@ public class OrderService {
                     ticket.setStatus("возвращён");
                     ticket.setUsedAt(OffsetDateTime.now());
                     ticketRepository.save(ticket);
+                    if (ticket.getSession() != null) {
+                        affectedSessionIds.add(ticket.getSession().getId());
+                    }
                 }
             }
         }
+        affectedSessionIds.forEach(waitlistService::notifyFirstInQueue);
 
         paymentRepository.findFirstByOrderIdOrderByCreatedAtDesc(order.getId()).ifPresent(payment -> {
             if (!"succeeded".equalsIgnoreCase(payment.getStatus())) {
