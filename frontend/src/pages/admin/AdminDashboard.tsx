@@ -8,7 +8,34 @@ import { reviewService } from '@/services/review-service';
 import { publicationService } from '@/services/publication-service';
 import { LoadingState } from '@/components/StateDisplays';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { Switch } from '@/components/ui/switch';
 import type { OrganizerAnalyticsOverview } from '@/types';
+
+const METRIKA_DEMO_KEY = 'metrika_use_demo';
+
+function buildDemoSeries(days: number, base: number, delta: number): { label: string; value: number }[] {
+  const now = new Date();
+  const result: { label: string; value: number }[] = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const date = new Date(now);
+    date.setDate(now.getDate() - i);
+    const wave = Math.sin((days - i) / 2) * delta;
+    const noise = ((days - i) % 4) * (delta / 6);
+    result.push({
+      label: new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: '2-digit' }).format(date),
+      value: Math.max(0, Math.round(base + wave + noise)),
+    });
+  }
+  return result;
+}
+
+const DEMO_TRAFFIC_SOURCES = [
+  { source: 'Поисковые системы', value: 312 },
+  { source: 'Прямые переходы', value: 178 },
+  { source: 'Социальные сети', value: 94 },
+  { source: 'Реферальные ссылки', value: 61 },
+  { source: 'Другие', value: 29 },
+];
 
 function formatLabel(rawDate?: string | null): string {
   if (!rawDate) return '—';
@@ -30,6 +57,7 @@ export default function AdminDashboard() {
   const [analytics, setAnalytics] = useState<OrganizerAnalyticsOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [metrikaDemo, setMetrikaDemo] = useState(() => localStorage.getItem(METRIKA_DEMO_KEY) !== 'false');
 
   useEffect(() => {
     Promise.all([
@@ -96,17 +124,24 @@ export default function AdminDashboard() {
     { label: 'Публикаций на модерации', count: stats.pendingPubs, link: '/admin/publications', urgent: stats.pendingPubs > 0 },
   ];
 
+  const toggleMetrikaDemo = (checked: boolean) => {
+    const demo = !checked;
+    setMetrikaDemo(demo);
+    localStorage.setItem(METRIKA_DEMO_KEY, String(demo));
+  };
+
   const effectiveAnalytics = analytics || {};
   const metrikaStatus = effectiveAnalytics.metrika;
   const hasMetrikaData = Boolean(metrikaStatus?.available);
 
   const visitsByDay = useMemo(() => {
+    if (metrikaDemo) return buildDemoSeries(30, 200, 120);
     const raw = effectiveAnalytics.visitsByDay || [];
     if (hasMetrikaData && raw.length > 0) {
       return raw.map((point) => ({ label: formatLabel(point.date), value: Number(point.value || 0) }));
     }
     return [];
-  }, [effectiveAnalytics.visitsByDay, hasMetrikaData]);
+  }, [effectiveAnalytics.visitsByDay, hasMetrikaData, metrikaDemo]);
 
   const registrationsByDay = useMemo(() => {
     const raw = effectiveAnalytics.registrationsByDay || [];
@@ -114,12 +149,13 @@ export default function AdminDashboard() {
   }, [effectiveAnalytics.registrationsByDay]);
 
   const trafficSources = useMemo(() => {
+    if (metrikaDemo) return DEMO_TRAFFIC_SOURCES;
     const raw = effectiveAnalytics.trafficSources || [];
     if (hasMetrikaData && raw.length > 0) {
       return raw.map((source) => ({ source: source.source || 'Не определено', value: Number(source.visits || 0) }));
     }
     return [];
-  }, [effectiveAnalytics.trafficSources, hasMetrikaData]);
+  }, [effectiveAnalytics.trafficSources, hasMetrikaData, metrikaDemo]);
 
   if (loading) return <LoadingState />;
 
@@ -141,11 +177,13 @@ export default function AdminDashboard() {
           <h1 className="page-title">Обзор системы</h1>
           <p className="mt-1 text-muted-foreground">Ключевые показатели платформы и очередь модерации</p>
         </div>
-        {!hasMetrikaData && (
-          <p className="rounded-lg bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground">
-            Яндекс Метрика не подключена
-          </p>
-        )}
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-2.5 shadow-soft">
+          <div className="text-right">
+            <p className="text-xs font-medium text-foreground">Яндекс.Метрика</p>
+            <p className="text-xs text-muted-foreground">{!metrikaDemo ? 'реальные данные' : 'демо-данные'}</p>
+          </div>
+          <Switch checked={!metrikaDemo} onCheckedChange={toggleMetrikaDemo} />
+        </div>
       </section>
 
       {/* Metric cards */}
@@ -202,7 +240,10 @@ export default function AdminDashboard() {
       {/* Charts */}
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <div className="surface-panel xl:col-span-2">
-          <h2 className="font-heading text-xl text-foreground">Трафик по дням</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-heading text-xl text-foreground">Трафик по дням</h2>
+            {metrikaDemo && <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">демо</span>}
+          </div>
           {visitsByDay.length > 0 ? (
             <ChartContainer
               className="mt-4 h-[240px] w-full"
@@ -225,7 +266,10 @@ export default function AdminDashboard() {
         </div>
 
         <div className="surface-panel">
-          <h2 className="font-heading text-xl text-foreground">Источники трафика</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-heading text-xl text-foreground">Источники трафика</h2>
+            {metrikaDemo && <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">демо</span>}
+          </div>
           {trafficSources.length > 0 ? (
             <ChartContainer
               className="mt-4 h-[240px] w-full"

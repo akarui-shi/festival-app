@@ -5,7 +5,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { organizerService } from '@/services/organizer-service';
 import { LoadingState } from '@/components/StateDisplays';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { Switch } from '@/components/ui/switch';
 import type { OrganizerOverviewBundle } from '@/types';
+
+const METRIKA_DEMO_KEY = 'metrika_use_demo';
+
+const DEMO_TRAFFIC_SOURCES = [
+  { source: 'Поисковые системы', value: 178 },
+  { source: 'Прямые переходы', value: 94 },
+  { source: 'Социальные сети', value: 52 },
+  { source: 'Реферальные ссылки', value: 31 },
+  { source: 'Другие', value: 14 },
+];
 
 interface ChartPoint {
   label: string;
@@ -95,6 +106,13 @@ export default function OrganizerAnalytics() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const [metrikaDemo, setMetrikaDemo] = useState(() => localStorage.getItem(METRIKA_DEMO_KEY) !== 'false');
+
+  const toggleMetrikaDemo = (checked: boolean) => {
+    const demo = !checked;
+    setMetrikaDemo(demo);
+    localStorage.setItem(METRIKA_DEMO_KEY, String(demo));
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -131,6 +149,7 @@ export default function OrganizerAnalytics() {
   const hasMetrikaData = Boolean(metrikaStatus?.available);
 
   const visitsByDay = useMemo(() => {
+    if (metrikaDemo) return buildDemoSeries(30, 150, 80);
     const raw = analytics.visitsByDay || [];
     if (hasMetrikaData && raw.length > 0) {
       return raw.map((point) => ({
@@ -139,7 +158,7 @@ export default function OrganizerAnalytics() {
       }));
     }
     return [];
-  }, [analytics.visitsByDay, hasMetrikaData]);
+  }, [analytics.visitsByDay, hasMetrikaData, metrikaDemo]);
 
   const registrationsByDay = useMemo(() => {
     const raw = analytics.registrationsByDay || [];
@@ -150,6 +169,7 @@ export default function OrganizerAnalytics() {
   }, [analytics.registrationsByDay]);
 
   const trafficSources = useMemo(() => {
+    if (metrikaDemo) return DEMO_TRAFFIC_SOURCES;
     const raw = analytics.trafficSources || [];
     if (hasMetrikaData && raw.length > 0) {
       return raw.map((source) => ({
@@ -158,9 +178,9 @@ export default function OrganizerAnalytics() {
       }));
     }
     return [];
-  }, [analytics.trafficSources, hasMetrikaData]);
+  }, [analytics.trafficSources, hasMetrikaData, metrikaDemo]);
 
-  const usingDemoForMetrika = !hasMetrikaData;
+  const usingDemoForMetrika = metrikaDemo;
   const totalViews = Number(kpi.pageViews ?? 0);
   const uniqueVisitors = Number(kpi.uniqueVisitors ?? 0);
   const activeParticipants = Number(
@@ -293,14 +313,23 @@ export default function OrganizerAnalytics() {
 
   return (
     <div className="space-y-6">
-      <section>
-        <h1 className="page-title">Аналитика</h1>
-        <p className="mt-1 text-muted-foreground">Сводка по эффективности ваших мероприятий</p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {usingDemoForMetrika
-            ? 'Яндекс Метрика пока не подключена. Для графиков трафика показаны демо-данные.'
-            : (metrikaStatus?.message || 'Данные Яндекс Метрики загружены.')}
-        </p>
+      <section className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="page-title">Аналитика</h1>
+          <p className="mt-1 text-muted-foreground">Сводка по эффективности ваших мероприятий</p>
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            {usingDemoForMetrika
+              ? 'Графики трафика показаны с демо-данными. Включите Яндекс.Метрику для реальных данных.'
+              : (metrikaStatus?.message || 'Данные Яндекс Метрики загружены.')}
+          </p>
+        </div>
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-2.5 shadow-soft">
+          <div className="text-right">
+            <p className="text-xs font-medium text-foreground">Яндекс.Метрика</p>
+            <p className="text-xs text-muted-foreground">{!metrikaDemo ? 'реальные данные' : 'демо-данные'}</p>
+          </div>
+          <Switch checked={!metrikaDemo} onCheckedChange={toggleMetrikaDemo} />
+        </div>
       </section>
 
       <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
@@ -371,7 +400,10 @@ export default function OrganizerAnalytics() {
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <div className="surface-panel xl:col-span-2">
-          <h2 className="font-heading text-xl text-foreground">Трафик по дням</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-heading text-xl text-foreground">Трафик по дням</h2>
+            {metrikaDemo && <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">демо</span>}
+          </div>
           <p className="mt-1 text-xs text-muted-foreground">
             Посещаемость карточек мероприятий по дням (Яндекс.Метрика).
           </p>
@@ -397,7 +429,10 @@ export default function OrganizerAnalytics() {
         </div>
 
         <div className="surface-panel">
-          <h2 className="font-heading text-xl text-foreground">Источники трафика</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-heading text-xl text-foreground">Источники трафика</h2>
+            {metrikaDemo && <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">демо</span>}
+          </div>
           <p className="mt-1 text-xs text-muted-foreground">
             Откуда пользователи переходят на ваши мероприятия.
           </p>
