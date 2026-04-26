@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Loader2, MapPin } from 'lucide-react';
 import { imageSrc } from '@/lib/image';
 import { loadYandexMapsApi } from '@/services/yandex-maps-service';
-import { applyMinimalYandexMapUi, YANDEX_MAP_MINIMAL_OPTIONS } from '@/lib/yandex-map-ui';
+import { applyMinimalYandexMapUi, createPlacemarkOptions, YANDEX_MAP_MINIMAL_OPTIONS } from '@/lib/yandex-map-ui';
 import type { Event } from '@/types';
 
 interface Props {
@@ -59,12 +59,8 @@ export function EventsCatalogMap({ events }: Props) {
           const coords = resolveCoords(event)!;
           const placemark = new ymaps.Placemark(
             coords,
-            {
-              hintContent: event.title,
-              balloonContentHeader: event.title,
-              balloonContentBody: event.shortDescription || '',
-            },
-            { preset: 'islands#redIcon' },
+            { hintContent: event.title },
+            createPlacemarkOptions(),
           );
 
           placemark.events.add('click', () => {

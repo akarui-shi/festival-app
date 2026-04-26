@@ -5,8 +5,10 @@ import { PublicLayout } from '@/layouts/PublicLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useCity } from '@/contexts/CityContext';
 import { eventService } from '@/services/event-service';
 import { loadYandexMapsApi } from '@/services/yandex-maps-service';
+import { applyMinimalYandexMapUi, createClustererOptions, createPlacemarkOptions, YANDEX_MAP_MINIMAL_OPTIONS } from '@/lib/yandex-map-ui';
 import { imageSrc } from '@/lib/image';
 import type { Event } from '@/types';
 
@@ -21,7 +23,9 @@ export default function EventMapPage() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const clustererRef = useRef<any>(null);
+  const cityZoomedRef = useRef(false);
 
+  const { selectedCity } = useCity();
   const [events, setEvents] = useState<Event[]>([]);
   const [filtered, setFiltered] = useState<Event[]>([]);
   const [search, setSearch] = useState('');
@@ -55,18 +59,15 @@ export default function EventMapPage() {
       .then((ymaps) => {
         if (destroyed || !mapContainerRef.current) return;
 
-        const map = new ymaps.Map(mapContainerRef.current, {
-          center: [55.75, 37.57],
-          zoom: 5,
-          controls: ['zoomControl', 'fullscreenControl'],
-        });
+        const map = new ymaps.Map(
+          mapContainerRef.current,
+          { center: [55.75, 37.57], zoom: 5, controls: ['zoomControl', 'fullscreenControl'] },
+          YANDEX_MAP_MINIMAL_OPTIONS,
+        );
+        applyMinimalYandexMapUi(map);
         mapRef.current = map;
 
-        const clusterer = new ymaps.Clusterer({
-          preset: 'islands#invertedVioletClusterIcons',
-          groupByCoordinates: false,
-          clusterDisableClickZoom: false,
-        });
+        const clusterer = new ymaps.Clusterer(createClustererOptions(ymaps));
         clustererRef.current = clusterer;
         map.geoObjects.add(clusterer);
 
@@ -95,15 +96,8 @@ export default function EventMapPage() {
       .map((e) => {
         const pm = new ymaps.Placemark(
           [e.latitude!, e.longitude!],
-          {
-            hintContent: e.title,
-            balloonContentHeader: e.title,
-            balloonContentBody: [
-              e.venueName ? `<p style="margin:2px 0;color:#888;font-size:12px">${e.venueName}</p>` : '',
-              e.startDate ? `<p style="margin:2px 0;color:#888;font-size:12px">${formatDate(e.startDate)}</p>` : '',
-            ].join(''),
-          },
-          { preset: 'islands#violetDotIconWithCaption' },
+          { hintContent: e.title },
+          createPlacemarkOptions(),
         );
         pm.events.add('click', () => setSelected(e));
         return pm;
@@ -111,6 +105,28 @@ export default function EventMapPage() {
 
     clustererRef.current.add(placemarks);
   }, [filtered, mapLoaded]);
+
+  useEffect(() => {
+    if (!mapLoaded || !mapRef.current || !selectedCity || cityZoomedRef.current) return;
+
+    loadYandexMapsApi().then((ymaps) => {
+      ymaps.geocode(`${selectedCity.name}, Россия`, { results: 1, kind: 'locality' })
+        .then((result: any) => {
+          if (!mapRef.current || cityZoomedRef.current) return;
+          const obj = result.geoObjects.get(0);
+          if (!obj) return;
+          const bounds = obj.properties.get('boundedBy');
+          if (bounds) {
+            mapRef.current.setBounds(bounds, { checkZoomRange: true, zoomMargin: 30, duration: 600 });
+          } else {
+            const coords = obj.geometry.getCoordinates();
+            if (coords) mapRef.current.setCenter(coords, 10, { duration: 600 });
+          }
+          cityZoomedRef.current = true;
+        })
+        .catch(() => {});
+    });
+  }, [mapLoaded, selectedCity]);
 
   const flyTo = (event: Event) => {
     setSelected(event);
