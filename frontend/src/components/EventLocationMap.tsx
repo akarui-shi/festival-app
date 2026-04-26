@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, MapPin } from 'lucide-react';
-import { applyMinimalYandexMapUi, YANDEX_MAP_MINIMAL_OPTIONS } from '@/lib/yandex-map-ui';
+import { applyMinimalYandexMapUi, createPlacemarkOptions, YANDEX_MAP_MINIMAL_OPTIONS } from '@/lib/yandex-map-ui';
 import { loadYandexMapsApi, yandexMapsService } from '@/services/yandex-maps-service';
 
 type Coordinates = [number, number];
@@ -132,9 +132,7 @@ export function EventLocationMap({ address, latitude, longitude, title }: EventL
           placemarkRef.current = new ymaps.Placemark(
             resolvedCoordinates,
             placemarkProperties,
-            {
-              preset: 'islands#redIcon',
-            },
+            createPlacemarkOptions(),
           );
           map.geoObjects.add(placemarkRef.current);
         } else {
