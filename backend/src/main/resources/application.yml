@@ -26,10 +26,10 @@ spring:
     baseline-version: 0
 
   mail:
-    host: ${MAIL_HOST:smtp.yandex.ru}
-    port: ${MAIL_PORT:465}
-    username: ${MAIL_USERNAME:festivalapp@yandex.ru}
-    password: ${MAIL_PASSWORD:ioysgjrvnnirrdbj}
+    host: ${MAIL_HOST:MAIL_HOST}
+    port: ${MAIL_PORT:MAIL_PORT}
+    username: ${MAIL_USERNAME:your-mailbox@yandex.ru}
+    password: ${MAIL_PASSWORD:your-app-password}
     protocol: smtp
     properties:
       mail:
@@ -48,17 +48,17 @@ spring:
     oauth2:
       client:
         registration:
-          vk:
-            client-id: ${VK_OAUTH_CLIENT_ID:54557502}
-            client-secret: ${VK_OAUTH_CLIENT_SECRET:vk-client-secret}
-            client-authentication-method: client_secret_post
-            authorization-grant-type: authorization_code
+          google:
+            client-id: ${GOOGLE_OAUTH_CLIENT_ID:your-google-client-id}
+            client-secret: ${GOOGLE_OAUTH_CLIENT_SECRET:your-google-client-secret}
             redirect-uri: "${app.oauth2.redirect-base-url:http://localhost:8080}/login/oauth2/code/{registrationId}"
             scope:
+              - openid
               - email
+              - profile
           yandex:
-            client-id: ${YANDEX_OAUTH_CLIENT_ID:6955f4e06fa94614820fbb14ac8f0a83}
-            client-secret: ${YANDEX_OAUTH_CLIENT_SECRET:daa0678bb505423e9fb0791cd682d0eb}
+            client-id: ${YANDEX_OAUTH_CLIENT_ID:your-yandex-client-id}
+            client-secret: ${YANDEX_OAUTH_CLIENT_SECRET:your-yandex-client-secret}
             client-authentication-method: client_secret_post
             authorization-grant-type: authorization_code
             redirect-uri: "${app.oauth2.redirect-base-url:http://localhost:8080}/login/oauth2/code/{registrationId}"
@@ -66,11 +66,6 @@ spring:
               - login:email
               - login:info
         provider:
-          vk:
-            authorization-uri: https://id.vk.com/authorize
-            token-uri: https://id.vk.com/oauth2/auth
-            user-info-uri: https://id.vk.com/oauth2/user_info
-            user-name-attribute: user_id
           yandex:
             authorization-uri: https://oauth.yandex.ru/authorize
             token-uri: https://oauth.yandex.ru/token
@@ -106,8 +101,8 @@ app:
 
 payments:
   yookassa:
-    shop-id: ${YOOKASSA_SHOP_ID:1338545}
-    secret-key: ${YOOKASSA_SECRET_KEY:test_60I1jqryWKjk6w9BAXPowiSEhWpM4h99D-TumQ9uCko}
+    shop-id: ${YOOKASSA_SHOP_ID:your-yookassa-shop-id}
+    secret-key: ${YOOKASSA_SECRET_KEY:your-yookassa-secret-key}
     api-base-url: ${YOOKASSA_API_BASE_URL:https://api.yookassa.ru/v3}
 
 yandex:

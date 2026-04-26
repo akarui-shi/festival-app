@@ -150,7 +150,7 @@ export const authService = {
     });
   },
 
-  getOAuthLoginUrl(provider: 'vk' | 'yandex'): string {
+  getOAuthLoginUrl(provider: 'google' | 'yandex'): string {
     return `${resolveBackendBaseUrl()}/oauth2/authorization/${provider}`;
   },
 
