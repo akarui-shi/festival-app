@@ -2,6 +2,7 @@ package com.festivalapp.backend.service;
 
 import com.festivalapp.backend.dto.TicketResponse;
 import com.festivalapp.backend.entity.Order;
+import com.festivalapp.backend.entity.OrderItem;
 import com.festivalapp.backend.entity.Payment;
 import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.Ticket;
@@ -9,6 +10,7 @@ import com.festivalapp.backend.entity.TicketType;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
+import com.festivalapp.backend.repository.OrderItemRepository;
 import com.festivalapp.backend.repository.OrderRepository;
 import com.festivalapp.backend.repository.PaymentRepository;
 import com.festivalapp.backend.repository.TicketRepository;
@@ -18,6 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +33,7 @@ public class TicketService {
     private final TicketRepository ticketRepository;
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
     private final PaymentRepository paymentRepository;
 
     @Transactional(readOnly = true)
@@ -127,6 +132,19 @@ public class TicketService {
 
     private TicketResponse toResponse(Ticket ticket) {
         TicketType ticketType = ticket.getOrderItem() == null ? null : ticket.getOrderItem().getTicketType();
+        BigDecimal unitPrice = ticket.getOrderItem() == null ? null : ticket.getOrderItem().getUnitPrice();
+        BigDecimal paidAmount = null;
+        if (ticket.getOrderItem() != null && ticket.getOrderItem().getOrder() != null) {
+            Order order = ticket.getOrderItem().getOrder();
+            BigDecimal orderTotal = order.getTotalAmount();
+            if (orderTotal != null) {
+                List<OrderItem> allItems = orderItemRepository.findAllByOrderId(order.getId());
+                int totalTickets = allItems.stream().mapToInt(i -> i.getQuantity() == null ? 0 : i.getQuantity()).sum();
+                if (totalTickets > 0) {
+                    paidAmount = orderTotal.divide(BigDecimal.valueOf(totalTickets), 2, RoundingMode.HALF_UP);
+                }
+            }
+        }
         return TicketResponse.builder()
             .ticketId(ticket.getId())
             .orderId(ticket.getOrderItem() == null || ticket.getOrderItem().getOrder() == null ? null : ticket.getOrderItem().getOrder().getId())
@@ -145,7 +163,8 @@ public class TicketService {
                 ? null
                 : ticket.getSession().getVenue().getCity().getName())
             .ticketTypeName(ticketType == null ? null : ticketType.getName())
-            .ticketPrice(ticket.getOrderItem() == null ? null : ticket.getOrderItem().getUnitPrice())
+            .ticketPrice(unitPrice)
+            .paidAmount(paidAmount)
             .ticketCurrency(ticketType == null ? null : ticketType.getCurrency())
             .holderName(resolveHolderName(ticket.getUser()))
             .status(ticket.getStatus())

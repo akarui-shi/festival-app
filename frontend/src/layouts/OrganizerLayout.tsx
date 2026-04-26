@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   PlusCircle,
+  Tag,
   X,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,6 +21,7 @@ const navItems = [
   { to: '/organizer/events', label: 'Мероприятия', icon: Calendar },
   { to: '/organizer/events/create', label: 'Создать событие', icon: PlusCircle },
   { to: '/organizer/organization', label: 'Организация', icon: Building2 },
+  { to: '/organizer/promo-codes', label: 'Промокоды', icon: Tag },
   { to: '/organizer/analytics', label: 'Аналитика', icon: BarChart3 },
   { to: '/organizer/publications', label: 'Публикации', icon: FileText },
 ];

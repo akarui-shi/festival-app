@@ -53,6 +53,8 @@ public class OrderService {
     private final PaymentRepository paymentRepository;
     private final PaymentGatewayService paymentGatewayService;
     private final NotificationService notificationService;
+    private final PromoCodeService promoCodeService;
+    private final InAppNotificationService inAppNotificationService;
     private final WaitlistService waitlistService;
     private final ObjectMapper objectMapper;
 
@@ -138,6 +140,8 @@ public class OrderService {
             createdItems.add(orderItem);
         }
 
+        total = promoCodeService.applyDiscount(request.getPromoCode(), total);
+
         boolean requiresPayment = total.compareTo(BigDecimal.ZERO) > 0;
         order.setStatus(requiresPayment ? "ожидает_оплаты" : "оплачен");
         order.setTotalAmount(total);
@@ -166,6 +170,11 @@ public class OrderService {
         } else {
             List<Ticket> issued = issueTickets(actor, session, createdItems, now);
             notificationService.notifyTicketIssued(actor, order, issued);
+            String eventTitle = session.getEvent() != null ? session.getEvent().getTitle() : "мероприятие";
+            inAppNotificationService.create(actor.getId(), "TICKET_ISSUED",
+                "Билеты оформлены",
+                "Вы успешно зарегистрированы на «" + eventTitle + "»",
+                session.getEvent() != null ? "/events/" + session.getEvent().getId() : null);
         }
 
         return toOrderResponse(order, createdItems, payment);

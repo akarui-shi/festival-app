@@ -24,4 +24,6 @@ public class OrderCreateRequest {
     private String successUrl;
 
     private String cancelUrl;
+
+    private String promoCode;
 }

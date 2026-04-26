@@ -12,6 +12,7 @@ export const registrationService = {
     _userId: Id,
     paymentProvider: 'yookassa' | 'sbp' = 'yookassa',
     items?: RegistrationItemInput[],
+    promoCode?: string,
   ): Promise<Order> {
     const normalizedItems = (items || [])
       .map((item) => ({
@@ -24,6 +25,7 @@ export const registrationService = {
       sessionId: Number(sessionId),
       paymentProvider,
       items: normalizedItems.length > 0 ? normalizedItems : undefined,
+      promoCode: promoCode || undefined,
     });
   },
 

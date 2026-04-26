@@ -1,22 +1,29 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight, Building2, Mail, Phone } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Building2, Globe, Mail, Phone, Users } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { EventCard } from '@/components/EventCard';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState, LoadingState } from '@/components/StateDisplays';
+import { Button } from '@/components/ui/button';
 import { imageSrc } from '@/lib/image';
 import { eventService } from '@/services/event-service';
 import { publicationService } from '@/services/publication-service';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Event, Organization, Publication } from '@/types';
 
 export default function OrganizationPage() {
   const { id } = useParams<{ id: string }>();
+  const { isAuthenticated } = useAuth();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [publications, setPublications] = useState<Publication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [following, setFollowing] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followLoading, setFollowLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -26,10 +33,39 @@ export default function OrganizationPage() {
       eventService.getOrganizationEvents(id),
       publicationService.getPublications({ organizationId: id }),
     ])
-      .then(([org, ev, pub]) => { setOrganization(org); setEvents(ev); setPublications(pub); })
+      .then(([org, ev, pub]) => {
+        setOrganization(org);
+        setEvents(ev);
+        setPublications(pub);
+        setFollowing(org.following ?? false);
+        setFollowersCount(org.followersCount ?? 0);
+      })
       .catch(() => setError('Не удалось загрузить страницу организации'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  const handleFollow = async () => {
+    if (!isAuthenticated) { toast.info('Войдите, чтобы подписаться'); return; }
+    if (!id) return;
+    setFollowLoading(true);
+    try {
+      if (following) {
+        const res = await eventService.unfollowOrganization(id);
+        setFollowing(false);
+        setFollowersCount(res.followersCount);
+        toast.success('Вы отписались от организации');
+      } else {
+        const res = await eventService.followOrganization(id);
+        setFollowing(true);
+        setFollowersCount(res.followersCount);
+        toast.success('Вы подписались на организацию');
+      }
+    } catch {
+      toast.error('Не удалось выполнить действие');
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   if (loading) return <PublicLayout><LoadingState /></PublicLayout>;
   if (error || !organization) return <PublicLayout><ErrorState message={error || 'Организация не найдена'} /></PublicLayout>;
@@ -75,7 +111,7 @@ export default function OrganizationPage() {
               )}
             </div>
 
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="section-label mb-2">
                 <Building2 className="h-3.5 w-3.5" />
                 Организация
@@ -83,6 +119,21 @@ export default function OrganizationPage() {
               <h1 className={`font-heading text-4xl tracking-tight sm:text-5xl ${organization.coverImageId != null ? 'text-white drop-shadow' : 'text-foreground'}`}>
                 {organization.name}
               </h1>
+              <div className="mt-3 flex flex-wrap items-center gap-4">
+                <span className={`flex items-center gap-1.5 text-sm ${organization.coverImageId != null ? 'text-white/80' : 'text-muted-foreground'}`}>
+                  <Users className="h-4 w-4" />
+                  {followersCount} {followersCount === 1 ? 'подписчик' : followersCount >= 2 && followersCount <= 4 ? 'подписчика' : 'подписчиков'}
+                </span>
+                <Button
+                  variant={following ? 'outline' : 'default'}
+                  size="sm"
+                  onClick={handleFollow}
+                  disabled={followLoading}
+                  className="gap-1.5"
+                >
+                  {following ? 'Отписаться' : 'Подписаться'}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -95,8 +146,14 @@ export default function OrganizationPage() {
             {organization.description || 'Описание организации пока не заполнено.'}
           </p>
 
-          {(emailContact || phoneContact || (!emailContact && !phoneContact && contacts)) && (
+          {(emailContact || phoneContact || organization.website || (!emailContact && !phoneContact && contacts)) && (
             <div className="mt-5 flex flex-wrap gap-5 border-t border-border pt-5 text-sm">
+              {organization.website && (
+                <a href={organization.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-muted-foreground transition-colors hover:text-primary">
+                  <Globe className="h-4 w-4 text-primary/70" />
+                  {organization.website.replace(/^https?:\/\//, '')}
+                </a>
+              )}
               {emailContact && (
                 <a href={`mailto:${emailContact}`} className="inline-flex items-center gap-2 text-muted-foreground transition-colors hover:text-primary">
                   <Mail className="h-4 w-4 text-primary/70" />
@@ -109,7 +166,7 @@ export default function OrganizationPage() {
                   {phoneContact}
                 </a>
               )}
-              {!emailContact && !phoneContact && contacts && (
+              {!emailContact && !phoneContact && !organization.website && contacts && (
                 <span className="text-muted-foreground">{contacts}</span>
               )}
             </div>

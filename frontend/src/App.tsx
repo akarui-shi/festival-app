@@ -23,6 +23,8 @@ import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ProfilePage from "./pages/ProfilePage";
 import FavoritesPage from "./pages/FavoritesPage";
 import RegistrationsPage from "./pages/RegistrationsPage";
+import EventMapPage from "./pages/EventMapPage";
+import RecommendationsPage from "./pages/RecommendationsPage";
 
 import { OrganizerLayout } from "@/layouts/OrganizerLayout";
 import OrganizerDashboard from "./pages/organizer/OrganizerDashboard";
@@ -32,6 +34,7 @@ import EventStatsPage from "./pages/organizer/EventStatsPage";
 import OrganizerAnalytics from "./pages/organizer/OrganizerAnalytics";
 import OrganizerPublications from "./pages/organizer/OrganizerPublications";
 import OrganizerOrganizationPage from "./pages/organizer/OrganizerOrganizationPage";
+import OrganizerPromoCodes from "./pages/organizer/OrganizerPromoCodes";
 
 import { AdminLayout } from "@/layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -69,6 +72,9 @@ const App = () => (
               <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />
 
+              <Route path="/map" element={<EventMapPage />} />
+              <Route path="/recommendations" element={<RecommendationsPage />} />
+
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
               <Route path="/favorites" element={<ProtectedRoute><FavoritesPage /></ProtectedRoute>} />
               <Route path="/tickets" element={<ProtectedRoute><RegistrationsPage /></ProtectedRoute>} />
@@ -81,6 +87,7 @@ const App = () => (
                 <Route path="events/:id/edit" element={<EventFormPage />} />
                 <Route path="events/:id/stats" element={<EventStatsPage />} />
                 <Route path="organization" element={<OrganizerOrganizationPage />} />
+                <Route path="promo-codes" element={<OrganizerPromoCodes />} />
                 <Route path="analytics" element={<OrganizerAnalytics />} />
                 <Route path="publications" element={<OrganizerPublications />} />
               </Route>

@@ -42,6 +42,7 @@ import com.festivalapp.backend.repository.ImageRepository;
 import com.festivalapp.backend.repository.OrganizationMemberRepository;
 import com.festivalapp.backend.repository.OrganizationRepository;
 import com.festivalapp.backend.repository.SessionRepository;
+import com.festivalapp.backend.repository.OrganizationFollowRepository;
 import com.festivalapp.backend.repository.TicketRepository;
 import com.festivalapp.backend.repository.TicketTypeRepository;
 import com.festivalapp.backend.repository.UserInterestRepository;
@@ -92,6 +93,7 @@ public class EventService {
     private final CommentRepository commentRepository;
     private final TicketRepository ticketRepository;
     private final TicketTypeRepository ticketTypeRepository;
+    private final OrganizationFollowRepository organizationFollowRepository;
     private final EventNotificationService eventNotificationService;
 
     @Transactional(readOnly = true)
@@ -249,9 +251,19 @@ public class EventService {
     }
 
     @Transactional(readOnly = true)
-    public OrganizationPublicResponse getOrganizationProfile(Long organizationId) {
+    public OrganizationPublicResponse getOrganizationProfile(Long organizationId, String actorIdentifier) {
         Organization organization = organizationRepository.findByIdAndDeletedAtIsNull(organizationId)
             .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
+
+        long followersCount = organizationFollowRepository.countByOrganizationId(organizationId);
+        boolean following = false;
+        if (org.springframework.util.StringUtils.hasText(actorIdentifier)) {
+            var userOpt = userRepository.findByLoginOrEmailWithRoles(actorIdentifier);
+            if (userOpt.isPresent()) {
+                following = organizationFollowRepository.existsByUserIdAndOrganizationId(
+                    userOpt.get().getId(), organizationId);
+            }
+        }
 
         return OrganizationPublicResponse.builder()
             .id(organization.getId())
@@ -264,6 +276,8 @@ public class EventService {
             .socialLinks(organization.getSocialLinks())
             .logoImageId(organization.getLogoImage() == null ? null : organization.getLogoImage().getId())
             .coverImageId(organization.getCoverImage() == null ? null : organization.getCoverImage().getId())
+            .followersCount(followersCount)
+            .following(following)
             .build();
     }
 

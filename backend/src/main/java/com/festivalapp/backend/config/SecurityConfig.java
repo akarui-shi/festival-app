@@ -127,6 +127,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/sessions/**").hasAnyRole("ORGANIZER", "ADMIN")
                 .requestMatchers("/api/users/me").authenticated()
                 .requestMatchers("/api/users/me/interests").authenticated()
+                .requestMatchers("/api/notifications/**").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/promo-codes/validate").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/organizations/*/follow/status").permitAll()
+                .requestMatchers("/api/organizations/*/follow").authenticated()
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth -> oauth
