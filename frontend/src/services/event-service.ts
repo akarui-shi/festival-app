@@ -155,4 +155,12 @@ export const eventService = {
   async getOrganizationEvents(organizationId: Id): Promise<Event[]> {
     return apiGet<Event[]>(`/events/organizations/${organizationId}/events`);
   },
+
+  async followOrganization(organizationId: Id): Promise<{ following: boolean; followersCount: number }> {
+    return apiPost(`/organizations/${organizationId}/follow`, {});
+  },
+
+  async unfollowOrganization(organizationId: Id): Promise<{ following: boolean; followersCount: number }> {
+    return apiDelete(`/organizations/${organizationId}/follow`);
+  },
 };

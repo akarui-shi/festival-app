@@ -40,6 +40,7 @@ import { reviewService } from '@/services/review-service';
 import { registrationService } from '@/services/registration-service';
 import { favoriteService } from '@/services/favorite-service';
 import { waitlistService } from '@/services/waitlist-service';
+import { promoService } from '@/services/promo-service';
 import type { WaitlistStatus } from '@/services/waitlist-service';
 import type { Event, Id, Review, Session, SessionTicketType } from '@/types';
 import type { RegistrationItemInput } from '@/services/registration-service';
@@ -173,6 +174,9 @@ export default function EventDetailPage() {
   const [similarEvents, setSimilarEvents] = useState<Event[]>([]);
   const [waitlistStatus, setWaitlistStatus] = useState<Record<string, WaitlistStatus>>({});
   const [joiningWaitlist, setJoiningWaitlist] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoApplied, setPromoApplied] = useState<{ description: string; discountType: string; discountValue?: number } | null>(null);
+  const [promoValidating, setPromoValidating] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -289,7 +293,7 @@ export default function EventDetailPage() {
     toast.success('Добавлено в избранное');
   };
 
-  const registerForSession = async (sessionId: Id, items?: RegistrationItemInput[]) => {
+  const registerForSession = async (sessionId: Id, items?: RegistrationItemInput[], promo?: string) => {
     if (!user || !isResident) {
       toast.error('Запись доступна только жителям');
       return;
@@ -297,7 +301,7 @@ export default function EventDetailPage() {
 
     try {
       setRegisteringSessionId(String(sessionId));
-      const order = await registrationService.createRegistration(sessionId, user.id, 'yookassa', items);
+      const order = await registrationService.createRegistration(sessionId, user.id, 'yookassa', items, promo);
       if (order.requiresPayment && order.paymentUrl) {
         toast.info('Перенаправляем в платёжный шлюз...');
         window.location.assign(order.paymentUrl);
@@ -309,6 +313,26 @@ export default function EventDetailPage() {
       toast.error(registrationError?.message || 'Не удалось записаться');
     } finally {
       setRegisteringSessionId(null);
+    }
+  };
+
+  const validatePromo = async () => {
+    if (!promoCode.trim()) return;
+    setPromoValidating(true);
+    try {
+      const result = await promoService.validate(promoCode.trim());
+      if (result.valid) {
+        setPromoApplied({ description: result.description || '', discountType: result.discountType || '', discountValue: result.discountValue });
+        toast.success(result.description || 'Промокод применён');
+      } else {
+        setPromoApplied(null);
+        toast.error('Промокод недействителен');
+      }
+    } catch {
+      setPromoApplied(null);
+      toast.error('Ошибка проверки промокода');
+    } finally {
+      setPromoValidating(false);
     }
   };
 
@@ -470,6 +494,19 @@ export default function EventDetailPage() {
   const ticketSelectionCurrency = ticketSelectionCurrencyCandidates.length === 1
     ? ticketSelectionCurrencyCandidates[0]
     : 'RUB';
+
+  const promoDiscountedAmount: number | null = (() => {
+    if (!promoApplied || ticketSelectionTotalAmount <= 0) return null;
+    if (promoApplied.discountType === 'FREE') return 0;
+    if (promoApplied.discountType === 'PERCENT') {
+      const pct = (promoApplied.discountValue ?? 0) / 100;
+      return Math.max(0, ticketSelectionTotalAmount * (1 - pct));
+    }
+    if (promoApplied.discountType === 'FIXED') {
+      return Math.max(0, ticketSelectionTotalAmount - (promoApplied.discountValue ?? 0));
+    }
+    return null;
+  })();
 
   return (
     <PublicLayout>
@@ -949,9 +986,45 @@ export default function EventDetailPage() {
             })}
             <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
               <p className="text-sm text-muted-foreground">Всего билетов: {ticketSelectionTotal}</p>
-              <p className="mt-1 text-base font-semibold text-foreground">
-                Сумма заказа: {ticketSelectionTotalAmount.toLocaleString('ru-RU')} {ticketSelectionCurrency}
-              </p>
+              {promoDiscountedAmount !== null ? (
+                <>
+                  <p className="mt-1 text-sm text-muted-foreground line-through">
+                    Сумма: {ticketSelectionTotalAmount.toLocaleString('ru-RU')} {ticketSelectionCurrency}
+                  </p>
+                  <p className="mt-0.5 text-base font-semibold text-green-600 dark:text-green-400">
+                    Итого со скидкой: {promoDiscountedAmount.toLocaleString('ru-RU', { maximumFractionDigits: 2 })} {ticketSelectionCurrency}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-1 text-base font-semibold text-foreground">
+                  Сумма заказа: {ticketSelectionTotalAmount.toLocaleString('ru-RU')} {ticketSelectionCurrency}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Промокод</p>
+              <div className="flex gap-2">
+                <Input
+                  value={promoCode}
+                  onChange={(e) => { setPromoCode(e.target.value.toUpperCase()); setPromoApplied(null); }}
+                  placeholder="Введите промокод"
+                  className="flex-1 font-mono text-sm"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={validatePromo}
+                  disabled={!promoCode.trim() || promoValidating}
+                >
+                  {promoValidating ? '...' : 'Применить'}
+                </Button>
+              </div>
+              {promoApplied && (
+                <p className="text-xs text-green-600 dark:text-green-400">
+                  ✓ {promoApplied.description || 'Скидка применена'}
+                </p>
+              )}
             </div>
           </div>
 
@@ -959,6 +1032,8 @@ export default function EventDetailPage() {
             <Button variant="outline" onClick={() => {
               setTicketDialogSessionId(null);
               setSelectedTicketQuantities({});
+              setPromoCode('');
+              setPromoApplied(null);
             }}
             >
               Отмена
@@ -967,9 +1042,11 @@ export default function EventDetailPage() {
               disabled={!ticketDialogSession || ticketSelectionTotal <= 0 || registeringSessionId === String(ticketDialogSession?.id)}
               onClick={async () => {
                 if (!ticketDialogSession || ticketSelectionTotal <= 0) return;
-                await registerForSession(ticketDialogSession.id, ticketSelectionItems);
+                await registerForSession(ticketDialogSession.id, ticketSelectionItems, promoApplied ? promoCode : undefined);
                 setTicketDialogSessionId(null);
                 setSelectedTicketQuantities({});
+                setPromoCode('');
+                setPromoApplied(null);
               }}
             >
               Продолжить

@@ -37,6 +37,7 @@ public class ModerationService {
     private final PublicationRepository publicationRepository;
     private final AdminAuditService adminAuditService;
     private final EventNotificationService eventNotificationService;
+    private final InAppNotificationService inAppNotificationService;
 
     @Transactional
     public ModerationResponse applyDecision(ModerationDecisionRequest request, String adminIdentifier) {
@@ -123,13 +124,24 @@ public class ModerationService {
         Publication publication = publicationRepository.findById(publicationId)
             .orElseThrow(() -> new ResourceNotFoundException("Publication not found"));
 
-        publication.setModerationStatus("одобрено".equals(decision) ? "одобрено" : "отклонено");
-        publication.setStatus("одобрено".equals(decision) ? "PUBLISHED" : "REJECTED");
-        if ("одобрено".equals(decision)) {
+        boolean approved = "одобрено".equals(decision);
+        publication.setModerationStatus(approved ? "одобрено" : "отклонено");
+        publication.setStatus(approved ? "PUBLISHED" : "REJECTED");
+        if (approved) {
             publication.setPublishedAt(OffsetDateTime.now());
         }
         publication.setUpdatedAt(OffsetDateTime.now());
         publicationRepository.save(publication);
+
+        if (publication.getCreatedByUser() != null) {
+            String title = approved ? "Публикация одобрена" : "Публикация отклонена";
+            String body = approved
+                ? "Ваша публикация «" + publication.getTitle() + "» опубликована"
+                : "Ваша публикация «" + publication.getTitle() + "» отклонена модератором";
+            inAppNotificationService.create(publication.getCreatedByUser().getId(),
+                approved ? "PUBLICATION_APPROVED" : "PUBLICATION_REJECTED",
+                title, body, "/publications/" + publicationId);
+        }
     }
 
     private ModerationResponse toResponse(Moderation moderation) {

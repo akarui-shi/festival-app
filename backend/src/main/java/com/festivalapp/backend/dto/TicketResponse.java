@@ -24,6 +24,7 @@ public class TicketResponse {
     private String cityName;
     private String ticketTypeName;
     private BigDecimal ticketPrice;
+    private BigDecimal paidAmount;
     private String ticketCurrency;
     private String holderName;
     private String status;

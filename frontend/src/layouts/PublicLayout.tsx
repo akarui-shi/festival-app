@@ -7,10 +7,12 @@ import {
   LayoutDashboard,
   LogIn,
   LogOut,
+  Map,
   MapPin,
   Menu,
   Search,
   Shield,
+  Sparkles,
   User,
   X,
 } from 'lucide-react';
@@ -18,6 +20,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCity } from '@/contexts/CityContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NotificationBell } from '@/components/NotificationBell';
 import type { Id } from '@/types';
 
 export function PublicLayout({ children }: { children: ReactNode }) {
@@ -41,6 +44,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
     const baseLinks = [
       { label: 'Главная', path: '/' },
       { label: 'Мероприятия', path: '/events' },
+      { label: 'Карта', path: '/map' },
       { label: 'Публикации', path: '/publications' },
     ];
 
@@ -243,28 +247,43 @@ export function PublicLayout({ children }: { children: ReactNode }) {
 
             {isAuthenticated ? (
               <>
-                <Link to="/favorites">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground hover:text-primary"
-                    aria-label="Открыть избранное"
-                  >
-                    <Heart className="h-5 w-5" />
-                  </Button>
-                </Link>
-                {isResident && (
-                  <Link to="/tickets">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:text-primary"
-                      aria-label="Открыть мои билеты"
-                    >
-                      <Calendar className="h-5 w-5" />
-                    </Button>
-                  </Link>
+                {!isOrganizer && !isAdmin && (
+                  <>
+                    <Link to="/recommendations">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-primary"
+                        aria-label="Рекомендации"
+                      >
+                        <Sparkles className="h-5 w-5" />
+                      </Button>
+                    </Link>
+                    <Link to="/favorites">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-primary"
+                        aria-label="Открыть избранное"
+                      >
+                        <Heart className="h-5 w-5" />
+                      </Button>
+                    </Link>
+                    {isResident && (
+                      <Link to="/tickets">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-primary"
+                          aria-label="Открыть мои билеты"
+                        >
+                          <Calendar className="h-5 w-5" />
+                        </Button>
+                      </Link>
+                    )}
+                  </>
                 )}
+                <NotificationBell />
                 <Link to="/profile" className="flex h-9 items-center gap-2 rounded-full bg-primary/10 px-3 transition-all duration-150 hover:bg-primary/15">
                   <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/20">
                     <User className="h-3.5 w-3.5 text-primary" />
@@ -435,7 +454,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
             <div>
               <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Навигация</p>
               <div className="flex flex-col gap-2.5">
-                {[['/', 'Главная'], ['/events', 'Мероприятия'], ['/publications', 'Публикации']].map(([to, label]) => (
+                {[['/', 'Главная'], ['/events', 'Мероприятия'], ['/map', 'Карта'], ['/publications', 'Публикации']].map(([to, label]) => (
                   <Link key={to} to={to} className="text-sm text-muted-foreground transition-colors hover:text-primary">
                     {label}
                   </Link>

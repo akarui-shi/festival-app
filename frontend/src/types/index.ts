@@ -85,6 +85,37 @@ export interface Organization {
   socialLinks?: string | null;
   logoImageId?: number | null;
   coverImageId?: number | null;
+  followersCount?: number | null;
+  following?: boolean | null;
+}
+
+export interface AppNotification {
+  id: Id;
+  type: string;
+  title: string;
+  body?: string | null;
+  link?: string | null;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface PromoCode {
+  id: Id;
+  code: string;
+  discountType: 'PERCENT' | 'FIXED' | 'FREE';
+  discountValue: number;
+  maxUsages?: number | null;
+  usageCount: number;
+  expiresAt?: string | null;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface PromoValidation {
+  valid: boolean;
+  discountType?: 'PERCENT' | 'FIXED' | 'FREE' | null;
+  discountValue?: number | null;
+  description?: string | null;
 }
 
 export interface Artist {
@@ -314,6 +345,7 @@ export interface Ticket {
   cityName?: string | null;
   ticketTypeName?: string | null;
   ticketPrice?: number | null;
+  paidAmount?: number | null;
   ticketCurrency?: string | null;
   holderName?: string | null;
   status?: string | null;

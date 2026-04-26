@@ -17,4 +17,6 @@ public class OrganizationPublicResponse {
     private String socialLinks;
     private Long logoImageId;
     private Long coverImageId;
+    private long followersCount;
+    private boolean following;
 }

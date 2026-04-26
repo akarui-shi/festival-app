@@ -239,7 +239,11 @@ export default function RegistrationsPage() {
               const startsAtLabel = formatDateTime(startsAt);
               const endsAtLabel = formatDateTime(ticket.sessionEndsAt);
               const ticketTypeLabel = ticket.ticketTypeName || 'Стандартный';
-              const ticketPriceLabel = formatTicketPrice(ticket.ticketPrice, ticket.ticketCurrency);
+              const originalPrice = ticket.ticketPrice;
+              const paidPrice = ticket.paidAmount;
+              const hasDiscount = paidPrice != null && originalPrice != null && Number(paidPrice) !== Number(originalPrice);
+              const ticketPriceLabel = formatTicketPrice(hasDiscount ? paidPrice : originalPrice, ticket.ticketCurrency);
+              const originalPriceLabel = hasDiscount ? formatTicketPrice(originalPrice, ticket.ticketCurrency) : null;
               const venueLabel = [ticket.venueName, ticket.cityName].filter(Boolean).join(', ');
               const usefulInfo = [
                 ticket.issuedAt ? `Выдан: ${formatDateTime(ticket.issuedAt)}` : null,
@@ -318,6 +322,9 @@ export default function RegistrationsPage() {
                         </p>
                         <div className="mr-4 shrink-0 self-end text-right md:mr-6">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/84">Цена</p>
+                          {originalPriceLabel && (
+                            <p className="text-[11px] leading-none text-white/60 line-through">{originalPriceLabel}</p>
+                          )}
                           <p className="font-heading text-[2.2rem] leading-none text-white">{ticketPriceLabel}</p>
                         </div>
                       </div>

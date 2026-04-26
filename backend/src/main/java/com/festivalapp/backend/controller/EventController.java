@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -102,8 +103,12 @@ public class EventController {
     }
 
     @GetMapping("/organizations/{organizationId}")
-    public ResponseEntity<OrganizationPublicResponse> getOrganizationProfile(@PathVariable Long organizationId) {
-        return ResponseEntity.ok(eventService.getOrganizationProfile(organizationId));
+    public ResponseEntity<OrganizationPublicResponse> getOrganizationProfile(
+            @PathVariable Long organizationId,
+            Authentication authentication) {
+        String identifier = authentication != null && authentication.isAuthenticated()
+            ? authentication.getName() : null;
+        return ResponseEntity.ok(eventService.getOrganizationProfile(organizationId, identifier));
     }
 
     @GetMapping("/organizations/{organizationId}/events")
