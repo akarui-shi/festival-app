@@ -832,11 +832,11 @@ erDiagram
 | 28 | `publication_images` | Изображения публикаций |
 | 29 | `moderations` | Журнал решений по модерации |
 | 30 | `email_verification_tokens` | Токены верификации email |
-| 31 | `user_interests` | M:N-связь пользователей и категорий (интересы) — *V3* |
-| 32 | `session_waitlist` | Список ожидания на сеансы с превышенным лимитом — *V5* |
-| 33 | `notifications` | Внутренние уведомления пользователей — *V6* |
-| 34 | `promo_codes` | Промокоды для скидок на платные мероприятия — *V7* |
-| 35 | `organization_follows` | Подписки пользователей на организации — *V8* |
+| 31 | `user_interests` | M:N-связь пользователей и категорий (интересы) |
+| 32 | `session_waitlist` | Список ожидания на сеансы с превышенным лимитом |
+| 33 | `notifications` | Внутренние уведомления пользователей |
+| 34 | `promo_codes` | Промокоды для скидок на платные мероприятия |
+| 35 | `organization_follows` | Подписки пользователей на организации |
 
 Ключевые проектные решения обосновываются следующим образом.
 
@@ -967,47 +967,74 @@ C4Container
 - `config` — конфигурационные классы Spring;
 - `exception` — пользовательские исключения и единый обработчик ошибок (`@ControllerAdvice`).
 
-На рисунке 2.6 представлена C4-диаграмма компонентов серверной части (Level 3 — Components), отражающая взаимодействие между слоями Spring Boot-приложения:
+На рисунке 2.6 представлена C4-диаграмма компонентов серверной части (Level 3 — Components), детализирующая внутреннее устройство Spring Boot-приложения: пять слоёв и их зависимости от внешних систем.
 
 ```plantuml
 @startuml
-title C4 Level 3: Компоненты серверной части (Spring Boot)
+title C4 Level 3: Компоненты серверной части (Spring Boot 3)
+
 skinparam componentStyle rectangle
 left to right direction
 
-actor "Frontend SPA" as Client
-database "PostgreSQL 16" as DB
-cloud "YooKassa API" as YooKassa
-cloud "SMTP Server" as Smtp
-cloud "OAuth2 Providers\n(Google, Яндекс)" as OAuth2
-cloud "Yandex Maps API" as MapsApi
-cloud "Yandex Metrika API" as Metrika
+actor "Frontend SPA\n---\nID: frontend-spa\nName: Frontend SPA\nDescription: Одностраничное приложение\nTechnology: React/Vue/Angular" as Client
 
-package "Backend API (Spring Boot 3)" {
-  component "Security\n(JWT + OAuth2)" as Security
-  component "Controllers\n(Auth, Event, Order, Admin)" as Controllers
-  component "Services\n(Auth, Event, Order,\nPayment, Notification, Analytics)" as Services
-  component "Repositories\n(Spring Data JPA)" as Repositories
-  component "DTO + Exception Handler" as CrossCutting
+database "PostgreSQL 16\n---\nID: postgres-db\nName: PostgreSQL\nDescription: Основная база данных\nTechnology: PostgreSQL 16" as DB
+
+cloud "YooKassa API\n---\nID: yookassa-api\nName: YooKassa\nDescription: Платежный сервис\nTechnology: REST API" as YooKassa
+
+cloud "SMTP\n---\nID: smtp-service\nName: SMTP Service\nDescription: Email-уведомления\nTechnology: SMTP" as Smtp
+
+cloud "OAuth2 Providers\n---\nID: oauth2-providers\nName: OAuth2 Providers\nDescription: Аутентификация\nTechnology: OAuth2" as OAuth2
+
+cloud "Yandex Metrika\n---\nID: yandex-metrika\nName: Metrika\nDescription: Аналитика трафика\nTechnology: REST API" as Metrika
+
+package "Backend API\n---\nID: backend-api\nName: Backend API\nDescription: Сервер приложения\nTechnology: Spring Boot 3" {
+
+  component "Security Layer\n---\nID: security-layer\nName: Security Layer\nDescription: JWT и OAuth2 авторизация\nTechnology: Spring Security" as Security
+
+  component "Controller Layer\n---\nID: controller-layer\nName: Controller Layer\nDescription: Обработка HTTP-запросов\nTechnology: Spring MVC" as Controllers
+
+  component "Service Layer\n---\nID: service-layer\nName: Service Layer\nDescription: Бизнес-логика\nTechnology: Spring" as Services
+
+  component "Repository Layer\n---\nID: repository-layer\nName: Repository Layer\nDescription: Работа с БД\nTechnology: JPA/Hibernate" as Repositories
+
+  component "DTO Layer\n---\nID: dto-layer\nName: DTO Layer\nDescription: Передача данных\nTechnology: MapStruct" as DTO
+
+  component "Exception Layer\n---\nID: exception-layer\nName: Exception Handling\nDescription: Обработка ошибок\nTechnology: ControllerAdvice" as Exceptions
+
+  component "Validation Layer\n---\nID: validation-layer\nName: Validation Layer\nDescription: Валидация данных\nTechnology: Jakarta Validation" as Validation
 }
 
-Client --> Security : "REST-запросы (HTTPS, JWT)"
-Security --> Controllers : "аутентификация и авторизация"
-Controllers --> Services : "команды бизнес-логики"
-Controllers --> CrossCutting : "DTO mapping + обработка ошибок"
-Services --> Repositories : "CRUD/поиск сущностей"
-Services --> CrossCutting : "валидация DTO и исключения"
-Repositories --> DB : "SQL через JPA/Hibernate"
-Services --> YooKassa : "создание/проверка платежа"
-Services --> Smtp : "отправка email-уведомлений"
-Services --> OAuth2 : "обмен OAuth2 code на профиль"
-Services --> MapsApi : "геоданные площадок"
-Services --> Metrika : "получение метрик трафика"
+Client --> Security : HTTPS + Bearer JWT
+
+Security --> Controllers : аутентификация успешна\nSecurityContext
+
+Controllers --> DTO : прием Request DTO
+DTO --> Controllers : возврат Response DTO
+
+Controllers --> Services : вызов бизнес-логики
+
+Controllers --> Validation : проверка входных данных
+Validation --> Exceptions : ошибки валидации
+
+Services --> Repositories : CRUD и JPQL-запросы
+Repositories --> DB : SQL (Hibernate / JDBC)
+
+Services --> DTO : маппинг домен → DTO
+
+Controllers --> Exceptions : обработка исключений API
+
+Services --> YooKassa : создание платежа / webhook
+Services --> Smtp : отправка email (QR-билеты)
+Services --> OAuth2 : получение профиля пользователя
+Services --> Metrika : запрос аналитики
 
 @enduml
 ```
 
 *Рисунок 2.6 — C4-диаграмма компонентов серверной части (уровень 3 — Компоненты)*
+
+Диаграмма фиксирует строгое разделение ответственности: **Security Layer** перехватывает каждый запрос и заполняет контекст безопасности; **Controller Layer** транслирует HTTP-запросы в команды бизнес-логики; **Service Layer** реализует всю предметную логику и координирует обращения к базе данных и внешним сервисам; **Repository Layer** инкапсулирует SQL через Spring Data JPA; **Cross-cutting** обеспечивает единообразную обработку ошибок и преобразование DTO на границе слоёв. Яндекс Карты не входят в серверную часть: рендеринг карт полностью делегирован клиентской части через JavaScript SDK (см. раздел 2.4.8).
 
 #### 2.2.2 JPA-сущности предметной области
 
@@ -1654,53 +1681,99 @@ stateDiagram-v2
 >
 > *Описание:* стартовая страница «Обзор» отображает четыре KPI-карточки (пользователи, мероприятия, комментарии, публикации), линейный график трафика по дням (с поддержкой демо-данных при отключённой Яндекс Метрике) и круговую диаграмму источников трафика. Боковое меню включает разделы: Пользователи, Мероприятия, Артисты, Публикации, Комментарии, Справочники.
 
-На рисунке 2.21 представлена диаграмма прецедентов (Use Case Diagram, нотация UML), описывающая функциональные возможности каждой роли:
+На рисунке 2.21 представлена диаграмма прецедентов (Use Case Diagram, нотация UML) с четырьмя актёрами — Гость, Житель, Организатор и Администратор. Показаны отношения включения (`<<include>>`) для обязательных подпотоков (подтверждение e-mail при регистрации, создание сеансов при создании мероприятия) и расширения (`<<extend>>`) для условных ответвлений (вход через OAuth2, оплата билета для платных событий).
 
-```mermaid
-graph LR
-  subgraph Система["Festival City App"]
-    UC1["Просматривать афишу"]
-    UC2["Искать и фильтровать мероприятия"]
-    UC3["Просматривать карточку события"]
-    UC4["Записаться на мероприятие"]
-    UC5["Добавить в избранное"]
-    UC6["Оставить комментарий / отзыв"]
-    UC7["Управлять профилем"]
-    UC8["Создать мероприятие"]
-    UC9["Управлять сеансами и типами билетов"]
-    UC10["Просматривать аналитику"]
-    UC11["Публиковать новости организации"]
-    UC12["Модерировать мероприятия и организации"]
-    UC13["Управлять пользователями и ролями"]
-    UC14["Управлять справочниками"]
-    UC15["Просматривать статистику системы"]
-  end
+```plantuml
+@startuml
+left to right direction
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #FAFAFA
+  BorderColor #888888
+  ArrowColor #555555
+}
 
-  Житель(["Житель"])
-  Организатор(["Организатор"])
-  Администратор(["Администратор"])
+actor "Гость" as Guest
+actor "Житель" as Resident
+actor "Организатор" as Organizer
+actor "Администратор" as Admin
 
-  Житель --> UC1
-  Житель --> UC2
-  Житель --> UC3
-  Житель --> UC4
-  Житель --> UC5
-  Житель --> UC6
-  Житель --> UC7
+Resident --|> Guest
 
-  Организатор --> UC1
-  Организатор --> UC8
-  Организатор --> UC9
-  Организатор --> UC10
-  Организатор --> UC11
+rectangle "Festival City App" {
 
-  Администратор --> UC12
-  Администратор --> UC13
-  Администратор --> UC14
-  Администратор --> UC15
+  ' -- Публичный доступ --
+  usecase "Просматривать афишу\nи фильтровать события" as UC_Browse
+  usecase "Просматривать\nкарточку события" as UC_View
+  usecase "Просматривать события\nна карте (Яндекс Карты)" as UC_Map
+
+  ' -- Аутентификация --
+  usecase "Зарегистрироваться" as UC_Reg
+  usecase "Подтвердить e-mail" as UC_Verify
+  usecase "Войти в систему" as UC_Login
+  usecase "Войти через OAuth2\n(Яндекс / Google)" as UC_OAuth
+
+  ' -- Возможности жителя --
+  usecase "Записаться\nна мероприятие" as UC_Enroll
+  usecase "Оплатить билет\n(YooKassa)" as UC_Pay
+  usecase "Добавить в избранное" as UC_Fav
+  usecase "Оставить отзыв" as UC_Review
+  usecase "Управлять профилем" as UC_Profile
+  usecase "Просматривать билеты\nи историю заказов" as UC_Tickets
+
+  ' -- Возможности организатора --
+  usecase "Создать мероприятие" as UC_Create
+  usecase "Управлять сеансами\nи типами билетов" as UC_Sessions
+  usecase "Публиковать новости\nорганизации" as UC_News
+  usecase "Просматривать аналитику\nмероприятий" as UC_OrgAnalytics
+
+  ' -- Возможности администратора --
+  usecase "Модерировать мероприятия\nи организации" as UC_Moderate
+  usecase "Управлять пользователями\nи ролями" as UC_Users
+  usecase "Управлять справочниками" as UC_Dicts
+  usecase "Просматривать\nстатистику системы" as UC_Stats
+
+  ' -- Внутренние отношения --
+  UC_Reg      ..> UC_Verify  : <<include>>
+  UC_OAuth    ..> UC_Login   : <<extend>>
+  UC_Pay      ..> UC_Enroll  : <<extend>>
+  UC_Create   ..> UC_Sessions : <<include>>
+}
+
+' -- Связи: Гость --
+Guest --> UC_Browse
+Guest --> UC_View
+Guest --> UC_Map
+Guest --> UC_Reg
+Guest --> UC_Login
+
+' -- Связи: Житель (наследует Гость) --
+Resident --> UC_Enroll
+Resident --> UC_Fav
+Resident --> UC_Review
+Resident --> UC_Profile
+Resident --> UC_Tickets
+
+' -- Связи: Организатор --
+Organizer --> UC_Browse
+Organizer --> UC_Create
+Organizer --> UC_News
+Organizer --> UC_OrgAnalytics
+Organizer --> UC_Profile
+
+' -- Связи: Администратор --
+Admin --> UC_Moderate
+Admin --> UC_Users
+Admin --> UC_Dicts
+Admin --> UC_Stats
+
+@enduml
 ```
 
 *Рисунок 2.21 — Диаграмма прецедентов системы по ролям (Use Case Diagram)*
+
+Диаграмма охватывает 20 прецедентов и 4 актёра. **Гость** (неаутентифицированный пользователь) имеет доступ к публичной части: просмотру афиши с фильтрацией, карточкам событий, карте и формам входа/регистрации. **Житель** наследует все права Гостя (связь обобщения `--|>`) и дополнительно может записываться на мероприятия, управлять профилем, просматривать историю билетов и оставлять отзывы. Отношение `<<extend>>` между «Оплатить билет» и «Записаться» отражает, что оплата через YooKassa выполняется только для платных событий — она не является обязательной частью сценария записи. Отношение `<<include>>` между «Зарегистрироваться» и «Подтвердить e-mail» означает, что верификация электронной почты является неотъемлемой частью регистрации. Аналогично `<<include>>` между «Создать мероприятие» и «Управлять сеансами» фиксирует, что созданное мероприятие требует добавления хотя бы одного сеанса. Прецедент «Войти через OAuth2» расширяет стандартный вход (`<<extend>>`), поскольку OAuth2-аутентификация является альтернативным, а не обязательным способом входа. **Организатор** работает в своём личном кабинете и не имеет прямых прав на административные функции. **Администратор** управляет системой целиком: модерирует контент, назначает роли, ведёт справочники и контролирует сводную статистику через интеграцию с Яндекс Метрикой.
 
 #### 2.3.7 Адаптивность и доступность
 
@@ -1718,44 +1791,66 @@ graph LR
 
 Клиентская часть организована по функционально-ориентированному принципу. Исходный код сосредоточен в директории `src/` и разделён на следующие модули: `pages` — страницы приложения; `components` — переиспользуемые UI-компоненты; `layouts` — шаблоны разметки; `services` — слой взаимодействия с API; `contexts` — глобальное состояние через React Context; `hooks` — пользовательские хуки; `types` — TypeScript-интерфейсы; `lib` — вспомогательные утилиты.
 
-На рисунке 2.22 представлена C4-диаграмма компонентов клиентской части (Level 3 — Components): структура SPA-приложения с разбивкой на слои маршрутизации, контекстов, страниц, компонентов и сервисов.
+На рисунке 2.22 представлена C4-диаграмма компонентов клиентской части (Level 3 — Components), раскрывающая семь слоёв React-приложения и их взаимодействие с внешними системами.
 
 ```plantuml
 @startuml
-title C4 Level 3: Компоненты клиентской части (React SPA)
+title C4 Level 3: Компоненты клиентской части (React)
+
 skinparam componentStyle rectangle
 top to bottom direction
 
-actor "Пользователь" as User
-cloud "Backend API\n(Spring Boot)" as Backend
-cloud "Yandex Maps JS SDK" as MapsSdk
-cloud "Yandex Metrika" as Metrika
+actor "Пользователь\n---\nID: user\nName: Пользователь\nDescription: Конечный пользователь системы\nTechnology: Браузер" as User
 
-package "Frontend SPA (React + TypeScript)" {
-  component "App / Bootstrap\n(main.tsx, App.tsx)" as Bootstrap
-  component "Routing\n(React Router + role guards)" as Routing
-  component "Contexts\n(Auth, City, Notification)" as Contexts
-  component "Pages\n(public, resident, organizer, admin)" as Pages
-  component "Components + Layouts\n(UI Kit, domain components)" as UiLayer
-  component "Services\n(auth, event, session,\nreview, analytics)" as Services
-  component "API Client\n(fetch + JWT)" as ApiClient
+cloud "Backend API\n---\nID: backend-api\nName: Backend API\nDescription: Сервер приложения\nTechnology: Spring Boot (REST)" as Backend
+
+cloud "Yandex Maps\n---\nID: maps-sdk\nName: Maps SDK\nDescription: Отображение карт\nTechnology: JS SDK" as MapsSdk
+
+cloud "Yandex Metrika\n---\nID: metrika\nName: Metrika\nDescription: Аналитика трафика\nTechnology: JS API" as Metrika
+
+package "Frontend SPA\n---\nID: frontend-spa\nName: Frontend SPA\nDescription: Клиентское приложение\nTechnology: React 18 + TypeScript + Vite" {
+
+  component "Bootstrap\n---\nID: bootstrap\nName: App Bootstrap\nDescription: Точка входа приложения\nTechnology: ReactDOM" as Bootstrap
+
+  component "Routing\n---\nID: routing\nName: Routing\nDescription: Управление маршрутами и доступом\nTechnology: React Router v6" as Routing
+
+  component "Contexts\n---\nID: contexts\nName: Contexts\nDescription: Глобальное состояние (auth, city, уведомления)\nTechnology: React Context API" as Contexts
+
+  component "Pages\n---\nID: pages\nName: Pages\nDescription: Страницы приложения\nTechnology: React Components" as Pages
+
+  component "UI Layer\n---\nID: ui-layer\nName: UI Components\nDescription: UI-компоненты и layout\nTechnology: shadcn/ui, Radix UI" as UiLayer
+
+  component "Service Layer\n---\nID: service-layer\nName: Service Layer\nDescription: Вызовы API (фасад)\nTechnology: TypeScript services" as Services
+
+  component "API Client\n---\nID: api-client\nName: API Client\nDescription: HTTP-клиент с JWT\nTechnology: fetch API" as ApiClient
 }
 
-User --> Bootstrap : "действия в интерфейсе"
-Bootstrap --> Routing : "инициализация маршрутов"
-Bootstrap --> Contexts : "инициализация провайдеров"
-Routing --> Pages : "навигация и проверки ролей"
-Pages --> UiLayer : "рендер экранов"
-Pages --> Services : "вызов операций приложения"
-Services --> ApiClient : "типизированные API-запросы"
-ApiClient --> Backend : "HTTP/REST + Bearer JWT"
-UiLayer --> MapsSdk : "рендер карт и маркеров"
-Pages --> Metrika : "клиентская веб-аналитика"
+User --> Bootstrap : действия пользователя (UI)
+
+Bootstrap --> Routing : инициализация маршрутов
+Bootstrap --> Contexts : подключение провайдеров
+
+Routing --> Pages : выбор страницы по URL\nпроверка доступа
+
+Contexts --> Pages : передача состояния (user, city)
+Contexts --> UiLayer : данные для UI
+
+Pages --> UiLayer : рендер компонентов
+Pages --> Services : вызов бизнес-операций
+
+Services --> ApiClient : формирование API-запросов
+ApiClient --> Backend : HTTPS REST + JWT
+
+UiLayer --> MapsSdk : отображение карты\nи маркеров
+
+Pages --> Metrika : отправка событий\nи аналитики
 
 @enduml
 ```
 
 *Рисунок 2.22 — C4-диаграмма компонентов клиентской части (уровень 3 — Компоненты)*
+
+Диаграмма закрепляет ключевые архитектурные решения: **ProtectedRoute** полностью исключает рендеринг страниц без нужной роли; **Контексты** распространяются как к страницам, так и к UI-компонентам, устраняя «prop drilling» на всех уровнях; **Сервисный слой** изолирует страницы от деталей HTTP (паттерн «Фасад»); **HTTP-клиент** централизует управление JWT-токеном. Яндекс Карты подключаются исключительно на уровне UI-компонентов (EventLocationMap, EventsCatalogMap, LocationPickerMap), а Яндекс Метрика — как счётчик визитов на всех страницах и как источник данных трафика для `AnalyticsDashboard`.
 
 #### 2.4.2 HTTP-клиент: модуль `api-client.ts`
 
@@ -1983,66 +2078,22 @@ const renderRegistrationButton = () => {
 
 Базовый UI Kit приложения построен на библиотеке shadcn/ui — наборе доступных компонентов на основе Radix UI Primitives и Tailwind CSS [43]. Принципиальное архитектурное преимущество данного подхода состоит в том, что компоненты копируются непосредственно в исходный код проекта: это обеспечивает полный контроль над стилизацией без зависимости от внешней библиотеки как от отдельного пакета.
 
-На базе UI Kit реализованы доменные компоненты: `EventCard` — карточка мероприятия в афише; `StarRating` — интерактивный компонент оценки; `EventLocationMap` — карта Яндекс Maps с маркером площадки; `StateDisplays` (`LoadingState`, `ErrorState`) — унифицированные состояния загрузки и ошибки. Шаблоны разметки `PublicLayout`, `OrganizerLayout` и `AdminLayout` представляют собой три независимые оболочки с собственной навигацией и ролевой защитой.
+На базе UI Kit реализованы следующие доменные компоненты:
 
-На рисунке 2.24 представлена декомпозиция страницы `EventDetailPage` по составным компонентам в нотации диаграммы компонентов (Component Diagram, UML-подобная нотация):
+- `EventCard` — карточка мероприятия в афише: обложка, название, дата, категории и кнопка «В избранное»; управляется через пропсы `event` и `onFavoriteToggle`;
+- `StarRating` — управляемый виджет оценки, пробрасывает выбранное значение через `onChange`;
+- `EventLocationMap` — карта с маркером площадки, инициализируется по координатам `venue.latitude / venue.longitude`;
+- `EventsCatalogMap` — карта всех мероприятий с кластеризацией маркеров (страница `/map`);
+- `LocationPickerMap` — выбор произвольной геолокации кликом, используется в форме создания сеанса;
+- `StateDisplays` (`LoadingState`, `ErrorState`) — унифицированные состояния загрузки и ошибки, применяются единообразно на всех страницах.
 
-```mermaid
-graph TD
-  EventDetailPage["EventDetailPage\n(страница)"]
+Шаблоны разметки `PublicLayout`, `OrganizerLayout` и `AdminLayout` представляют собой три независимые оболочки с собственной навигацией и ролевой защитой. Каждый шаблон содержит шапку, навигационное меню (адаптированное под роль) и область контента; `OrganizerLayout` и `AdminLayout` дополнительно оснащены боковой панелью навигации с индикатором активного маршрута.
 
-  subgraph "Layouts"
-    PublicLayout["PublicLayout\n(шапка + навигация)"]
-  end
-
-  subgraph "Контейнерные компоненты"
-    Gallery["Галерея изображений\n(локальный state)"]
-    SessionList["Список сеансов\n(props: sessions[])"]
-    ReviewSection["Секция отзывов\n(props: reviews[])"]
-    SidePanel["Боковая панель\n(sticky, props: event)"]
-  end
-
-  subgraph "UI Kit (shadcn/ui)"
-    Button["Button"]
-    Badge["Badge"]
-    Dialog["Dialog\n(выбор типов билетов)"]
-    Input["Input"]
-    Textarea["Textarea"]
-  end
-
-  subgraph "Доменные компоненты"
-    StarRating["StarRating\n(оценка)"]
-    EventLocationMap["EventLocationMap\n(Яндекс Карты)"]
-  end
-
-  subgraph "Контексты"
-    AuthCtx["useAuth()\n→ user, isResident"]
-  end
-
-  PublicLayout --> EventDetailPage
-  EventDetailPage --> Gallery
-  EventDetailPage --> SessionList
-  EventDetailPage --> ReviewSection
-  EventDetailPage --> SidePanel
-  EventDetailPage --> AuthCtx
-
-  SessionList --> Button
-  SessionList --> Badge
-  ReviewSection --> StarRating
-  ReviewSection --> Textarea
-  ReviewSection --> Button
-  SidePanel --> Button
-  SidePanel --> EventLocationMap
-  EventDetailPage --> Dialog
-  Dialog --> Input
-  Dialog --> Button
-```
-
-*Рисунок 2.24 — Диаграмма компонентов страницы EventDetailPage (Component Diagram)*
+Наиболее функционально насыщенной страницей публичной части является `EventDetailPage`: она объединяет галерею изображений, панель основных сведений о мероприятии, список сеансов с кнопками записи, блок местоположения с картой, секцию отзывов со звёздным рейтингом и модальное окно выбора типов билетов. Поведение страницы при переходах между состояниями (загрузка → готов → регистрация → оплата) описано диаграммой состояний на рисунке 2.23.
 
 #### 2.4.7 Маршрутизация и защищённые маршруты
 
-Маршрутизация реализована с помощью React Router v6 с применением паттерна «защищённый маршрут» (Protected Route). Компонент-обёртка проверяет наличие аутентификации и требуемой роли перед рендерингом целевой страницы; при несоответствии условий выполняется программное перенаправление. На рисунке 2.25 представлена схема маршрутизации клиентской части в нотации блок-схемы (flowchart), отражающая ветвления по ролям и перенаправления при нарушении прав доступа:
+Маршрутизация реализована с помощью React Router v6 с применением паттерна «защищённый маршрут» (Protected Route). Компонент-обёртка проверяет наличие аутентификации и требуемой роли перед рендерингом целевой страницы; при несоответствии условий выполняется программное перенаправление. На рисунке 2.24 представлена схема маршрутизации клиентской части в нотации блок-схемы (flowchart), отражающая ветвления по ролям и перенаправления при нарушении прав доступа:
 
 ```mermaid
 flowchart TD
@@ -2067,7 +2118,7 @@ flowchart TD
   AdminGuard --> |"Да"| AdminPages["AdminDashboard\nAdminUsersPage\nAdminEventsPage\nAdminDictsPage"]
 ```
 
-*Рисунок 2.25 — Схема маршрутизации клиентской части (Flowchart)*
+*Рисунок 2.24 — Схема маршрутизации клиентской части (Flowchart)*
 
 #### 2.4.8 Интеграция с Яндекс Картами
 
