@@ -969,31 +969,42 @@ C4Container
 
 На рисунке 2.6 представлена C4-диаграмма компонентов серверной части (Level 3 — Components), отражающая взаимодействие между слоями Spring Boot-приложения:
 
-```mermaid
-graph TD
-  Client["Клиент (Frontend SPA)"]
+```plantuml
+@startuml
+title C4 Level 3: Компоненты серверной части (Spring Boot)
+skinparam componentStyle rectangle
+left to right direction
 
-  subgraph "Spring Boot Application"
-    Controller["Слой контроллеров (controller)"]
-    Service["Слой сервисов (service)"]
-    Repository["Слой репозиториев (repository)"]
-    Security["Безопасность (security / config)"]
-    DTO["DTO / маппинг (dto)"]
-    Exception["Обработка ошибок (exception)"]
-  end
+actor "Frontend SPA" as Client
+database "PostgreSQL 16" as DB
+cloud "YooKassa API" as YooKassa
+cloud "SMTP Server" as Smtp
+cloud "OAuth2 Providers\n(Google, Яндекс)" as OAuth2
+cloud "Yandex Maps API" as MapsApi
+cloud "Yandex Metrika API" as Metrika
 
-  DB[("PostgreSQL 16")]
-  External["Внешние сервисы\n(YooKassa, SMTP, Google / Яндекс OAuth2,\nЯндекс Карты, Яндекс Метрика)"]
+package "Backend API (Spring Boot 3)" {
+  component "Security\n(JWT + OAuth2)" as Security
+  component "Controllers\n(Auth, Event, Order, Admin)" as Controllers
+  component "Services\n(Auth, Event, Order,\nPayment, Notification, Analytics)" as Services
+  component "Repositories\n(Spring Data JPA)" as Repositories
+  component "DTO + Exception Handler" as CrossCutting
+}
 
-  Client -- "HTTPS / REST + Bearer JWT" --> Security
-  Security --> Controller
-  Controller --> Service
-  Controller <--> DTO
-  Service <--> DTO
-  Service --> Repository
-  Service --> External
-  Repository --> DB
-  Exception --> Controller
+Client --> Security : "REST-запросы (HTTPS, JWT)"
+Security --> Controllers : "аутентификация и авторизация"
+Controllers --> Services : "команды бизнес-логики"
+Controllers --> CrossCutting : "DTO mapping + обработка ошибок"
+Services --> Repositories : "CRUD/поиск сущностей"
+Services --> CrossCutting : "валидация DTO и исключения"
+Repositories --> DB : "SQL через JPA/Hibernate"
+Services --> YooKassa : "создание/проверка платежа"
+Services --> Smtp : "отправка email-уведомлений"
+Services --> OAuth2 : "обмен OAuth2 code на профиль"
+Services --> MapsApi : "геоданные площадок"
+Services --> Metrika : "получение метрик трафика"
+
+@enduml
 ```
 
 *Рисунок 2.6 — C4-диаграмма компонентов серверной части (уровень 3 — Компоненты)*
@@ -1709,65 +1720,39 @@ graph LR
 
 На рисунке 2.22 представлена C4-диаграмма компонентов клиентской части (Level 3 — Components): структура SPA-приложения с разбивкой на слои маршрутизации, контекстов, страниц, компонентов и сервисов.
 
-```mermaid
-graph TD
-  subgraph "Точка входа"
-    Main["main.tsx\n(ReactDOM.createRoot)"]
-    App["App.tsx\n(React Router + Providers)"]
-  end
+```plantuml
+@startuml
+title C4 Level 3: Компоненты клиентской части (React SPA)
+skinparam componentStyle rectangle
+top to bottom direction
 
-  subgraph "Слой маршрутизации (React Router v6)"
-    PublicRoutes["Публичные маршруты\n/events, /events/:id, /publications"]
-    ResidentRoutes["Маршруты жителя\n/profile, /favorites, /tickets"]
-    OrgRoutes["Маршруты организатора\n/organizer/*"]
-    AdminRoutes["Маршруты администратора\n/admin/*"]
-  end
+actor "Пользователь" as User
+cloud "Backend API\n(Spring Boot)" as Backend
+cloud "Yandex Maps JS SDK" as MapsSdk
+cloud "Yandex Metrika" as Metrika
 
-  subgraph "Слой контекстов (Providers)"
-    AuthCtx["AuthContext\n(user, isAuthenticated, роли)"]
-    CityCtx["CityContext\n(selectedCity)"]
-    NotifCtx["NotificationContext\n(toast-уведомления)"]
-  end
+package "Frontend SPA (React + TypeScript)" {
+  component "App / Bootstrap\n(main.tsx, App.tsx)" as Bootstrap
+  component "Routing\n(React Router + role guards)" as Routing
+  component "Contexts\n(Auth, City, Notification)" as Contexts
+  component "Pages\n(public, resident, organizer, admin)" as Pages
+  component "Components + Layouts\n(UI Kit, domain components)" as UiLayer
+  component "Services\n(auth, event, session,\nreview, analytics)" as Services
+  component "API Client\n(fetch + JWT)" as ApiClient
+}
 
-  subgraph "Слой страниц (Pages)"
-    EventsPage["EventsPage\n(афиша + фильтры)"]
-    EventDetailPage["EventDetailPage\n(карточка + запись)"]
-    OrganizerPages["OrganizerPages\n(мероприятия, создание,\nаналитика)"]
-    AdminPages["AdminPages\n(модерация,\nпользователи)"]
-  end
+User --> Bootstrap : "действия в интерфейсе"
+Bootstrap --> Routing : "инициализация маршрутов"
+Bootstrap --> Contexts : "инициализация провайдеров"
+Routing --> Pages : "навигация и проверки ролей"
+Pages --> UiLayer : "рендер экранов"
+Pages --> Services : "вызов операций приложения"
+Services --> ApiClient : "типизированные API-запросы"
+ApiClient --> Backend : "HTTP/REST + Bearer JWT"
+UiLayer --> MapsSdk : "рендер карт и маркеров"
+Pages --> Metrika : "клиентская веб-аналитика"
 
-  subgraph "Слой компонентов (Components)"
-    UIKit["UI Kit\n(Button, Badge, Dialog, Input...)"]
-    Domain["Доменные компоненты\n(EventCard, StarRating,\nEventLocationMap...)"]
-  end
-
-  subgraph "Слой сервисов (Services)"
-    ApiClient["api-client.ts\n(fetch + JWT)"]
-    EventSvc["event-service.ts"]
-    AuthSvc["auth-service.ts"]
-    SessionSvc["session-service.ts"]
-    OtherSvc["... прочие сервисы"]
-  end
-
-  Backend["Backend API\n(Spring Boot)"]
-
-  Main --> App
-  App --> AuthCtx
-  App --> CityCtx
-  App --> NotifCtx
-  App --> PublicRoutes & ResidentRoutes & OrgRoutes & AdminRoutes
-  PublicRoutes --> EventsPage & EventDetailPage
-  OrgRoutes --> OrganizerPages
-  AdminRoutes --> AdminPages
-  EventDetailPage --> UIKit & Domain
-  EventsPage --> UIKit & Domain
-  EventDetailPage --> EventSvc & SessionSvc
-  OrganizerPages --> EventSvc & AuthSvc
-  EventSvc --> ApiClient
-  AuthSvc --> ApiClient
-  SessionSvc --> ApiClient
-  OtherSvc --> ApiClient
-  ApiClient -- "HTTP/REST + Bearer JWT" --> Backend
+@enduml
 ```
 
 *Рисунок 2.22 — C4-диаграмма компонентов клиентской части (уровень 3 — Компоненты)*
