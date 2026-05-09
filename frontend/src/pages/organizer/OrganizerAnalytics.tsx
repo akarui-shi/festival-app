@@ -6,6 +6,7 @@ import { organizerService } from '@/services/organizer-service';
 import { LoadingState } from '@/components/StateDisplays';
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { OrganizerOverviewBundle } from '@/types';
 
 const METRIKA_DEMO_KEY = 'metrika_use_demo';
@@ -610,17 +611,18 @@ export default function OrganizerAnalytics() {
           {sortedEngagements.length > 0 ? (
             <>
               <label className="mt-4 block text-xs font-medium text-muted-foreground">Выберите мероприятие</label>
-              <select
-                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={selectedEventId}
-                onChange={(event) => setSelectedEventId(event.target.value)}
-              >
-                {sortedEngagements.map((item) => (
-                  <option key={item.eventId} value={String(item.eventId)}>
-                    {item.eventTitle}
-                  </option>
-                ))}
-              </select>
+              <Select value={selectedEventId} onValueChange={setSelectedEventId}>
+                <SelectTrigger className="mt-1 w-full">
+                  <SelectValue placeholder="Выберите мероприятие" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortedEngagements.map((item) => (
+                    <SelectItem key={item.eventId} value={String(item.eventId)}>
+                      {item.eventTitle}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <ChartContainer
                 className="mt-4 h-[240px] w-full"
                 config={{ eventFunnel: { label: 'Количество', color: '#C17F59' } }}

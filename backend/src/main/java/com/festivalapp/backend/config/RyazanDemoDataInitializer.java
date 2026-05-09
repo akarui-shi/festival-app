@@ -1,12 +1,12 @@
 package com.festivalapp.backend.config;
 
 import com.festivalapp.backend.config.support.DemoDataSupport;
-import com.festivalapp.backend.config.support.DemoDataSupport.ArtistSeed;
+import com.festivalapp.backend.config.support.DemoDataSupport.ParticipantSeed;
 import com.festivalapp.backend.config.support.DemoDataSupport.EventHolder;
 import com.festivalapp.backend.config.support.DemoDataSupport.EventSeedSpec;
 import com.festivalapp.backend.config.support.DemoDataSupport.PublicationSeedSpec;
 import com.festivalapp.backend.config.support.DemoDataSupport.SessionSeedSpec;
-import com.festivalapp.backend.entity.Artist;
+import com.festivalapp.backend.entity.Participant;
 import com.festivalapp.backend.entity.Category;
 import com.festivalapp.backend.entity.City;
 import com.festivalapp.backend.entity.Event;
@@ -168,7 +168,7 @@ public class RyazanDemoDataInitializer implements ApplicationRunner {
         }
 
         Map<String, Category> categories = support.ensureBaseCategories();
-        Map<String, Artist> artists = support.ensureArtists(buildArtists(), now);
+        Map<String, Participant> participants = support.ensureParticipants(buildParticipants(), now);
 
         List<EventSeedSpec> eventSpecs = buildEventSpecs(now);
         Map<String, List<PublicationSeedSpec>> publicationsByEventTitle = buildPublicationSpecsByEventTitle();
@@ -184,7 +184,7 @@ public class RyazanDemoDataInitializer implements ApplicationRunner {
                 support.createSessionsAndTickets(event, spec, ryazan);
             }
 
-            support.ensureEventArtists(event, spec.artistNames(), artists);
+            support.ensureEventParticipants(event, spec.participantNames(), participants);
             support.ensurePublications(
                 event,
                 organization,
@@ -195,6 +195,11 @@ public class RyazanDemoDataInitializer implements ApplicationRunner {
             );
             support.normalizePrimaryImage(event.getId());
         }
+
+        // Дозаполняем координаты у сессий, которые были созданы до того, как
+        // в V8 миграции появились venues Рязани (без этого карта не показывала
+        // рязанские мероприятия — у session.latitude/longitude были NULL).
+        support.patchMissingSessionCoordinates();
 
         log.info("Ryazan demo data has been seeded/verified: {} events", eventSpecs.size());
     }
@@ -262,18 +267,18 @@ public class RyazanDemoDataInitializer implements ApplicationRunner {
 
     // ===== Артисты, специфичные для Рязани =====
 
-    private List<ArtistSeed> buildArtists() {
+    private List<ParticipantSeed> buildParticipants() {
         return List.of(
-            new ArtistSeed("Дарья Белова", "Daria Belova", "Вокалистка с инди-поп программой и камерным составом.", "Инди"),
-            new ArtistSeed("Антон Сухов", "Антон Сухов", "Городской историк и лектор о культурном наследии Рязани.", "Лектор"),
-            new ArtistSeed("Никита Власов", "NVLS", "Электронный продюсер и лайв-исполнитель с атмосферными сетами.", "Электроника"),
-            new ArtistSeed("Елена Гурьева", "Елена Гурьева", "Куратор семейных мастер-классов и интерактивных программ.", "Образование"),
-            new ArtistSeed("Сергей Титов", "Sergey Titov Quartet", "Саксофонист и руководитель городского джаз-квартета.", "Джаз"),
-            new ArtistSeed("Мария Ефимова", "Мария Ефимова", "Уличный художник, ведёт мастер-классы по урбан-арту и каллиграфии.", "Изобразительное искусство"),
-            new ArtistSeed("Театр «Молодёжная сцена»", "Молодёжная сцена", "Рязанская театральная студия, ставит современные пьесы.", "Театр"),
-            new ArtistSeed("Игорь Демьянов", "DJ Demyanov", "Резидент рязанских клубов, работает с house и techno.", "Электроника"),
-            new ArtistSeed("Татьяна Лазарева", "Татьяна Лазарева", "Аккредитованный экскурсовод по Рязанскому кремлю и историческому центру.", "Экскурсия"),
-            new ArtistSeed("Архитектурное бюро «Старый план»", "Старый план", "Команда историков архитектуры, проводит пешие прогулки по дореволюционной Рязани.", "Лектор")
+            new ParticipantSeed("Дарья Белова", "Daria Belova", "Вокалистка с инди-поп программой и камерным составом.", "Инди", "исполнитель"),
+            new ParticipantSeed("Антон Сухов", "Антон Сухов", "Городской историк и лектор о культурном наследии Рязани.", "Лектор", "лектор"),
+            new ParticipantSeed("Никита Власов", "NVLS", "Электронный продюсер и лайв-исполнитель с атмосферными сетами.", "Электроника", "исполнитель"),
+            new ParticipantSeed("Елена Гурьева", "Елена Гурьева", "Куратор семейных мастер-классов и интерактивных программ.", "Образование", "исполнитель"),
+            new ParticipantSeed("Сергей Титов", "Sergey Titov Quartet", "Саксофонист и руководитель городского джаз-квартета.", "Джаз", "исполнитель"),
+            new ParticipantSeed("Мария Ефимова", "Мария Ефимова", "Уличный художник, ведёт мастер-классы по урбан-арту и каллиграфии.", "Изобразительное искусство", "исполнитель"),
+            new ParticipantSeed("Театр «Молодёжная сцена»", "Молодёжная сцена", "Рязанская театральная студия, ставит современные пьесы.", "Театр", "ансамбль"),
+            new ParticipantSeed("Игорь Демьянов", "DJ Demyanov", "Резидент рязанских клубов, работает с house и techno.", "Электроника", "исполнитель"),
+            new ParticipantSeed("Татьяна Лазарева", "Татьяна Лазарева", "Аккредитованный экскурсовод по Рязанскому кремлю и историческому центру.", "Экскурсия", "экскурсовод"),
+            new ParticipantSeed("Архитектурное бюро «Старый план»", "Старый план", "Команда историков архитектуры, проводит пешие прогулки по дореволюционной Рязани.", "Лектор", "лектор")
         );
     }
 

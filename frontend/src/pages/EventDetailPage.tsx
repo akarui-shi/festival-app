@@ -628,17 +628,20 @@ export default function EventDetailPage() {
               </p>
             </div>
 
-            {(event.artists || []).length > 0 && (
+            {(event.participants || []).length > 0 && (
               <div className="mt-8">
-                <h2 className="font-heading text-xl text-foreground">Артисты</h2>
+                <h2 className="font-heading text-xl text-foreground">Участники</h2>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {(event.artists || []).map((artist) => (
+                  {(event.participants || []).map((participant) => (
                     <Link
-                      key={artist.id}
-                      to={`/artists/${artist.id}`}
+                      key={participant.id}
+                      to={`/participants/${participant.id}`}
                       className="rounded-full border border-border px-3 py-1 text-sm text-foreground hover:border-primary/40 hover:text-primary"
                     >
-                      {artist.stageName || artist.name}
+                      {participant.stageName || participant.name}
+                      {participant.kind && (
+                        <span className="ml-1.5 text-xs text-muted-foreground">· {participant.kind}</span>
+                      )}
                     </Link>
                   ))}
                 </div>

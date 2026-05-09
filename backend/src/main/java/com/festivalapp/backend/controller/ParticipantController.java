@@ -1,10 +1,10 @@
 package com.festivalapp.backend.controller;
 
-import com.festivalapp.backend.dto.ArtistDetailsResponse;
-import com.festivalapp.backend.dto.ArtistSummaryResponse;
-import com.festivalapp.backend.dto.ArtistUpsertRequest;
+import com.festivalapp.backend.dto.ParticipantDetailsResponse;
+import com.festivalapp.backend.dto.ParticipantSummaryResponse;
+import com.festivalapp.backend.dto.ParticipantUpsertRequest;
 import com.festivalapp.backend.exception.UnauthorizedException;
-import com.festivalapp.backend.service.ArtistService;
+import com.festivalapp.backend.service.ParticipantService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,40 +24,40 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/artists")
+@RequestMapping("/api/participants")
 @RequiredArgsConstructor
-public class ArtistController {
+public class ParticipantController {
 
-    private final ArtistService artistService;
+    private final ParticipantService participantService;
 
     @GetMapping
-    public ResponseEntity<List<ArtistSummaryResponse>> getAll(@RequestParam(required = false) String q) {
-        return ResponseEntity.ok(artistService.getPublicList(q));
+    public ResponseEntity<List<ParticipantSummaryResponse>> getAll(@RequestParam(required = false) String q) {
+        return ResponseEntity.ok(participantService.getPublicList(q));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ArtistDetailsResponse> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(artistService.getPublicById(id));
+    public ResponseEntity<ParticipantDetailsResponse> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(participantService.getPublicById(id));
     }
 
     @PostMapping
-    public ResponseEntity<ArtistSummaryResponse> create(@Valid @RequestBody ArtistUpsertRequest request,
-                                                        @AuthenticationPrincipal UserDetails principal) {
+    public ResponseEntity<ParticipantSummaryResponse> create(@Valid @RequestBody ParticipantUpsertRequest request,
+                                                             @AuthenticationPrincipal UserDetails principal) {
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(artistService.create(request, extractUsername(principal)));
+            .body(participantService.create(request, extractUsername(principal)));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ArtistSummaryResponse> update(@PathVariable Long id,
-                                                        @Valid @RequestBody ArtistUpsertRequest request,
-                                                        @AuthenticationPrincipal UserDetails principal) {
-        return ResponseEntity.ok(artistService.update(id, request, extractUsername(principal)));
+    public ResponseEntity<ParticipantSummaryResponse> update(@PathVariable Long id,
+                                                             @Valid @RequestBody ParticipantUpsertRequest request,
+                                                             @AuthenticationPrincipal UserDetails principal) {
+        return ResponseEntity.ok(participantService.update(id, request, extractUsername(principal)));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id,
                                        @AuthenticationPrincipal UserDetails principal) {
-        artistService.delete(id, extractUsername(principal));
+        participantService.delete(id, extractUsername(principal));
         return ResponseEntity.noContent().build();
     }
 

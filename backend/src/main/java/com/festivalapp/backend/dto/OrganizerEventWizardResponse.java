@@ -28,7 +28,7 @@ public class OrganizerEventWizardResponse {
     private List<Long> categoryIds;
     private List<CategoryResponse> categories;
     private List<ImageItem> images;
-    private List<ArtistItem> artists;
+    private List<ParticipantItem> participants;
     private List<SessionItem> sessions;
 
     private List<OrganizerEventWizardValidationIssue> validationIssues;
@@ -45,12 +45,13 @@ public class OrganizerEventWizardResponse {
 
     @Getter
     @Builder
-    public static class ArtistItem {
-        private Long artistId;
+    public static class ParticipantItem {
+        private Long participantId;
         private String name;
         private String stageName;
         private String description;
         private String genre;
+        private String kind;
         private Long imageId;
     }
 

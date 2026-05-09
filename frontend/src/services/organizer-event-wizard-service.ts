@@ -21,12 +21,13 @@ export interface WizardImageItem {
   sortOrder?: number | null;
 }
 
-export interface WizardArtistItem {
-  artistId: number;
+export interface WizardParticipantItem {
+  participantId: number;
   name: string;
   stageName?: string | null;
   description?: string | null;
   genre?: string | null;
+  kind?: string | null;
   imageId?: number | null;
 }
 
@@ -73,7 +74,7 @@ export interface OrganizerWizardState {
   categoryIds?: number[] | null;
   categories?: Array<{ id: number; name: string; description?: string | null }> | null;
   images?: WizardImageItem[] | null;
-  artists?: WizardArtistItem[] | null;
+  participants?: WizardParticipantItem[] | null;
   sessions?: WizardSessionItem[] | null;
   validationIssues?: WizardValidationIssue[] | null;
   readyForModeration?: boolean;
@@ -102,9 +103,9 @@ export interface WizardImagesPayload {
   }>;
 }
 
-export interface WizardArtistsPayload {
-  artists?: Array<{
-    artistId: number;
+export interface WizardParticipantsPayload {
+  participants?: Array<{
+    participantId: number;
   }>;
 }
 
@@ -165,8 +166,8 @@ export const organizerEventWizardService = {
     return apiPut<OrganizerWizardState>(`/organizer/events/wizard/${eventId}/images`, payload);
   },
 
-  updateArtists(eventId: number | string, payload: WizardArtistsPayload): Promise<OrganizerWizardState> {
-    return apiPut<OrganizerWizardState>(`/organizer/events/wizard/${eventId}/artists`, payload);
+  updateParticipants(eventId: number | string, payload: WizardParticipantsPayload): Promise<OrganizerWizardState> {
+    return apiPut<OrganizerWizardState>(`/organizer/events/wizard/${eventId}/participants`, payload);
   },
 
   updateSessions(eventId: number | string, payload: WizardSessionsPayload): Promise<OrganizerWizardState> {

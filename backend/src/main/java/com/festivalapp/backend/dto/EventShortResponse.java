@@ -35,7 +35,7 @@ public class EventShortResponse {
     private Boolean registrationOpen;
     private Long sessionsCount;
     private Long registrationsCount;
-    private List<ArtistSummaryResponse> artists;
+    private List<ParticipantSummaryResponse> participants;
     private BigDecimal latitude;
     private BigDecimal longitude;
 }

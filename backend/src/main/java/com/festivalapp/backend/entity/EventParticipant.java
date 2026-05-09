@@ -20,8 +20,8 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "event_artists")
-public class EventArtist {
+@Table(name = "event_participants")
+public class EventParticipant {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,6 +32,6 @@ public class EventArtist {
     private Event event;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "artist_id", nullable = false)
-    private Artist artist;
+    @JoinColumn(name = "participant_id", nullable = false)
+    private Participant participant;
 }

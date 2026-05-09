@@ -7,13 +7,14 @@ import java.util.List;
 
 @Getter
 @Builder
-public class ArtistSummaryResponse {
+public class ParticipantSummaryResponse {
 
     private Long id;
     private String name;
     private String stageName;
     private String description;
     private String genre;
+    private String kind;
     private Long imageId;
     private List<Long> imageIds;
     private Long primaryImageId;

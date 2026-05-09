@@ -11,7 +11,7 @@ import HomePage from "./pages/HomePage";
 import EventsCatalogPage from "./pages/EventsCatalogPage";
 import EventDetailPage from "./pages/EventDetailPage";
 import OrganizationPage from "./pages/OrganizationPage";
-import ArtistPage from "./pages/ArtistPage";
+import ParticipantPage from "./pages/ParticipantPage";
 import PublicationsPage from "./pages/PublicationsPage";
 import PublicationDetailPage from "./pages/PublicationDetailPage";
 import PaymentCheckoutPage from "./pages/PaymentCheckoutPage";
@@ -43,7 +43,7 @@ import AdminEvents from "./pages/admin/AdminEvents";
 import AdminPublications from "./pages/admin/AdminPublications";
 import AdminReviews from "./pages/admin/AdminReviews";
 import AdminDirectories from "./pages/admin/AdminDirectories";
-import AdminArtists from "./pages/admin/AdminArtists";
+import AdminParticipants from "./pages/admin/AdminParticipants";
 
 import NotFound from "./pages/NotFound";
 
@@ -62,7 +62,8 @@ const App = () => (
               <Route path="/events" element={<EventsCatalogPage />} />
               <Route path="/events/:id" element={<EventDetailPage />} />
               <Route path="/organizations/:id" element={<OrganizationPage />} />
-              <Route path="/artists/:id" element={<ArtistPage />} />
+              <Route path="/participants/:id" element={<ParticipantPage />} />
+              <Route path="/artists/:id" element={<ParticipantPage />} />
               <Route path="/publications" element={<PublicationsPage />} />
               <Route path="/publications/:id" element={<PublicationDetailPage />} />
               <Route path="/payment/checkout" element={<PaymentCheckoutPage />} />
@@ -96,7 +97,8 @@ const App = () => (
                 <Route index element={<AdminDashboard />} />
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="events" element={<AdminEvents />} />
-                <Route path="artists" element={<AdminArtists />} />
+                <Route path="participants" element={<AdminParticipants />} />
+                <Route path="artists" element={<Navigate to="/admin/participants" replace />} />
                 <Route path="publications" element={<AdminPublications />} />
                 <Route path="comments" element={<AdminReviews />} />
                 <Route path="reviews" element={<Navigate to="/admin/comments" replace />} />

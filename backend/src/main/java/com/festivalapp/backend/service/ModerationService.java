@@ -2,7 +2,7 @@ package com.festivalapp.backend.service;
 
 import com.festivalapp.backend.dto.ModerationDecisionRequest;
 import com.festivalapp.backend.dto.ModerationResponse;
-import com.festivalapp.backend.entity.Artist;
+import com.festivalapp.backend.entity.Participant;
 import com.festivalapp.backend.entity.Event;
 import com.festivalapp.backend.entity.EventStatus;
 import com.festivalapp.backend.entity.Moderation;
@@ -11,7 +11,7 @@ import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
-import com.festivalapp.backend.repository.ArtistRepository;
+import com.festivalapp.backend.repository.ParticipantRepository;
 import com.festivalapp.backend.repository.EventRepository;
 import com.festivalapp.backend.repository.ModerationRepository;
 import com.festivalapp.backend.repository.OrganizationRepository;
@@ -33,7 +33,7 @@ public class ModerationService {
     private final UserRepository userRepository;
     private final EventRepository eventRepository;
     private final OrganizationRepository organizationRepository;
-    private final ArtistRepository artistRepository;
+    private final ParticipantRepository participantRepository;
     private final PublicationRepository publicationRepository;
     private final AdminAuditService adminAuditService;
     private final EventNotificationService eventNotificationService;
@@ -49,7 +49,7 @@ public class ModerationService {
         switch (entityType) {
             case "МЕРОПРИЯТИЕ" -> moderateEvent(request.getEntityId(), decision);
             case "ОРГАНИЗАЦИЯ" -> moderateOrganization(request.getEntityId(), decision);
-            case "АРТИСТ" -> moderateArtist(request.getEntityId(), decision);
+            case "УЧАСТНИК", "АРТИСТ" -> moderateParticipant(request.getEntityId(), decision);
             case "ПУБЛИКАЦИЯ" -> moderatePublication(request.getEntityId(), decision);
             case "КОММЕНТАРИЙ" -> throw new BadRequestException("Модерация комментариев отключена. Удалите комментарий при необходимости.");
             default -> throw new BadRequestException("Неподдерживаемый тип сущности: " + request.getEntityType());
@@ -108,16 +108,16 @@ public class ModerationService {
         organizationRepository.save(organization);
     }
 
-    private void moderateArtist(Long artistId, String decision) {
-        Artist artist = artistRepository.findById(artistId)
-            .orElseThrow(() -> new ResourceNotFoundException("Artist not found"));
+    private void moderateParticipant(Long participantId, String decision) {
+        Participant participant = participantRepository.findById(participantId)
+            .orElseThrow(() -> new ResourceNotFoundException("Participant not found"));
         if ("одобрено".equals(decision)) {
-            artist.setDeletedAt(null);
+            participant.setDeletedAt(null);
         } else {
-            artist.setDeletedAt(OffsetDateTime.now());
+            participant.setDeletedAt(OffsetDateTime.now());
         }
-        artist.setUpdatedAt(OffsetDateTime.now());
-        artistRepository.save(artist);
+        participant.setUpdatedAt(OffsetDateTime.now());
+        participantRepository.save(participant);
     }
 
     private void moderatePublication(Long publicationId, String decision) {

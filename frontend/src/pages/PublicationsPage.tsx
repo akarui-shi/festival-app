@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Building2, CalendarDays, FileText, Sparkles } from 'lucide-react';
+import { ArrowRight, Building2, CalendarDays, FileText, MapPin, Sparkles } from 'lucide-react';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { LoadingState } from '@/components/StateDisplays';
 import { EmptyState } from '@/components/EmptyState';
 import { imageSrc } from '@/lib/image';
 import { publicationService } from '@/services/publication-service';
+import { useCity } from '@/contexts/CityContext';
 import type { Publication } from '@/types';
 
 function formatDate(value?: string): string {
@@ -16,12 +17,19 @@ function formatDate(value?: string): string {
 }
 
 export default function PublicationsPage() {
+  const { selectedCity } = useCity();
   const [publications, setPublications] = useState<Publication[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Перезапрашиваем список при смене выбранного города. Если город не выбран,
+  // показываем все публикации (cityId=undefined → бэк не накладывает фильтр).
   useEffect(() => {
-    publicationService.getPublications().then(setPublications).finally(() => setLoading(false));
-  }, []);
+    setLoading(true);
+    publicationService
+      .getPublications({ cityId: selectedCity?.id })
+      .then(setPublications)
+      .finally(() => setLoading(false));
+  }, [selectedCity?.id]);
 
   if (loading) {
     return <PublicLayout><LoadingState /></PublicLayout>;
@@ -44,6 +52,12 @@ export default function PublicationsPage() {
           <p className="mt-3 max-w-lg text-lg text-muted-foreground">
             Статьи, анонсы и репортажи о культурной жизни малых городов
           </p>
+          {selectedCity && (
+            <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
+              <MapPin className="h-3.5 w-3.5" />
+              Город: {selectedCity.name}
+            </div>
+          )}
         </div>
       </section>
 
@@ -52,7 +66,9 @@ export default function PublicationsPage() {
           <EmptyState
             icon={FileText}
             title="Нет публикаций"
-            description="Публикации появятся здесь, когда организаторы начнут делиться новостями"
+            description={selectedCity
+              ? `В городе ${selectedCity.name} пока нет публикаций. Выберите другой город или вернитесь позже.`
+              : 'Публикации появятся здесь, когда организаторы начнут делиться новостями'}
           />
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

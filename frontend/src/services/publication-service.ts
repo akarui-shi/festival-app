@@ -28,11 +28,12 @@ function normalizePublications(list: Publication[]): Publication[] {
 }
 
 export const publicationService = {
-  async getPublications(params?: { eventId?: Id; organizationId?: Id; title?: string }): Promise<Publication[]> {
+  async getPublications(params?: { eventId?: Id; organizationId?: Id; title?: string; cityId?: Id }): Promise<Publication[]> {
     const response = await apiGet<Publication[]>('/publications', {
       eventId: params?.eventId,
       organizationId: params?.organizationId,
       title: params?.title,
+      cityId: params?.cityId,
     });
     return normalizePublications(response);
   },

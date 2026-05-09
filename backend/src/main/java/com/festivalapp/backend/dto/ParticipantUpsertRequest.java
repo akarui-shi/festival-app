@@ -8,7 +8,7 @@ import java.util.List;
 
 @Getter
 @Setter
-public class ArtistUpsertRequest {
+public class ParticipantUpsertRequest {
 
     @NotBlank
     private String name;
@@ -18,6 +18,12 @@ public class ArtistUpsertRequest {
     private String description;
 
     private String genre;
+
+    /**
+     * Тип участника. Допустимые значения: исполнитель, лектор, экскурсовод, ансамбль, спикер, другое.
+     * Если не задано — будет использован default "исполнитель".
+     */
+    private String kind;
 
     /**
      * Legacy single-image field, kept for backward compatibility.

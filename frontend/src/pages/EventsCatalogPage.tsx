@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CalendarRange, LayoutList, Map, Search, SlidersHorizontal, Tag, X } from 'lucide-react';
+import { ArrowDownUp, CalendarRange, LayoutList, Map, Search, SlidersHorizontal, Tag, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { EventsCatalogMap } from '@/components/EventsCatalogMap';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { EventCard } from '@/components/EventCard';
 import { EmptyState } from '@/components/EmptyState';
 import { LoadingState } from '@/components/StateDisplays';
@@ -16,6 +23,19 @@ import { directoryService } from '@/services/directory-service';
 import { favoriteService } from '@/services/favorite-service';
 import type { Category, Event, Id } from '@/types';
 
+// Поддерживаемые варианты сортировки. Значение `value` — это конкатенация sortBy:sortDir,
+// которое потом расщепляется при отправке запроса. Так удобно держать всё в одном select.
+const SORT_OPTIONS: Array<{ value: string; label: string; sortBy: string; sortDir: 'asc' | 'desc' }> = [
+  { value: 'date-asc',  label: 'Дата: ближайшие сначала', sortBy: 'nextSessionAt', sortDir: 'asc'  },
+  { value: 'date-desc', label: 'Дата: поздние сначала',   sortBy: 'nextSessionAt', sortDir: 'desc' },
+  { value: 'price-asc', label: 'Цена: дешевле сначала',   sortBy: 'price',         sortDir: 'asc'  },
+  { value: 'price-desc',label: 'Цена: дороже сначала',    sortBy: 'price',         sortDir: 'desc' },
+  { value: 'title-asc', label: 'Название: А → Я',         sortBy: 'title',         sortDir: 'asc'  },
+  { value: 'title-desc',label: 'Название: Я → А',         sortBy: 'title',         sortDir: 'desc' },
+  { value: 'new-desc',  label: 'Новые сначала',           sortBy: 'createdAt',     sortDir: 'desc' },
+];
+const DEFAULT_SORT = 'date-asc';
+
 interface CatalogFilters {
   search: string;
   categoryId: string;
@@ -24,6 +44,7 @@ interface CatalogFilters {
   participationType: string;
   priceFrom: string;
   priceTo: string;
+  sort: string;
 }
 
 const EMPTY_FILTERS: CatalogFilters = {
@@ -34,6 +55,7 @@ const EMPTY_FILTERS: CatalogFilters = {
   participationType: '',
   priceFrom: '',
   priceTo: '',
+  sort: DEFAULT_SORT,
 };
 
 function parseFilters(searchParams: URLSearchParams): CatalogFilters {
@@ -45,6 +67,7 @@ function parseFilters(searchParams: URLSearchParams): CatalogFilters {
     participationType: searchParams.get('participationType') || '',
     priceFrom: searchParams.get('priceFrom') || '',
     priceTo: searchParams.get('priceTo') || '',
+    sort: searchParams.get('sort') || DEFAULT_SORT,
   };
 }
 
@@ -64,7 +87,8 @@ function sameFilters(a: CatalogFilters, b: CatalogFilters): boolean {
     && a.dateTo === b.dateTo
     && a.participationType === b.participationType
     && a.priceFrom === b.priceFrom
-    && a.priceTo === b.priceTo;
+    && a.priceTo === b.priceTo
+    && a.sort === b.sort;
 }
 
 export default function EventsCatalogPage() {
@@ -93,7 +117,9 @@ export default function EventsCatalogPage() {
     participationType,
     priceFrom,
     priceTo,
+    sort,
   } = appliedFilters;
+  const currentSort = SORT_OPTIONS.find((opt) => opt.value === sort) ?? SORT_OPTIONS[0];
 
   useEffect(() => {
     let active = true;
@@ -131,6 +157,8 @@ export default function EventsCatalogPage() {
         priceTo: priceTo ? Number(priceTo) : undefined,
         registrationOpen: true,
         status: 'PUBLISHED',
+        sortBy: currentSort.sortBy as any,
+        sortDir: currentSort.sortDir,
       })
       .then((eventsResponse) => {
         if (!active) return;
@@ -152,6 +180,7 @@ export default function EventsCatalogPage() {
     participationType,
     priceFrom,
     priceTo,
+    sort,
   ]);
 
   useEffect(() => {
@@ -190,6 +219,7 @@ export default function EventsCatalogPage() {
     if (appliedFilters.participationType) nextParams.participationType = appliedFilters.participationType;
     if (appliedFilters.priceFrom) nextParams.priceFrom = appliedFilters.priceFrom;
     if (appliedFilters.priceTo) nextParams.priceTo = appliedFilters.priceTo;
+    if (appliedFilters.sort && appliedFilters.sort !== DEFAULT_SORT) nextParams.sort = appliedFilters.sort;
 
     setSearchParams(nextParams, { replace: true });
   }, [appliedFilters, setSearchParams]);
@@ -260,21 +290,62 @@ export default function EventsCatalogPage() {
     setAppliedFilters(EMPTY_FILTERS);
   };
 
+  // Чипы-теги активных фильтров. Каждый знает, как сбросить только себя
+  // (вместо общего «Сбросить всё»). Так пользователю удобнее снимать ошибочный фильтр.
   const activeFilterTags = useMemo(() => {
-    const tags: string[] = [];
-    if (appliedFilters.search) tags.push(`Поиск: ${appliedFilters.search}`);
+    const tags: Array<{ key: string; label: string; onRemove: () => void }> = [];
+    if (appliedFilters.search) {
+      tags.push({
+        key: 'search',
+        label: `Поиск: ${appliedFilters.search}`,
+        onRemove: () => {
+          setDraftFilters((prev) => ({ ...prev, search: '' }));
+          setAppliedFilters((prev) => ({ ...prev, search: '' }));
+        },
+      });
+    }
     if (appliedFilters.categoryId) {
       const categoryName = categories.find((item) => String(item.id) === appliedFilters.categoryId)?.name;
-      if (categoryName) tags.push(`Категория: ${categoryName}`);
+      if (categoryName) {
+        tags.push({
+          key: 'category',
+          label: `Категория: ${categoryName}`,
+          onRemove: () => {
+            setDraftFilters((prev) => ({ ...prev, categoryId: '' }));
+            setAppliedFilters((prev) => ({ ...prev, categoryId: '' }));
+          },
+        });
+      }
     }
     if (appliedFilters.dateFrom || appliedFilters.dateTo) {
-      tags.push(`Дата: ${appliedFilters.dateFrom || '…'} - ${appliedFilters.dateTo || '…'}`);
+      tags.push({
+        key: 'date',
+        label: `Дата: ${appliedFilters.dateFrom || '…'} — ${appliedFilters.dateTo || '…'}`,
+        onRemove: () => {
+          setDraftFilters((prev) => ({ ...prev, dateFrom: '', dateTo: '' }));
+          setAppliedFilters((prev) => ({ ...prev, dateFrom: '', dateTo: '' }));
+        },
+      });
     }
     if (appliedFilters.participationType) {
-      tags.push(appliedFilters.participationType === 'free' ? 'Только бесплатные' : 'Только платные');
+      tags.push({
+        key: 'participation',
+        label: appliedFilters.participationType === 'free' ? 'Только бесплатные' : 'Только платные',
+        onRemove: () => {
+          setDraftFilters((prev) => ({ ...prev, participationType: '' }));
+          setAppliedFilters((prev) => ({ ...prev, participationType: '' }));
+        },
+      });
     }
     if (appliedFilters.priceFrom || appliedFilters.priceTo) {
-      tags.push(`Цена: ${appliedFilters.priceFrom || '0'} - ${appliedFilters.priceTo || '∞'} ₽`);
+      tags.push({
+        key: 'price',
+        label: `Цена: ${appliedFilters.priceFrom || '0'} — ${appliedFilters.priceTo || '∞'} ₽`,
+        onRemove: () => {
+          setDraftFilters((prev) => ({ ...prev, priceFrom: '', priceTo: '' }));
+          setAppliedFilters((prev) => ({ ...prev, priceFrom: '', priceTo: '' }));
+        },
+      });
     }
     return tags;
   }, [appliedFilters, categories]);
@@ -336,10 +407,11 @@ export default function EventsCatalogPage() {
       </section>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="surface-panel mb-8 space-y-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="surface-panel mb-6 space-y-4">
+          {/* Верхняя строка: поиск + автоподсказки + сортировка + кнопка раскрытия панели фильтров. */}
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div ref={searchContainerRef} className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={draftFilters.search}
                 onChange={(event) => {
@@ -354,10 +426,24 @@ export default function EventsCatalogPage() {
                   if (event.key === 'Escape') setShowSuggestions(false);
                 }}
                 onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                placeholder="Поиск мероприятий, организаций и артистов…"
-                className="pl-9"
+                placeholder="Найдите мероприятие по названию…"
+                className="h-11 pl-9 pr-9"
                 autoComplete="off"
               />
+              {draftFilters.search && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateDraftFilter('search', '');
+                    setShowSuggestions(false);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label="Очистить поиск"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+              {/* Автоподсказки с названиями реальных мероприятий — появляются после 2 символов. */}
               {showSuggestions && suggestions.length > 0 && (
                 <ul className="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-border bg-card py-1 shadow-card">
                   {suggestions.map((title) => (
@@ -380,126 +466,225 @@ export default function EventsCatalogPage() {
                 </ul>
               )}
             </div>
+
+            {/* Сортировка: всегда видна, применяется сразу при выборе. */}
+            <div className="flex items-center gap-2">
+              <ArrowDownUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <Select
+                value={sort}
+                onValueChange={(next) => {
+                  setDraftFilters((prev) => ({ ...prev, sort: next }));
+                  setAppliedFilters((prev) => ({ ...prev, sort: next }));
+                }}
+              >
+                <SelectTrigger className="h-11 w-full lg:w-60" aria-label="Сортировка">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SORT_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="flex gap-2">
-              <Button variant={isDirty ? 'default' : 'outline'} onClick={applyFilters}>
-                Показать
-              </Button>
               <Button
                 variant="outline"
-                className="gap-2 sm:hidden"
+                className="h-11 gap-2"
                 onClick={() => setShowFilters((prev) => !prev)}
+                aria-expanded={showFilters}
               >
                 <SlidersHorizontal className="h-4 w-4" />
                 Фильтры
+                {hasAppliedFilters && (
+                  <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
+                    {activeFilterTags.length}
+                  </span>
+                )}
+              </Button>
+              <Button
+                variant={isDirty ? 'default' : 'outline'}
+                className="h-11"
+                onClick={applyFilters}
+                disabled={!isDirty}
+              >
+                Показать
               </Button>
             </div>
           </div>
 
-          {isDirty && (
-            <p className="text-xs text-warning">
-              Изменения фильтров ещё не применены
-            </p>
+          {/* Раскрывающаяся панель: категории + три аккуратные группы (даты / тип / цена). */}
+          {showFilters && (
+            <div className="space-y-5 rounded-xl border border-border/60 bg-background/50 p-4">
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase leading-none tracking-wider text-muted-foreground">
+                  Категория
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {[{ id: '', name: 'Все категории' }, ...categories].map((category) => {
+                    const active = draftFilters.categoryId === String(category.id === '' ? '' : category.id);
+                    return (
+                      <button
+                        type="button"
+                        key={category.id}
+                        onClick={() => updateDraftFilter('categoryId', category.id === '' ? '' : String(category.id))}
+                        className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all duration-150 ${
+                          active
+                            ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                            : 'border-border bg-card text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-foreground'
+                        }`}
+                      >
+                        {category.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Тип участия — чипы (3 значения, удобнее одним кликом, чем выпадашкой). */}
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase leading-none tracking-wider text-muted-foreground">
+                  Тип участия
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: '', label: 'Любой' },
+                    { value: 'free', label: 'Бесплатные' },
+                    { value: 'paid', label: 'Платные' },
+                  ].map((option) => {
+                    const active = draftFilters.participationType === option.value;
+                    return (
+                      <button
+                        type="button"
+                        key={option.label}
+                        onClick={() => updateDraftFilter('participationType', option.value)}
+                        className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all duration-150 ${
+                          active
+                            ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                            : 'border-border bg-card text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-foreground'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Даты + цена: одна линия колонок на md (равные половины и одинаковый gap между всеми четырьмя полями). */}
+              <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <p className="text-xs font-semibold uppercase leading-none tracking-wider text-muted-foreground">
+                    Даты
+                  </p>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-0">
+                    <div className="flex min-w-0 flex-col gap-1.5">
+                      <label className="flex min-h-[1.125rem] items-center gap-1 text-xs text-muted-foreground">
+                        <CalendarRange className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        <span>с</span>
+                      </label>
+                      <Input
+                        type="date"
+                        className="w-full min-w-0 h-10 py-0 leading-normal [&::-webkit-datetime-edit]:py-0 [&::-webkit-datetime-edit-fields-wrapper]:p-0"
+                        value={draftFilters.dateFrom}
+                        onChange={(event) => updateDraftFilter('dateFrom', event.target.value)}
+                      />
+                    </div>
+                    <div className="flex min-w-0 flex-col gap-1.5">
+                      <label className="flex min-h-[1.125rem] items-center gap-1 text-xs text-muted-foreground">
+                        <CalendarRange className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        <span>по</span>
+                      </label>
+                      <Input
+                        type="date"
+                        className="w-full min-w-0 h-10 py-0 leading-normal [&::-webkit-datetime-edit]:py-0 [&::-webkit-datetime-edit-fields-wrapper]:p-0"
+                        value={draftFilters.dateTo}
+                        onChange={(event) => updateDraftFilter('dateTo', event.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <p className="text-xs font-semibold uppercase leading-none tracking-wider text-muted-foreground">
+                    Цена, ₽
+                  </p>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-0">
+                    <div className="flex min-w-0 flex-col gap-1.5">
+                      <label className="flex min-h-[1.125rem] items-center gap-1 text-xs text-muted-foreground">
+                        <span className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
+                        <span>от</span>
+                      </label>
+                      <Input
+                        type="number"
+                        min={0}
+                        inputMode="numeric"
+                        className="w-full min-w-0 h-10 tabular-nums"
+                        value={draftFilters.priceFrom}
+                        onChange={(event) => updateDraftFilter('priceFrom', event.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="flex min-w-0 flex-col gap-1.5">
+                      <label className="flex min-h-[1.125rem] items-center gap-1 text-xs text-muted-foreground">
+                        <span className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
+                        <span>до</span>
+                      </label>
+                      <Input
+                        type="number"
+                        min={0}
+                        inputMode="numeric"
+                        className="w-full min-w-0 h-10 tabular-nums"
+                        value={draftFilters.priceTo}
+                        onChange={(event) => updateDraftFilter('priceTo', event.target.value)}
+                        placeholder="∞"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border/60 py-3">
+                {hasAppliedFilters && (
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    <X className="mr-1 h-4 w-4" />
+                    Сбросить всё
+                  </Button>
+                )}
+                <Button size="sm" onClick={applyFilters} disabled={!isDirty}>
+                  Применить
+                </Button>
+              </div>
+            </div>
           )}
 
-          <div className={`space-y-4 ${showFilters ? 'block' : 'hidden sm:block'}`}>
-            <div className="flex flex-wrap gap-2">
-              {[{ id: '', name: 'Все категории' }, ...categories].map((category) => {
-                const active = draftFilters.categoryId === String(category.id === '' ? '' : category.id);
-                return (
-                  <button
-                    type="button"
-                    key={category.id}
-                    onClick={() => updateDraftFilter('categoryId', category.id === '' ? '' : String(category.id))}
-                    className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all duration-150 ${
-                      active
-                        ? 'border-primary bg-primary text-primary-foreground shadow-sm'
-                        : 'border-border bg-background text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-foreground'
-                    }`}
-                  >
-                    {category.name}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-              <div className="space-y-1">
-                <label className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <CalendarRange className="h-3.5 w-3.5" />
-                  Дата с
-                </label>
-                <Input
-                  type="date"
-                  value={draftFilters.dateFrom}
-                  onChange={(event) => updateDraftFilter('dateFrom', event.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <CalendarRange className="h-3.5 w-3.5" />
-                  Дата по
-                </label>
-                <Input
-                  type="date"
-                  value={draftFilters.dateTo}
-                  onChange={(event) => updateDraftFilter('dateTo', event.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Тип участия</label>
-                <select
-                  value={draftFilters.participationType}
-                  onChange={(event) => updateDraftFilter('participationType', event.target.value)}
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  <option value="">Любой</option>
-                  <option value="free">Бесплатно</option>
-                  <option value="paid">Платно</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Цена от, ₽</label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={draftFilters.priceFrom}
-                  onChange={(event) => updateDraftFilter('priceFrom', event.target.value)}
-                  placeholder="0"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Цена до, ₽</label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={draftFilters.priceTo}
-                  onChange={(event) => updateDraftFilter('priceTo', event.target.value)}
-                  placeholder="5000"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Button size="sm" onClick={applyFilters}>Применить фильтры</Button>
-              {hasAppliedFilters && (
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
-                  <X className="mr-1 h-4 w-4" />
-                  Сбросить
-                </Button>
-              )}
-            </div>
-          </div>
+          {isDirty && !showFilters && (
+            <p className="text-xs text-warning">Изменения фильтров ещё не применены</p>
+          )}
         </div>
 
+        {/* Чипы активных фильтров: каждый удаляется по клику на «×». */}
         {activeFilterTags.length > 0 && (
           <div className="mb-6 flex flex-wrap items-center gap-2">
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Tag className="h-3.5 w-3.5" />
-              Активные фильтры:
+              Активные:
             </span>
             {activeFilterTags.map((tag) => (
-              <span key={tag} className="rounded-full border border-border bg-card px-3 py-1 text-xs text-foreground">
-                {tag}
+              <span
+                key={tag.key}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs text-foreground"
+              >
+                {tag.label}
+                <button
+                  type="button"
+                  onClick={tag.onRemove}
+                  className="-mr-1 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  aria-label={`Убрать фильтр: ${tag.label}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
               </span>
             ))}
           </div>

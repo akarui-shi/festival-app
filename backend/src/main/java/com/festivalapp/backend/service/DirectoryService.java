@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -46,13 +47,14 @@ public class DirectoryService {
             ? cityRepository.search(query.trim())
             : cityRepository.findAllByOrderByNameAsc();
 
-        int safeLimit = limit == null || limit <= 0 ? 50 : Math.min(limit, 200);
-
-        return all.stream()
-            .filter(City::isActive)
-            .limit(safeLimit)
-            .map(this::toCityResponse)
-            .toList();
+        // По умолчанию отдаём весь справочник (после V10 это ~1134 города РФ).
+        // Это ~120 КБ JSON — допустимо, фронт кэширует список и фильтрует локально.
+        // Параметр limit оставлен для совместимости (например, поиск по типу autocomplete).
+        Stream<City> stream = all.stream().filter(City::isActive);
+        if (limit != null && limit > 0) {
+            stream = stream.limit(Math.min(limit, 5000));
+        }
+        return stream.map(this::toCityResponse).toList();
     }
 
     private CategoryResponse toCategoryResponse(Category category) {

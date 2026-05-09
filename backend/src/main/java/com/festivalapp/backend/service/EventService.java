@@ -6,17 +6,17 @@ import com.festivalapp.backend.dto.EventDetailsResponse;
 import com.festivalapp.backend.dto.EventImageRequest;
 import com.festivalapp.backend.dto.EventImageResponse;
 import com.festivalapp.backend.dto.EventShortResponse;
-import com.festivalapp.backend.dto.ArtistSummaryResponse;
+import com.festivalapp.backend.dto.ParticipantSummaryResponse;
 import com.festivalapp.backend.dto.SessionShortResponse;
 import com.festivalapp.backend.dto.EventUpdateRequest;
 import com.festivalapp.backend.dto.OrganizationPublicResponse;
 import com.festivalapp.backend.dto.OrganizerEventStatsResponse;
 import com.festivalapp.backend.dto.VenueResponse;
-import com.festivalapp.backend.entity.Artist;
+import com.festivalapp.backend.entity.Participant;
 import com.festivalapp.backend.entity.Category;
 import com.festivalapp.backend.entity.City;
 import com.festivalapp.backend.entity.Event;
-import com.festivalapp.backend.entity.EventArtist;
+import com.festivalapp.backend.entity.EventParticipant;
 import com.festivalapp.backend.entity.EventCategory;
 import com.festivalapp.backend.entity.EventImage;
 import com.festivalapp.backend.entity.EventStatus;
@@ -27,13 +27,13 @@ import com.festivalapp.backend.entity.Session;
 import com.festivalapp.backend.entity.TicketType;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.entity.Venue;
-import com.festivalapp.backend.repository.ArtistRepository;
+import com.festivalapp.backend.repository.ParticipantRepository;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
 import com.festivalapp.backend.repository.CategoryRepository;
 import com.festivalapp.backend.repository.CityRepository;
 import com.festivalapp.backend.repository.CommentRepository;
-import com.festivalapp.backend.repository.EventArtistRepository;
+import com.festivalapp.backend.repository.EventParticipantRepository;
 import com.festivalapp.backend.repository.EventCategoryRepository;
 import com.festivalapp.backend.repository.EventImageRepository;
 import com.festivalapp.backend.repository.EventRepository;
@@ -77,8 +77,8 @@ public class EventService {
 
     private final EventRepository eventRepository;
     private final EventCategoryRepository eventCategoryRepository;
-    private final EventArtistRepository eventArtistRepository;
-    private final ArtistRepository artistRepository;
+    private final EventParticipantRepository eventParticipantRepository;
+    private final ParticipantRepository participantRepository;
     private final CategoryRepository categoryRepository;
     private final SessionRepository sessionRepository;
     private final EventImageRepository eventImageRepository;
@@ -121,6 +121,13 @@ public class EventService {
             } catch (Exception ignored) {
                 // fall back to in-memory search if FTS fails (e.g. empty tsquery)
             }
+        }
+        // Если PostgreSQL-FTS ничего не нашёл (русский стеммер не нормализует, например, "джаз"
+        // и "джазовый" к одной форме) — обнуляем фильтр по ftsIds, чтобы матчинг ушёл в
+        // in-memory подстрочный поиск через matchesFilters.buildSearchableText. Это даёт
+        // нечёткий поиск типа ILIKE без отдельного запроса.
+        if (ftsIds != null && ftsIds.isEmpty()) {
+            ftsIds = null;
         }
         final Set<Long> ftsIdsFinal = ftsIds;
 
@@ -411,7 +418,7 @@ public class EventService {
         Event saved = eventRepository.save(event);
         updateEventCategories(saved, request.getCategoryIds());
         updateEventImages(saved, request.getEventImages());
-        updateEventArtists(saved, request.getArtistIds(), request.getNewArtistNames());
+        updateEventParticipants(saved, request.getParticipantIds(), request.getNewParticipantNames());
 
         if (venue != null) {
             ensureSessionForVenue(saved, venue, now);
@@ -453,8 +460,8 @@ public class EventService {
         if (request.getEventImages() != null) {
             updateEventImages(saved, request.getEventImages());
         }
-        if (request.getArtistIds() != null || request.getNewArtistNames() != null) {
-            updateEventArtists(saved, request.getArtistIds(), request.getNewArtistNames());
+        if (request.getParticipantIds() != null || request.getNewParticipantNames() != null) {
+            updateEventParticipants(saved, request.getParticipantIds(), request.getNewParticipantNames());
         }
 
         if (request.getVenueId() != null) {
@@ -673,16 +680,16 @@ public class EventService {
             chunks.add(event.getOrganization().getName());
         }
 
-        for (EventArtist eventArtist : eventArtistRepository.findAllByEventIdOrderByIdAsc(event.getId())) {
-            Artist artist = eventArtist.getArtist();
-            if (artist == null) {
+        for (EventParticipant eventParticipant : eventParticipantRepository.findAllByEventIdOrderByIdAsc(event.getId())) {
+            Participant participant = eventParticipant.getParticipant();
+            if (participant == null) {
                 continue;
             }
-            if (StringUtils.hasText(artist.getName())) {
-                chunks.add(artist.getName());
+            if (StringUtils.hasText(participant.getName())) {
+                chunks.add(participant.getName());
             }
-            if (StringUtils.hasText(artist.getStageName())) {
-                chunks.add(artist.getStageName());
+            if (StringUtils.hasText(participant.getStageName())) {
+                chunks.add(participant.getStageName());
             }
         }
 
@@ -695,11 +702,25 @@ public class EventService {
             comparator = Comparator.comparing(Event::getTitle, Comparator.nullsLast(String::compareToIgnoreCase));
         } else if ("nextSessionAt".equalsIgnoreCase(sortBy)) {
             comparator = Comparator.comparing(this::nextSessionAt, Comparator.nullsLast(Comparator.naturalOrder()));
+        } else if ("price".equalsIgnoreCase(sortBy)) {
+            // Сортируем по минимальной цене среди билетов всех сессий события.
+            // Бесплатные/без билетов — считаем как 0, чтобы они шли первыми при asc.
+            comparator = Comparator.comparing(this::minTicketPrice, Comparator.nullsLast(Comparator.naturalOrder()));
         } else {
             comparator = Comparator.comparing(Event::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()));
         }
 
         return "asc".equalsIgnoreCase(sortDir) ? comparator : comparator.reversed();
+    }
+
+    private BigDecimal minTicketPrice(Event event) {
+        return event.getSessions().stream()
+            .map(session -> defaultTicketType(session.getId()))
+            .filter(Objects::nonNull)
+            .map(TicketType::getPrice)
+            .filter(Objects::nonNull)
+            .min(Comparator.naturalOrder())
+            .orElse(BigDecimal.ZERO);
     }
 
     private OffsetDateTime nextSessionAt(Event event) {
@@ -719,7 +740,7 @@ public class EventService {
             .orElse(event.getSessions().stream().findFirst().orElse(null));
         PriceRange priceRange = extractPriceRange(event.getSessions());
         boolean registrationOpen = event.getSessions().stream().anyMatch(this::isRegistrationOpen);
-        List<ArtistSummaryResponse> artists = mapArtists(event.getId());
+        List<ParticipantSummaryResponse> participants = mapParticipants(event.getId());
         City resolvedCity = event.getCity();
         if (resolvedCity == null) {
             resolvedCity = event.getSessions().stream()
@@ -770,7 +791,7 @@ public class EventService {
             .registrationOpen(registrationOpen)
             .sessionsCount(sessionsCount)
             .registrationsCount(registrationsCount)
-            .artists(artists)
+            .participants(participants)
             .latitude(resolveLatitude(mainSession))
             .longitude(resolveLongitude(mainSession))
             .build();
@@ -826,7 +847,7 @@ public class EventService {
                 .filter(Objects::nonNull)
                 .map(this::toCategoryResponse)
                 .toList())
-            .artists(mapArtists(event.getId()))
+            .participants(mapParticipants(event.getId()))
             .sessions(sessions)
             .free(priceRange.min() == null || priceRange.min().compareTo(BigDecimal.ZERO) <= 0)
             .minPrice(priceRange.min())
@@ -1003,31 +1024,32 @@ public class EventService {
         }
     }
 
-    private void updateEventArtists(Event event, Set<Long> artistIds, List<String> newArtistNames) {
-        eventArtistRepository.deleteByEventId(event.getId());
-        List<Artist> artists = new ArrayList<>();
-        if (artistIds != null && !artistIds.isEmpty()) {
-            artists.addAll(artistRepository.findAllById(artistIds));
+    private void updateEventParticipants(Event event, Set<Long> participantIds, List<String> newParticipantNames) {
+        eventParticipantRepository.deleteByEventId(event.getId());
+        List<Participant> participants = new ArrayList<>();
+        if (participantIds != null && !participantIds.isEmpty()) {
+            participants.addAll(participantRepository.findAllById(participantIds));
         }
-        if (newArtistNames != null) {
-            for (String rawName : newArtistNames) {
+        if (newParticipantNames != null) {
+            for (String rawName : newParticipantNames) {
                 if (!StringUtils.hasText(rawName)) {
                     continue;
                 }
                 String name = rawName.trim();
-                Artist artist = artistRepository.save(Artist.builder()
+                Participant participant = participantRepository.save(Participant.builder()
                     .name(name)
+                    .kind("исполнитель")
                     .createdAt(OffsetDateTime.now())
                     .updatedAt(OffsetDateTime.now())
                     .build());
-                artists.add(artist);
+                participants.add(participant);
             }
         }
 
-        for (Artist artist : artists) {
-            eventArtistRepository.save(EventArtist.builder()
+        for (Participant participant : participants) {
+            eventParticipantRepository.save(EventParticipant.builder()
                 .event(event)
-                .artist(artist)
+                .participant(participant)
                 .build());
         }
     }
@@ -1080,16 +1102,17 @@ public class EventService {
         }
     }
 
-    private List<ArtistSummaryResponse> mapArtists(Long eventId) {
-        return eventArtistRepository.findAllByEventIdOrderByIdAsc(eventId).stream()
-            .map(EventArtist::getArtist)
+    private List<ParticipantSummaryResponse> mapParticipants(Long eventId) {
+        return eventParticipantRepository.findAllByEventIdOrderByIdAsc(eventId).stream()
+            .map(EventParticipant::getParticipant)
             .filter(Objects::nonNull)
-            .map(artist -> ArtistSummaryResponse.builder()
-                .id(artist.getId())
-                .name(artist.getName())
-                .stageName(artist.getStageName())
-                .description(artist.getDescription())
-                .genre(artist.getGenre())
+            .map(participant -> ParticipantSummaryResponse.builder()
+                .id(participant.getId())
+                .name(participant.getName())
+                .stageName(participant.getStageName())
+                .description(participant.getDescription())
+                .genre(participant.getGenre())
+                .kind(participant.getKind())
                 .build())
             .toList();
     }

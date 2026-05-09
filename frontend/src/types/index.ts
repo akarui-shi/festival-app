@@ -118,12 +118,15 @@ export interface PromoValidation {
   description?: string | null;
 }
 
-export interface Artist {
+export type ParticipantKind = 'исполнитель' | 'лектор' | 'экскурсовод' | 'ансамбль' | 'спикер' | 'другое';
+
+export interface Participant {
   id: Id;
   name: string;
   stageName?: string | null;
   description?: string | null;
   genre?: string | null;
+  kind?: ParticipantKind | string | null;
   imageId?: number | null;
   imageIds?: number[] | null;
   primaryImageId?: number | null;
@@ -173,7 +176,7 @@ export interface Event {
   minPrice?: number | null;
   maxPrice?: number | null;
   registrationOpen?: boolean | null;
-  artists?: Artist[] | null;
+  participants?: Participant[] | null;
   sessions?: Session[] | null;
   eventImages?: EventImage[] | null;
   organization?: Organization | null;
@@ -534,4 +537,7 @@ export interface EventFilters {
   status?: string;
   page?: number;
   size?: number;
+  // Поддерживаемые backend значения: 'nextSessionAt', 'title', 'price', 'createdAt' (default)
+  sortBy?: 'nextSessionAt' | 'title' | 'price' | 'createdAt';
+  sortDir?: 'asc' | 'desc';
 }

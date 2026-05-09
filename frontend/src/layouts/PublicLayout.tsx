@@ -21,6 +21,7 @@ import { useCity } from '@/contexts/CityContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NotificationBell } from '@/components/NotificationBell';
+import { CityAutoDetectBanner } from '@/components/CityAutoDetectBanner';
 import type { Id } from '@/types';
 
 export function PublicLayout({ children }: { children: ReactNode }) {
@@ -83,43 +84,58 @@ export function PublicLayout({ children }: { children: ReactNode }) {
     ? 'Загрузка…'
     : selectedCity ? selectedCity.name : 'Выберите город';
   const requiresCitySelection = !cityLoading && !selectedCity && cities.length > 0;
+
+  // Города-миллионники и крупные центры — показываем их первыми, когда строка поиска пуста.
+  // Это помогает пользователю не скроллить через 1100+ малых городов.
+  const POPULAR_CITY_NAMES = useMemo(
+    () => new Set([
+      'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань',
+      'Нижний Новгород', 'Челябинск', 'Самара', 'Уфа', 'Ростов-на-Дону',
+      'Краснодар', 'Омск', 'Воронеж', 'Пермь', 'Волгоград',
+      'Коломна', 'Рязань',
+    ]),
+    [],
+  );
+
   const visibleCities = useMemo(() => {
     const normalizedQuery = citySearch.trim().toLowerCase();
     const terms = normalizedQuery.split(/\s+/).filter(Boolean);
+
+    // Пустой запрос: показываем сначала «популярные» города, затем алфавитный остаток.
+    // Так список из 1100+ городов остаётся комфортным (есть и быстрый выбор, и полный охват).
+    if (!normalizedQuery) {
+      const popular: typeof cities = [];
+      const others: typeof cities = [];
+      for (const city of cities) {
+        if (POPULAR_CITY_NAMES.has(city.name)) popular.push(city);
+        else others.push(city);
+      }
+      popular.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+      others.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+      return [...popular, ...others];
+    }
 
     const withScore = cities
       .map((city) => {
         const name = city.name.toLowerCase();
         const region = `${city.region || ''} ${city.country || ''}`.trim().toLowerCase();
         const full = `${name} ${region}`.trim();
-        const matchesByName = terms.length === 0 || terms.every((term) => name.includes(term));
-        const matchesByRegion = terms.length > 0 && terms.every((term) => region.includes(term));
-        const matchesByFull = terms.length > 0 && terms.every((term) => full.includes(term));
+        const matchesByName = terms.every((term) => name.includes(term));
+        const matchesByRegion = terms.every((term) => region.includes(term));
+        const matchesByFull = terms.every((term) => full.includes(term));
 
         if (!matchesByName && !matchesByRegion && !matchesByFull) {
           return null;
         }
 
-        let score = 0;
-        if (normalizedQuery.length > 0) {
-          if (name === normalizedQuery) {
-            score = 0;
-          } else if (name.startsWith(normalizedQuery)) {
-            score = 1;
-          } else if (terms.every((term) => name.includes(term))) {
-            score = 2;
-          } else if (full.startsWith(normalizedQuery)) {
-            score = 3;
-          } else if (full.includes(normalizedQuery) && name.includes(normalizedQuery)) {
-            score = 4;
-          } else if (region.startsWith(normalizedQuery)) {
-            score = 5;
-          } else if (terms.every((term) => region.includes(term))) {
-            score = 6;
-          } else {
-            score = 7;
-          }
-        }
+        let score = 7;
+        if (name === normalizedQuery) score = 0;
+        else if (name.startsWith(normalizedQuery)) score = 1;
+        else if (matchesByName) score = 2;
+        else if (full.startsWith(normalizedQuery)) score = 3;
+        else if (full.includes(normalizedQuery) && name.includes(normalizedQuery)) score = 4;
+        else if (region.startsWith(normalizedQuery)) score = 5;
+        else if (matchesByRegion) score = 6;
 
         return { city, score };
       })
@@ -133,7 +149,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
     });
 
     return withScore.map((item) => item.city);
-  }, [cities, citySearch]);
+  }, [cities, citySearch, POPULAR_CITY_NAMES]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -395,6 +411,10 @@ export function PublicLayout({ children }: { children: ReactNode }) {
       </header>
 
       <main className="flex-1">{children}</main>
+
+      {/* Баннер «Ваш город — X? Да/Нет» появляется один раз, если город ещё не выбран
+          и удалось определить его по IP. Решение пользователя сохраняется в localStorage. */}
+      <CityAutoDetectBanner />
 
       {requiresCitySelection && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-foreground/40 px-4">

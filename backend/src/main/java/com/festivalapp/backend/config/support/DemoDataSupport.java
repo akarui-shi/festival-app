@@ -1,10 +1,10 @@
 package com.festivalapp.backend.config.support;
 
-import com.festivalapp.backend.entity.Artist;
+import com.festivalapp.backend.entity.Participant;
 import com.festivalapp.backend.entity.Category;
 import com.festivalapp.backend.entity.City;
 import com.festivalapp.backend.entity.Event;
-import com.festivalapp.backend.entity.EventArtist;
+import com.festivalapp.backend.entity.EventParticipant;
 import com.festivalapp.backend.entity.EventCategory;
 import com.festivalapp.backend.entity.EventImage;
 import com.festivalapp.backend.entity.Image;
@@ -19,9 +19,9 @@ import com.festivalapp.backend.entity.TicketType;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.entity.UserRole;
 import com.festivalapp.backend.entity.Venue;
-import com.festivalapp.backend.repository.ArtistRepository;
+import com.festivalapp.backend.repository.ParticipantRepository;
 import com.festivalapp.backend.repository.CategoryRepository;
-import com.festivalapp.backend.repository.EventArtistRepository;
+import com.festivalapp.backend.repository.EventParticipantRepository;
 import com.festivalapp.backend.repository.EventCategoryRepository;
 import com.festivalapp.backend.repository.EventImageRepository;
 import com.festivalapp.backend.repository.EventRepository;
@@ -70,7 +70,7 @@ public class DemoDataSupport {
     private final UserRoleRepository userRoleRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
     private final CategoryRepository categoryRepository;
-    private final ArtistRepository artistRepository;
+    private final ParticipantRepository participantRepository;
     private final EventRepository eventRepository;
     private final EventCategoryRepository eventCategoryRepository;
     private final EventImageRepository eventImageRepository;
@@ -78,7 +78,7 @@ public class DemoDataSupport {
     private final VenueRepository venueRepository;
     private final SessionRepository sessionRepository;
     private final TicketTypeRepository ticketTypeRepository;
-    private final EventArtistRepository eventArtistRepository;
+    private final EventParticipantRepository eventParticipantRepository;
     private final PublicationRepository publicationRepository;
     private final PublicationImageRepository publicationImageRepository;
 
@@ -139,18 +139,19 @@ public class DemoDataSupport {
         return result;
     }
 
-    /** Создаёт артистов из списка-сидов и возвращает карту по lower-case имени. */
-    public Map<String, Artist> ensureArtists(List<ArtistSeed> seeds, OffsetDateTime now) {
-        List<Artist> existing = artistRepository.findAllByDeletedAtIsNullOrderByNameAsc();
-        Map<String, Artist> byName = new HashMap<>();
-        existing.forEach(artist -> byName.put(artist.getName().toLowerCase(), artist));
+    /** Создаёт участников из списка-сидов и возвращает карту по lower-case имени. */
+    public Map<String, Participant> ensureParticipants(List<ParticipantSeed> seeds, OffsetDateTime now) {
+        List<Participant> existing = participantRepository.findAllByDeletedAtIsNullOrderByNameAsc();
+        Map<String, Participant> byName = new HashMap<>();
+        existing.forEach(participant -> byName.put(participant.getName().toLowerCase(), participant));
 
-        for (ArtistSeed seed : seeds) {
-            byName.computeIfAbsent(seed.name().toLowerCase(), ignored -> artistRepository.save(Artist.builder()
+        for (ParticipantSeed seed : seeds) {
+            byName.computeIfAbsent(seed.name().toLowerCase(), ignored -> participantRepository.save(Participant.builder()
                 .name(seed.name())
                 .stageName(seed.stageName())
                 .description(seed.description())
                 .genre(seed.genre())
+                .kind(seed.kind())
                 .createdAt(now)
                 .updatedAt(now)
                 .build()));
@@ -322,23 +323,23 @@ public class DemoDataSupport {
         }
     }
 
-    /** Привязывает артистов к событию по имени (lower-case ключ карты). */
-    public void ensureEventArtists(Event event, List<String> artistNames, Map<String, Artist> artists) {
-        List<EventArtist> existing = eventArtistRepository.findAllByEventIdOrderByIdAsc(event.getId());
-        Set<Long> existingArtistIds = new HashSet<>();
-        for (EventArtist eventArtist : existing) {
-            if (eventArtist.getArtist() != null) {
-                existingArtistIds.add(eventArtist.getArtist().getId());
+    /** Привязывает участников к событию по имени (lower-case ключ карты). */
+    public void ensureEventParticipants(Event event, List<String> participantNames, Map<String, Participant> participants) {
+        List<EventParticipant> existing = eventParticipantRepository.findAllByEventIdOrderByIdAsc(event.getId());
+        Set<Long> existingParticipantIds = new HashSet<>();
+        for (EventParticipant eventParticipant : existing) {
+            if (eventParticipant.getParticipant() != null) {
+                existingParticipantIds.add(eventParticipant.getParticipant().getId());
             }
         }
-        for (String artistName : artistNames) {
-            Artist artist = artists.get(artistName.toLowerCase());
-            if (artist == null || existingArtistIds.contains(artist.getId())) {
+        for (String participantName : participantNames) {
+            Participant participant = participants.get(participantName.toLowerCase());
+            if (participant == null || existingParticipantIds.contains(participant.getId())) {
                 continue;
             }
-            eventArtistRepository.save(EventArtist.builder()
+            eventParticipantRepository.save(EventParticipant.builder()
                 .event(event)
-                .artist(artist)
+                .participant(participant)
                 .build());
         }
     }
@@ -522,8 +523,8 @@ public class DemoDataSupport {
     /** Обёртка над событием с пометкой, было ли оно создано в текущей транзакции. */
     public record EventHolder(Event event, boolean created) { }
 
-    /** Сид артиста, который привязывается к событиям городов. */
-    public record ArtistSeed(String name, String stageName, String description, String genre) { }
+    /** Сид участника, который привязывается к событиям городов. */
+    public record ParticipantSeed(String name, String stageName, String description, String genre, String kind) { }
 
     /** Сид сессии (один сеанс события) с адресом, временем и ценой. */
     public record SessionSeedSpec(String sessionTitle,
@@ -545,7 +546,7 @@ public class DemoDataSupport {
                                 List<String> categoryNames,
                                 List<String> classpathImagePaths,
                                 List<SessionSeedSpec> sessions,
-                                List<String> artistNames) { }
+                                List<String> participantNames) { }
 
     /**
      * Сид публикации (новости/материала вокруг события). Картинки задаются полными

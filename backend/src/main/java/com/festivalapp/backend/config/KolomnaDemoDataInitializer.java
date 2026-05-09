@@ -1,12 +1,12 @@
 package com.festivalapp.backend.config;
 
 import com.festivalapp.backend.config.support.DemoDataSupport;
-import com.festivalapp.backend.config.support.DemoDataSupport.ArtistSeed;
+import com.festivalapp.backend.config.support.DemoDataSupport.ParticipantSeed;
 import com.festivalapp.backend.config.support.DemoDataSupport.EventHolder;
 import com.festivalapp.backend.config.support.DemoDataSupport.EventSeedSpec;
 import com.festivalapp.backend.config.support.DemoDataSupport.PublicationSeedSpec;
 import com.festivalapp.backend.config.support.DemoDataSupport.SessionSeedSpec;
-import com.festivalapp.backend.entity.Artist;
+import com.festivalapp.backend.entity.Participant;
 import com.festivalapp.backend.entity.Category;
 import com.festivalapp.backend.entity.City;
 import com.festivalapp.backend.entity.Event;
@@ -173,9 +173,9 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
             organizationRepository.save(organization);
         }
 
-        // 3. Категории и артисты.
+        // 3. Категории и участники.
         Map<String, Category> categories = support.ensureBaseCategories();
-        Map<String, Artist> artists = support.ensureArtists(buildArtists(), now);
+        Map<String, Participant> participants = support.ensureParticipants(buildParticipants(), now);
 
         // 4. События + публикации.
         List<EventSeedSpec> eventSpecs = buildEventSpecs(now);
@@ -193,7 +193,7 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
                 support.createSessionsAndTickets(event, spec, kolomna);
             }
 
-            support.ensureEventArtists(event, spec.artistNames(), artists);
+            support.ensureEventParticipants(event, spec.participantNames(), participants);
             support.ensurePublications(
                 event,
                 organization,
@@ -272,21 +272,21 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
                 .build()));
     }
 
-    // ===== Артисты, специфичные для Коломны =====
+    // ===== Участники, специфичные для Коломны =====
 
-    private List<ArtistSeed> buildArtists() {
+    private List<ParticipantSeed> buildParticipants() {
         return List.of(
-            new ArtistSeed("Илья Лебедев", "IL LEBED", "Электронный музыкант и лайв-исполнитель из Коломны.", "Электроника"),
-            new ArtistSeed("Алексей Руденко", "Rudenko Sax", "Саксофонист с джазовыми и lounge-сетами.", "Джаз"),
-            new ArtistSeed("Егор Нечаев", "Егор Нечаев", "Лектор и популяризатор науки, автор цикла о космосе.", "Лектор"),
-            new ArtistSeed("Марина Соколова", "Марина Соколова", "Вокалистка с акустической концертной программой.", "Акустика"),
-            new ArtistSeed("Павел Громов", "Павел Громов", "Ведущий детских мастер-классов по робототехнике.", "Образование"),
-            new ArtistSeed("Анна Воронина", "Анна Воронина", "Историк и экскурсовод, специалист по купеческой Коломне XIX века.", "Лектор"),
-            new ArtistSeed("Театр «Коломенская маска»", "Коломенская маска", "Городская театральная компания, ставит уличные и камерные спектакли.", "Театр"),
-            new ArtistSeed("Балерина Ольга Степанова", "Ольга Степанова", "Прима городской балетной труппы, ведущая мастер-классов по классическому танцу.", "Балет"),
-            new ArtistSeed("Мастерская «Калачный двор»", "Калачный двор", "Команда коломенской калачной — ведут мастер-классы по историческим рецептам.", "Гастрономия"),
-            new ArtistSeed("Дмитрий Бельский", "Дмитрий Бельский", "Аккредитованный экскурсовод по Коломенскому кремлю и историческому посаду.", "Экскурсия"),
-            new ArtistSeed("Фольклорный ансамбль «Коломенская слобода»", "Коломенская слобода", "Городской ансамбль народной песни, ведут масленичные и ярмарочные программы.", "Народная музыка")
+            new ParticipantSeed("Илья Лебедев", "IL LEBED", "Электронный музыкант и лайв-исполнитель из Коломны.", "Электроника", "исполнитель"),
+            new ParticipantSeed("Алексей Руденко", "Rudenko Sax", "Саксофонист с джазовыми и lounge-сетами.", "Джаз", "исполнитель"),
+            new ParticipantSeed("Егор Нечаев", "Егор Нечаев", "Лектор и популяризатор науки, автор цикла о космосе.", "Лектор", "лектор"),
+            new ParticipantSeed("Марина Соколова", "Марина Соколова", "Вокалистка с акустической концертной программой.", "Акустика", "исполнитель"),
+            new ParticipantSeed("Павел Громов", "Павел Громов", "Ведущий детских мастер-классов по робототехнике.", "Образование", "исполнитель"),
+            new ParticipantSeed("Анна Воронина", "Анна Воронина", "Историк и экскурсовод, специалист по купеческой Коломне XIX века.", "Лектор", "лектор"),
+            new ParticipantSeed("Театр «Коломенская маска»", "Коломенская маска", "Городская театральная компания, ставит уличные и камерные спектакли.", "Театр", "ансамбль"),
+            new ParticipantSeed("Балерина Ольга Степанова", "Ольга Степанова", "Прима городской балетной труппы, ведущая мастер-классов по классическому танцу.", "Балет", "исполнитель"),
+            new ParticipantSeed("Мастерская «Калачный двор»", "Калачный двор", "Команда коломенской калачной — ведут мастер-классы по историческим рецептам.", "Гастрономия", "ансамбль"),
+            new ParticipantSeed("Дмитрий Бельский", "Дмитрий Бельский", "Аккредитованный экскурсовод по Коломенскому кремлю и историческому посаду.", "Экскурсия", "экскурсовод"),
+            new ParticipantSeed("Фольклорный ансамбль «Коломенская слобода»", "Коломенская слобода", "Городской ансамбль народной песни, ведут масленичные и ярмарочные программы.", "Народная музыка", "ансамбль")
         );
     }
 
