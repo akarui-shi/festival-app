@@ -109,7 +109,7 @@ public class PublicationService {
     }
 
     @Transactional(readOnly = true)
-    public List<PublicationShortResponse> getPublicList(Long eventId, Long organizationId, String title) {
+    public List<PublicationShortResponse> getPublicList(Long eventId, Long organizationId, String title, Long cityId) {
         List<Publication> list;
         if (eventId != null) {
             list = publicationRepository.findAllByEventIdOrderByCreatedAtDesc(eventId);
@@ -128,8 +128,26 @@ public class PublicationService {
                 return publication.getTitle() != null
                     && publication.getTitle().toLowerCase().contains(title.trim().toLowerCase());
             })
+            // Фильтр по городу: публикация привязана к event, у event есть city.
+            // Публикации без события (если такие появятся) при заданном cityId не показываем,
+            // так как город определить нельзя.
+            .filter(publication -> {
+                if (cityId == null) return true;
+                return publication.getEvent() != null
+                    && publication.getEvent().getCity() != null
+                    && cityId.equals(publication.getEvent().getCity().getId());
+            })
             .map(this::toShort)
             .toList();
+    }
+
+    /**
+     * Перегрузка для обратной совместимости (вызовы без фильтра по городу).
+     * Делегирует к основной версии с {@code cityId == null}.
+     */
+    @Transactional(readOnly = true)
+    public List<PublicationShortResponse> getPublicList(Long eventId, Long organizationId, String title) {
+        return getPublicList(eventId, organizationId, title, null);
     }
 
     @Transactional(readOnly = true)

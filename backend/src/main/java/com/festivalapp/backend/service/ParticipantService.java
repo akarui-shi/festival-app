@@ -1,15 +1,15 @@
 package com.festivalapp.backend.service;
 
-import com.festivalapp.backend.dto.ArtistDetailsResponse;
-import com.festivalapp.backend.dto.ArtistSummaryResponse;
-import com.festivalapp.backend.dto.ArtistUpsertRequest;
+import com.festivalapp.backend.dto.ParticipantDetailsResponse;
+import com.festivalapp.backend.dto.ParticipantSummaryResponse;
+import com.festivalapp.backend.dto.ParticipantUpsertRequest;
 import com.festivalapp.backend.dto.CategoryResponse;
 import com.festivalapp.backend.dto.EventShortResponse;
-import com.festivalapp.backend.entity.Artist;
-import com.festivalapp.backend.entity.ArtistImage;
+import com.festivalapp.backend.entity.Participant;
+import com.festivalapp.backend.entity.ParticipantImage;
 import com.festivalapp.backend.entity.Category;
 import com.festivalapp.backend.entity.Event;
-import com.festivalapp.backend.entity.EventArtist;
+import com.festivalapp.backend.entity.EventParticipant;
 import com.festivalapp.backend.entity.EventCategory;
 import com.festivalapp.backend.entity.EventImage;
 import com.festivalapp.backend.entity.EventStatus;
@@ -20,10 +20,10 @@ import com.festivalapp.backend.entity.TicketType;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
-import com.festivalapp.backend.repository.ArtistImageRepository;
-import com.festivalapp.backend.repository.ArtistRepository;
+import com.festivalapp.backend.repository.ParticipantImageRepository;
+import com.festivalapp.backend.repository.ParticipantRepository;
 import com.festivalapp.backend.repository.EventCategoryRepository;
-import com.festivalapp.backend.repository.EventArtistRepository;
+import com.festivalapp.backend.repository.EventParticipantRepository;
 import com.festivalapp.backend.repository.EventImageRepository;
 import com.festivalapp.backend.repository.ImageRepository;
 import com.festivalapp.backend.repository.SessionRepository;
@@ -45,11 +45,16 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
-public class ArtistService {
+public class ParticipantService {
 
-    private final ArtistRepository artistRepository;
-    private final ArtistImageRepository artistImageRepository;
-    private final EventArtistRepository eventArtistRepository;
+    private static final String DEFAULT_KIND = "исполнитель";
+    private static final Set<String> ALLOWED_KINDS = Set.of(
+        "исполнитель", "лектор", "экскурсовод", "ансамбль", "спикер", "другое"
+    );
+
+    private final ParticipantRepository participantRepository;
+    private final ParticipantImageRepository participantImageRepository;
+    private final EventParticipantRepository eventParticipantRepository;
     private final EventImageRepository eventImageRepository;
     private final EventCategoryRepository eventCategoryRepository;
     private final SessionRepository sessionRepository;
@@ -58,34 +63,35 @@ public class ArtistService {
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
-    public List<ArtistSummaryResponse> getPublicList(String q) {
-        List<Artist> artists = StringUtils.hasText(q)
-            ? artistRepository.findAllByNameContainingIgnoreCaseAndDeletedAtIsNullOrderByNameAsc(q.trim())
-            : artistRepository.findAllByDeletedAtIsNullOrderByNameAsc();
+    public List<ParticipantSummaryResponse> getPublicList(String q) {
+        List<Participant> participants = StringUtils.hasText(q)
+            ? participantRepository.findAllByNameContainingIgnoreCaseAndDeletedAtIsNullOrderByNameAsc(q.trim())
+            : participantRepository.findAllByDeletedAtIsNullOrderByNameAsc();
 
-        return artists.stream().map(this::toSummary).toList();
+        return participants.stream().map(this::toSummary).toList();
     }
 
     @Transactional(readOnly = true)
-    public ArtistDetailsResponse getPublicById(Long id) {
-        Artist artist = artistRepository.findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Artist not found"));
+    public ParticipantDetailsResponse getPublicById(Long id) {
+        Participant participant = participantRepository.findByIdAndDeletedAtIsNull(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Participant not found"));
 
-        List<EventShortResponse> events = eventArtistRepository.findAllByArtistIdOrderByIdAsc(id).stream()
-            .map(EventArtist::getEvent)
+        List<EventShortResponse> events = eventParticipantRepository.findAllByParticipantIdOrderByIdAsc(id).stream()
+            .map(EventParticipant::getEvent)
             .filter(event -> event != null && DomainStatusMapper.toEventStatus(event.getStatus()) == EventStatus.PUBLISHED)
             .distinct()
             .map(this::toEventShort)
             .toList();
-        List<Long> imageIds = resolveArtistImageIds(artist.getId());
+        List<Long> imageIds = resolveParticipantImageIds(participant.getId());
         Long primaryImageId = imageIds.isEmpty() ? null : imageIds.get(0);
 
-        return ArtistDetailsResponse.builder()
-            .id(artist.getId())
-            .name(artist.getName())
-            .stageName(artist.getStageName())
-            .description(artist.getDescription())
-            .genre(artist.getGenre())
+        return ParticipantDetailsResponse.builder()
+            .id(participant.getId())
+            .name(participant.getName())
+            .stageName(participant.getStageName())
+            .description(participant.getDescription())
+            .genre(participant.getGenre())
+            .kind(participant.getKind())
             .imageId(primaryImageId)
             .imageIds(imageIds)
             .primaryImageId(primaryImageId)
@@ -94,49 +100,53 @@ public class ArtistService {
     }
 
     @Transactional
-    public ArtistSummaryResponse create(ArtistUpsertRequest request, String actorIdentifier) {
+    public ParticipantSummaryResponse create(ParticipantUpsertRequest request, String actorIdentifier) {
         User actor = resolveActor(actorIdentifier);
         assertCanManage(actor);
 
-        Artist artist = artistRepository.save(Artist.builder()
-            .name(normalizeRequired(request.getName(), "Artist name is required"))
+        Participant participant = participantRepository.save(Participant.builder()
+            .name(normalizeRequired(request.getName(), "Participant name is required"))
             .stageName(normalize(request.getStageName()))
             .description(normalize(request.getDescription()))
             .genre(normalize(request.getGenre()))
+            .kind(normalizeKind(request.getKind()))
             .createdAt(OffsetDateTime.now())
             .updatedAt(OffsetDateTime.now())
             .build());
-        applyArtistImages(artist, request.getImageIds(), request.getPrimaryImageId(), request.getImageId());
+        applyParticipantImages(participant, request.getImageIds(), request.getPrimaryImageId(), request.getImageId());
 
-        return toSummary(artist);
+        return toSummary(participant);
     }
 
     @Transactional
-    public ArtistSummaryResponse update(Long id, ArtistUpsertRequest request, String actorIdentifier) {
+    public ParticipantSummaryResponse update(Long id, ParticipantUpsertRequest request, String actorIdentifier) {
         User actor = resolveActor(actorIdentifier);
         assertCanManage(actor);
 
-        Artist artist = artistRepository.findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Artist not found"));
+        Participant participant = participantRepository.findByIdAndDeletedAtIsNull(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Participant not found"));
 
         if (StringUtils.hasText(request.getName())) {
-            artist.setName(request.getName().trim());
+            participant.setName(request.getName().trim());
         }
         if (request.getStageName() != null) {
-            artist.setStageName(normalize(request.getStageName()));
+            participant.setStageName(normalize(request.getStageName()));
         }
         if (request.getDescription() != null) {
-            artist.setDescription(normalize(request.getDescription()));
+            participant.setDescription(normalize(request.getDescription()));
         }
         if (request.getGenre() != null) {
-            artist.setGenre(normalize(request.getGenre()));
+            participant.setGenre(normalize(request.getGenre()));
         }
-        artist.setUpdatedAt(OffsetDateTime.now());
+        if (request.getKind() != null) {
+            participant.setKind(normalizeKind(request.getKind()));
+        }
+        participant.setUpdatedAt(OffsetDateTime.now());
         if (request.getImageId() != null || request.getImageIds() != null || request.getPrimaryImageId() != null) {
-            applyArtistImages(artist, request.getImageIds(), request.getPrimaryImageId(), request.getImageId());
+            applyParticipantImages(participant, request.getImageIds(), request.getPrimaryImageId(), request.getImageId());
         }
 
-        return toSummary(artistRepository.save(artist));
+        return toSummary(participantRepository.save(participant));
     }
 
     @Transactional
@@ -144,36 +154,37 @@ public class ArtistService {
         User actor = resolveActor(actorIdentifier);
         assertCanManage(actor);
 
-        Artist artist = artistRepository.findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Artist not found"));
+        Participant participant = participantRepository.findByIdAndDeletedAtIsNull(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Participant not found"));
 
-        eventArtistRepository.deleteByArtistId(artist.getId());
-        artistImageRepository.deleteByArtistId(artist.getId());
+        eventParticipantRepository.deleteByParticipantId(participant.getId());
+        participantImageRepository.deleteByParticipantId(participant.getId());
 
         OffsetDateTime now = OffsetDateTime.now();
-        artist.setDeletedAt(now);
-        artist.setUpdatedAt(now);
-        artistRepository.save(artist);
+        participant.setDeletedAt(now);
+        participant.setUpdatedAt(now);
+        participantRepository.save(participant);
     }
 
     @Transactional
-    public List<Artist> resolveArtists(List<String> newArtistNames, List<Long> artistIds) {
-        List<Artist> resolved = artistIds == null || artistIds.isEmpty()
+    public List<Participant> resolveParticipants(List<String> newParticipantNames, List<Long> participantIds) {
+        List<Participant> resolved = participantIds == null || participantIds.isEmpty()
             ? new java.util.ArrayList<>()
-            : new java.util.ArrayList<>(artistRepository.findAllById(artistIds));
+            : new java.util.ArrayList<>(participantRepository.findAllById(participantIds));
 
-        if (newArtistNames != null) {
-            for (String rawName : newArtistNames) {
+        if (newParticipantNames != null) {
+            for (String rawName : newParticipantNames) {
                 if (!StringUtils.hasText(rawName)) {
                     continue;
                 }
                 String name = rawName.trim();
-                Artist artist = artistRepository.save(Artist.builder()
+                Participant participant = participantRepository.save(Participant.builder()
                     .name(name)
+                    .kind(DEFAULT_KIND)
                     .createdAt(OffsetDateTime.now())
                     .updatedAt(OffsetDateTime.now())
                     .build());
-                resolved.add(artist);
+                resolved.add(participant);
             }
         }
 
@@ -307,22 +318,23 @@ public class ArtistService {
     private record PriceRange(BigDecimal min, BigDecimal max) {
     }
 
-    private ArtistSummaryResponse toSummary(Artist artist) {
-        List<Long> imageIds = resolveArtistImageIds(artist.getId());
+    private ParticipantSummaryResponse toSummary(Participant participant) {
+        List<Long> imageIds = resolveParticipantImageIds(participant.getId());
         Long primaryImageId = imageIds.isEmpty() ? null : imageIds.get(0);
-        return ArtistSummaryResponse.builder()
-            .id(artist.getId())
-            .name(artist.getName())
-            .stageName(artist.getStageName())
-            .description(artist.getDescription())
-            .genre(artist.getGenre())
+        return ParticipantSummaryResponse.builder()
+            .id(participant.getId())
+            .name(participant.getName())
+            .stageName(participant.getStageName())
+            .description(participant.getDescription())
+            .genre(participant.getGenre())
+            .kind(participant.getKind())
             .imageId(primaryImageId)
             .imageIds(imageIds)
             .primaryImageId(primaryImageId)
             .build();
     }
 
-    private void applyArtistImages(Artist artist, List<Long> imageIds, Long primaryImageId, Long legacyImageId) {
+    private void applyParticipantImages(Participant participant, List<Long> imageIds, Long primaryImageId, Long legacyImageId) {
         List<Long> requestedIds = null;
         if (imageIds != null) {
             requestedIds = imageIds.stream()
@@ -332,26 +344,26 @@ public class ArtistService {
             requestedIds = List.of(legacyImageId);
         }
 
-        List<ArtistImage> existing = artistImageRepository.findAllByArtistIdOrderByPrimaryDescIdAsc(artist.getId());
+        List<ParticipantImage> existing = participantImageRepository.findAllByParticipantIdOrderByPrimaryDescIdAsc(participant.getId());
 
         if (requestedIds == null) {
             if (primaryImageId != null) {
                 if (existing.isEmpty()) {
-                    throw new BadRequestException("Нельзя выбрать главное фото: у артиста пока нет изображений");
+                    throw new BadRequestException("Нельзя выбрать главное фото: у участника пока нет изображений");
                 }
                 Set<Long> existingImageIds = existing.stream()
-                    .map(ArtistImage::getImage)
+                    .map(ParticipantImage::getImage)
                     .filter(Objects::nonNull)
                     .map(Image::getId)
                     .collect(java.util.stream.Collectors.toSet());
                 if (!existingImageIds.contains(primaryImageId)) {
-                    throw new BadRequestException("Главное фото должно входить в набор изображений артиста");
+                    throw new BadRequestException("Главное фото должно входить в набор изображений участника");
                 }
-                for (ArtistImage link : existing) {
+                for (ParticipantImage link : existing) {
                     Image image = link.getImage();
                     link.setPrimary(image != null && Objects.equals(image.getId(), primaryImageId));
                 }
-                artistImageRepository.saveAll(existing);
+                participantImageRepository.saveAll(existing);
             }
             return;
         }
@@ -362,8 +374,8 @@ public class ArtistService {
                 ArrayList::new
             ));
 
-        artistImageRepository.deleteByArtistId(artist.getId());
-        artistImageRepository.flush();
+        participantImageRepository.deleteByParticipantId(participant.getId());
+        participantImageRepository.flush();
         if (uniqueIds.isEmpty()) {
             return;
         }
@@ -380,16 +392,16 @@ public class ArtistService {
             primaryResolved = uniqueIds.get(0);
         }
 
-        List<ArtistImage> links = new ArrayList<>();
+        List<ParticipantImage> links = new ArrayList<>();
         for (Long id : uniqueIds) {
             Image image = imagesById.get(id);
-            links.add(ArtistImage.builder()
-                .artist(artist)
+            links.add(ParticipantImage.builder()
+                .participant(participant)
                 .image(image)
                 .primary(Objects.equals(id, primaryResolved))
                 .build());
         }
-        artistImageRepository.saveAll(links);
+        participantImageRepository.saveAll(links);
     }
 
     private Image resolveImage(Long imageId) {
@@ -400,9 +412,9 @@ public class ArtistService {
         return null;
     }
 
-    private List<Long> resolveArtistImageIds(Long artistId) {
-        return artistImageRepository.findAllByArtistIdOrderByPrimaryDescIdAsc(artistId).stream()
-            .map(ArtistImage::getImage)
+    private List<Long> resolveParticipantImageIds(Long participantId) {
+        return participantImageRepository.findAllByParticipantIdOrderByPrimaryDescIdAsc(participantId).stream()
+            .map(ParticipantImage::getImage)
             .filter(Objects::nonNull)
             .map(Image::getId)
             .toList();
@@ -436,5 +448,16 @@ public class ArtistService {
             return null;
         }
         return value.trim();
+    }
+
+    private String normalizeKind(String value) {
+        if (!StringUtils.hasText(value)) {
+            return DEFAULT_KIND;
+        }
+        String trimmed = value.trim().toLowerCase();
+        if (!ALLOWED_KINDS.contains(trimmed)) {
+            throw new BadRequestException("Недопустимый тип участника: " + value);
+        }
+        return trimmed;
     }
 }

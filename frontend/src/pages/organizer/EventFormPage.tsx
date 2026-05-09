@@ -7,29 +7,30 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LoadingState } from '@/components/StateDisplays';
 import { imageSrc } from '@/lib/image';
 import { LocationPickerMap } from '@/components/LocationPickerMap';
-import { artistService } from '@/services/artist-service';
+import { participantService } from '@/services/participant-service';
 import { directoryService } from '@/services/directory-service';
 import { fileUploadService } from '@/services/file-upload-service';
 import {
   organizerEventWizardService,
   type OrganizerOrganizationOption,
   type OrganizerWizardState,
-  type WizardArtistItem,
+  type WizardParticipantItem,
   type WizardImageItem,
   type WizardSessionItem,
   type WizardTicketTypeItem,
   type WizardValidationIssue,
 } from '@/services/organizer-event-wizard-service';
 import { yandexMapsService, type YandexAddressSuggestion } from '@/services/yandex-maps-service';
-import type { Artist, Category, City, Venue } from '@/types';
+import type { Participant, Category, City, Venue } from '@/types';
 
 const WIZARD_STEPS = [
   'Основная информация',
   'Фотографии',
-  'Артисты (опционально)',
+  'Участники (опционально)',
   'Сеансы',
   'Билеты',
   'Предпросмотр',
@@ -42,7 +43,7 @@ const AGE_OPTIONS = ['', '0+', '6+', '12+', '16+', '18+'] as const;
 const WIZARD_STEP_LABELS: Record<string, string> = {
   step_1: 'Основная информация',
   step_2: 'Фотографии',
-  step_3: 'Артисты',
+  step_3: 'Участники',
   step_4: 'Сеансы',
   step_5: 'Билеты',
 };
@@ -60,8 +61,8 @@ interface ImageDraft {
   sortOrder: number;
 }
 
-interface ExistingArtistDraft {
-  artistId: number;
+interface ExistingParticipantDraft {
+  participantId: number;
 }
 
 interface TicketTypeDraft {
@@ -146,9 +147,9 @@ function mapImage(item: WizardImageItem, index: number): ImageDraft | null {
   };
 }
 
-function mapArtistToExisting(item: WizardArtistItem): ExistingArtistDraft {
+function mapParticipantToExisting(item: WizardParticipantItem): ExistingParticipantDraft {
   return {
-    artistId: item.artistId,
+    participantId: item.participantId,
   };
 }
 
@@ -244,8 +245,8 @@ export default function EventFormPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
-  const [artistsCatalog, setArtistsCatalog] = useState<Artist[]>([]);
-  const [artistSearch, setArtistSearch] = useState('');
+  const [participantsCatalog, setParticipantsCatalog] = useState<Participant[]>([]);
+  const [participantSearch, setParticipantSearch] = useState('');
 
   const [basicInfo, setBasicInfo] = useState<BasicInfoForm>({
     title: '',
@@ -255,10 +256,10 @@ export default function EventFormPage() {
   });
   const [categoryIds, setCategoryIds] = useState<number[]>([]);
   const [images, setImages] = useState<ImageDraft[]>([]);
-  const [existingArtists, setExistingArtists] = useState<ExistingArtistDraft[]>([]);
+  const [existingParticipants, setExistingParticipants] = useState<ExistingParticipantDraft[]>([]);
   const [sessions, setSessions] = useState<SessionDraft[]>([]);
   const [expandedSessionLocalId, setExpandedSessionLocalId] = useState<string | null>(null);
-  const [hasArtists, setHasArtists] = useState(false);
+  const [hasParticipants, setHasParticipants] = useState(false);
   const [isFreeEvent, setIsFreeEvent] = useState(true);
   const [previewImageId, setPreviewImageId] = useState<number | null>(null);
   const isFreeInitializedRef = useRef(false);
@@ -290,9 +291,9 @@ export default function EventFormPage() {
       .sort((a, b) => a.sortOrder - b.sortOrder);
     setImages(mappedImages);
 
-    const mappedArtists = (state.artists || []).map(mapArtistToExisting);
-    setExistingArtists(mappedArtists);
-    setHasArtists(mappedArtists.length > 0);
+    const mappedParticipants = (state.participants || []).map(mapParticipantToExisting);
+    setExistingParticipants(mappedParticipants);
+    setHasParticipants(mappedParticipants.length > 0);
 
     const mappedSessions = (state.sessions || []).map(mapSession);
     if (mappedSessions.length > 0) {
@@ -319,17 +320,17 @@ export default function EventFormPage() {
       directoryService.getCities(),
       directoryService.getVenues(),
       organizerEventWizardService.getOrganizations(),
-      artistService.getArtists(),
+      participantService.getParticipants(),
       id ? organizerEventWizardService.getState(Number(id)) : Promise.resolve(null),
     ])
-      .then(([cats, cityList, venueList, orgs, artists, state]) => {
+      .then(([cats, cityList, venueList, orgs, participants, state]) => {
         if (!active) return;
 
         setCategories(cats);
         setCities(cityList);
         setVenues(venueList);
         setOrganizations(orgs);
-        setArtistsCatalog(artists);
+        setParticipantsCatalog(participants);
 
         if (state) {
           applyWizardState(state);
@@ -393,13 +394,13 @@ export default function EventFormPage() {
     return () => window.clearInterval(timer);
   }, [dirty, eventId, saving, step]);
 
-  const artistOptions = useMemo(() => {
-    const q = artistSearch.trim().toLowerCase();
-    if (!q) return artistsCatalog.slice(0, 40);
-    return artistsCatalog
-      .filter((artist) => `${artist.name} ${artist.stageName || ''}`.toLowerCase().includes(q))
+  const participantOptions = useMemo(() => {
+    const q = participantSearch.trim().toLowerCase();
+    if (!q) return participantsCatalog.slice(0, 40);
+    return participantsCatalog
+      .filter((participant) => `${participant.name} ${participant.stageName || ''} ${participant.kind || ''}`.toLowerCase().includes(q))
       .slice(0, 40);
-  }, [artistSearch, artistsCatalog]);
+  }, [participantSearch, participantsCatalog]);
 
   const orderedPreviewImages = useMemo(
     () => [...images].sort((a, b) => a.sortOrder - b.sortOrder),
@@ -431,11 +432,11 @@ export default function EventFormPage() {
     [categories, categoryIds],
   );
 
-  const selectedArtistsDetailed = useMemo(() => (
-    existingArtists
-      .map((selected) => artistsCatalog.find((artist) => Number(artist.id) === selected.artistId))
-      .filter((artist): artist is Artist => Boolean(artist))
-  ), [existingArtists, artistsCatalog]);
+  const selectedParticipantsDetailed = useMemo(() => (
+    existingParticipants
+      .map((selected) => participantsCatalog.find((participant) => Number(participant.id) === selected.participantId))
+      .filter((participant): participant is Participant => Boolean(participant))
+  ), [existingParticipants, participantsCatalog]);
 
   const previewPriceStats = useMemo(() => {
     const prices = sessions
@@ -450,7 +451,7 @@ export default function EventFormPage() {
 
   const previewTotals = useMemo(() => {
     const sessionsCount = sessions.length;
-    const artistsCount = selectedArtistsDetailed.length;
+    const participantsCount = selectedParticipantsDetailed.length;
     const ticketTypesCount = sessions.reduce((sum, session) => sum + session.ticketTypes.length, 0);
     const seatLimitTotal = sessions.reduce((sum, session) => {
       const seatLimit = getSessionSeatLimit(session);
@@ -459,12 +460,12 @@ export default function EventFormPage() {
     const ticketQuotaTotal = sessions.reduce((sum, session) => sum + getSessionTicketQuotaTotal(session), 0);
     return {
       sessionsCount,
-      artistsCount,
+      participantsCount,
       ticketTypesCount,
       seatLimitTotal,
       ticketQuotaTotal,
     };
-  }, [sessions, selectedArtistsDetailed.length]);
+  }, [sessions, selectedParticipantsDetailed.length]);
 
   const validationIssuesByStep = useMemo(() => {
     const grouped = new Map<string, WizardValidationIssue[]>();
@@ -575,9 +576,9 @@ export default function EventFormPage() {
         })),
       });
     } else if (targetStep === 2) {
-      state = await organizerEventWizardService.updateArtists(targetEventId, {
-        artists: hasArtists ? existingArtists.map((artist) => ({
-          artistId: artist.artistId,
+      state = await organizerEventWizardService.updateParticipants(targetEventId, {
+        participants: hasParticipants ? existingParticipants.map((participant) => ({
+          participantId: participant.participantId,
         })) : [],
       });
     } else if (targetStep === 3) {
@@ -628,9 +629,9 @@ export default function EventFormPage() {
     basicInfo,
     categoryIds,
     images,
-    existingArtists,
+    existingParticipants,
     sessions,
-    hasArtists,
+    hasParticipants,
     isFreeEvent,
     applyWizardState,
   ]);
@@ -789,21 +790,21 @@ export default function EventFormPage() {
     markDirty();
   };
 
-  const toggleExistingArtist = (artistId: number, checked: boolean) => {
-    setExistingArtists((prev) => {
+  const toggleExistingParticipant = (participantId: number, checked: boolean) => {
+    setExistingParticipants((prev) => {
       if (checked) {
-        if (prev.some((artist) => artist.artistId === artistId)) return prev;
-        return [...prev, { artistId }];
+        if (prev.some((participant) => participant.participantId === participantId)) return prev;
+        return [...prev, { participantId }];
       }
-      return prev.filter((artist) => artist.artistId !== artistId);
+      return prev.filter((participant) => participant.participantId !== participantId);
     });
     markDirty();
   };
 
-  const toggleArtistsMode = (enabled: boolean) => {
-    setHasArtists(enabled);
+  const toggleParticipantsMode = (enabled: boolean) => {
+    setHasParticipants(enabled);
     if (!enabled) {
-      setExistingArtists([]);
+      setExistingParticipants([]);
     }
     markDirty();
   };
@@ -1139,15 +1140,21 @@ export default function EventFormPage() {
 
               <div>
                 <Label>Возрастное ограничение</Label>
-                <select
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  value={basicInfo.ageRestriction}
-                  onChange={(event) => updateBasicField('ageRestriction', event.target.value)}
+                <Select
+                  value={basicInfo.ageRestriction || '__none__'}
+                  onValueChange={(value) => updateBasicField('ageRestriction', value === '__none__' ? '' : value)}
                 >
-                  {AGE_OPTIONS.map((option) => (
-                    <option key={option || 'none'} value={option}>{option || 'Не указано'}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="h-10 w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AGE_OPTIONS.map((option) => (
+                      <SelectItem key={option || '__none__'} value={option || '__none__'}>
+                        {option || 'Не указано'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -1213,38 +1220,38 @@ export default function EventFormPage() {
 
         {step === 2 && (
           <div className="space-y-4">
-            <h2 className="font-heading text-2xl">Шаг 3. Артисты (необязательно)</h2>
-            <p className="text-sm text-muted-foreground">Организатор может выбрать только существующих артистов. Новых артистов добавляет администратор.</p>
+            <h2 className="font-heading text-2xl">Шаг 3. Участники (необязательно)</h2>
+            <p className="text-sm text-muted-foreground">Организатор может выбрать только существующих участников. Новых участников добавляет администратор.</p>
 
             <div className="space-y-2">
-              <p className="text-sm font-semibold">Будут ли у мероприятия артисты?</p>
+              <p className="text-sm font-semibold">Будут ли у мероприятия участники?</p>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" variant={hasArtists ? 'default' : 'outline'} onClick={() => toggleArtistsMode(true)}>Да, будут</Button>
-                <Button type="button" variant={!hasArtists ? 'default' : 'outline'} onClick={() => toggleArtistsMode(false)}>Нет, без артистов</Button>
+                <Button type="button" variant={hasParticipants ? 'default' : 'outline'} onClick={() => toggleParticipantsMode(true)}>Да, будут</Button>
+                <Button type="button" variant={!hasParticipants ? 'default' : 'outline'} onClick={() => toggleParticipantsMode(false)}>Нет, без участников</Button>
               </div>
             </div>
 
-            {hasArtists ? (
+            {hasParticipants ? (
               <div className="space-y-3 rounded-xl border border-border p-3">
-                <Label>Поиск существующих артистов</Label>
-                <Input value={artistSearch} onChange={(event) => setArtistSearch(event.target.value)} placeholder="Поиск по имени или сценическому имени" />
+                <Label>Поиск существующих участников</Label>
+                <Input value={participantSearch} onChange={(event) => setParticipantSearch(event.target.value)} placeholder="Поиск по имени, типу или сценическому имени" />
 
-                {existingArtists.length > 0 && (
+                {existingParticipants.length > 0 && (
                   <div className="rounded-lg border border-border bg-muted/20 p-3">
-                    <p className="mb-2 text-sm font-semibold">Выбрано артистов: {existingArtists.length}</p>
+                    <p className="mb-2 text-sm font-semibold">Выбрано участников: {existingParticipants.length}</p>
                     <div className="flex flex-wrap gap-2">
-                      {existingArtists.map((selected) => {
-                        const artist = artistsCatalog.find((item) => Number(item.id) === selected.artistId);
-                        const label = artist?.stageName
-                          ? `${artist.name} (${artist.stageName})`
-                          : artist?.name || `Артист #${selected.artistId}`;
+                      {existingParticipants.map((selected) => {
+                        const participant = participantsCatalog.find((item) => Number(item.id) === selected.participantId);
+                        const label = participant?.stageName
+                          ? `${participant.name} (${participant.stageName})`
+                          : participant?.name || `Участник #${selected.participantId}`;
                         return (
                           <button
-                            key={selected.artistId}
+                            key={selected.participantId}
                             type="button"
-                            onClick={() => toggleExistingArtist(selected.artistId, false)}
+                            onClick={() => toggleExistingParticipant(selected.participantId, false)}
                             className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
-                            title="Убрать артиста"
+                            title="Убрать участника"
                           >
                             {label} ×
                           </button>
@@ -1255,25 +1262,30 @@ export default function EventFormPage() {
                 )}
 
                 <div className="max-h-72 space-y-2 overflow-auto">
-                  {artistOptions.length === 0 && (
+                  {participantOptions.length === 0 && (
                     <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
-                      Артисты не найдены
+                      Участники не найдены
                     </p>
                   )}
-                  {artistOptions.map((artist) => {
-                    const checked = existingArtists.some((item) => item.artistId === Number(artist.id));
+                  {participantOptions.map((participant) => {
+                    const checked = existingParticipants.some((item) => item.participantId === Number(participant.id));
                     return (
-                      <div key={artist.id} className={`flex items-center justify-between rounded-lg border p-3 ${checked ? 'border-primary/40 bg-primary/5' : 'border-border'}`}>
+                      <div key={participant.id} className={`flex items-center justify-between rounded-lg border p-3 ${checked ? 'border-primary/40 bg-primary/5' : 'border-border'}`}>
                         <div>
-                          <p className="text-sm font-semibold">{artist.name}</p>
-                          {artist.stageName && <p className="text-xs text-muted-foreground">{artist.stageName}</p>}
-                          {artist.genre && <p className="text-xs text-muted-foreground">{artist.genre}</p>}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold">{participant.name}</p>
+                            {participant.kind && (
+                              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{participant.kind}</span>
+                            )}
+                          </div>
+                          {participant.stageName && <p className="text-xs text-muted-foreground">{participant.stageName}</p>}
+                          {participant.genre && <p className="text-xs text-muted-foreground">{participant.genre}</p>}
                         </div>
                         <Button
                           type="button"
                           variant={checked ? 'default' : 'outline'}
                           size="sm"
-                          onClick={() => toggleExistingArtist(Number(artist.id), !checked)}
+                          onClick={() => toggleExistingParticipant(Number(participant.id), !checked)}
                         >
                           {checked ? 'Выбран' : 'Добавить'}
                         </Button>
@@ -1284,7 +1296,7 @@ export default function EventFormPage() {
               </div>
             ) : (
               <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
-                Для этого мероприятия артисты не выбраны.
+                Для этого мероприятия участники не выбраны.
               </p>
             )}
           </div>
@@ -1379,16 +1391,22 @@ export default function EventFormPage() {
                         <>
                           <div className="sm:col-span-2">
                             <Label>Площадка *</Label>
-                            <select
-                              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                              value={session.venueId}
-                              onChange={(event) => onSessionVenueChange(session, event.target.value)}
+                            <Select
+                              value={session.venueId || '__placeholder__'}
+                              onValueChange={(value) => onSessionVenueChange(session, value === '__placeholder__' ? '' : value)}
                             >
-                              <option value="">Выберите площадку</option>
-                              {venues.map((venue) => (
-                                <option key={venue.id} value={venue.id}>{venue.name} · {venue.address}</option>
-                              ))}
-                            </select>
+                              <SelectTrigger className="h-10 w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__placeholder__">Выберите площадку</SelectItem>
+                                {venues.map((venue) => (
+                                  <SelectItem key={venue.id} value={String(venue.id)}>
+                                    {venue.name} · {venue.address}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                           <div>
                             <Label>Лимит мест</Label>
@@ -1658,7 +1676,7 @@ export default function EventFormPage() {
                     <p className="inline-flex items-center gap-2"><Building2 className="h-4 w-4" /> {wizardState?.organizationName || organizations[0]?.name || 'Организация не выбрана'}</p>
                     <p className="inline-flex items-center gap-2"><MapPin className="h-4 w-4" /> {wizardState?.cityName || 'Город будет определен по сеансам'}</p>
                     <p className="inline-flex items-center gap-2"><Tag className="h-4 w-4" /> Возраст: {basicInfo.ageRestriction || 'не указано'}</p>
-                    <p className="inline-flex items-center gap-2"><Users className="h-4 w-4" /> Артистов: {previewTotals.artistsCount}</p>
+                    <p className="inline-flex items-center gap-2"><Users className="h-4 w-4" /> Участников: {previewTotals.participantsCount}</p>
                   </div>
 
                   <div className="space-y-1">
@@ -1688,18 +1706,23 @@ export default function EventFormPage() {
                 </div>
 
                 <div className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-card">
-                  <p className="text-sm font-semibold">Артисты</p>
-                  {selectedArtistsDetailed.length > 0 ? (
+                  <p className="text-sm font-semibold">Участники</p>
+                  {selectedParticipantsDetailed.length > 0 ? (
                     <div className="grid gap-2 sm:grid-cols-2">
-                      {selectedArtistsDetailed.map((artist) => (
-                        <div key={`preview-artist-${artist.id}`} className="rounded-lg border border-border bg-muted/30 p-2">
-                          <p className="text-sm font-semibold">{artist.name}</p>
-                          <p className="text-xs text-muted-foreground">{artist.stageName || artist.genre || 'Информация об артисте'}</p>
+                      {selectedParticipantsDetailed.map((participant) => (
+                        <div key={`preview-participant-${participant.id}`} className="rounded-lg border border-border bg-muted/30 p-2">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold">{participant.name}</p>
+                            {participant.kind && (
+                              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{participant.kind}</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">{participant.stageName || participant.genre || 'Информация об участнике'}</p>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">Артисты не добавлены</p>
+                    <p className="text-sm text-muted-foreground">Участники не добавлены</p>
                   )}
                 </div>
               </div>

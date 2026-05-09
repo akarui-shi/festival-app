@@ -44,8 +44,9 @@ public class PublicationController {
     @GetMapping
     public ResponseEntity<List<PublicationShortResponse>> getAll(@RequestParam(required = false) Long eventId,
                                                                  @RequestParam(required = false) Long organizationId,
-                                                                 @RequestParam(required = false) String title) {
-        return ResponseEntity.ok(publicationService.getPublicList(eventId, organizationId, title));
+                                                                 @RequestParam(required = false) String title,
+                                                                 @RequestParam(required = false) Long cityId) {
+        return ResponseEntity.ok(publicationService.getPublicList(eventId, organizationId, title, cityId));
     }
 
     @GetMapping("/mine")

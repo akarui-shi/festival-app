@@ -1,7 +1,7 @@
 package com.festivalapp.backend.service;
 
 import com.festivalapp.backend.dto.CategoryResponse;
-import com.festivalapp.backend.dto.OrganizerEventArtistsRequest;
+import com.festivalapp.backend.dto.OrganizerEventParticipantsRequest;
 import com.festivalapp.backend.dto.OrganizerEventBasicInfoRequest;
 import com.festivalapp.backend.dto.OrganizerEventCategoriesRequest;
 import com.festivalapp.backend.dto.OrganizerEventImagesRequest;
@@ -11,12 +11,12 @@ import com.festivalapp.backend.dto.OrganizerEventWizardCreateRequest;
 import com.festivalapp.backend.dto.OrganizerEventWizardResponse;
 import com.festivalapp.backend.dto.OrganizerEventWizardValidationIssue;
 import com.festivalapp.backend.dto.OrganizerOrganizationOptionResponse;
-import com.festivalapp.backend.entity.Artist;
-import com.festivalapp.backend.entity.ArtistImage;
+import com.festivalapp.backend.entity.Participant;
+import com.festivalapp.backend.entity.ParticipantImage;
 import com.festivalapp.backend.entity.Category;
 import com.festivalapp.backend.entity.City;
 import com.festivalapp.backend.entity.Event;
-import com.festivalapp.backend.entity.EventArtist;
+import com.festivalapp.backend.entity.EventParticipant;
 import com.festivalapp.backend.entity.EventCategory;
 import com.festivalapp.backend.entity.EventImage;
 import com.festivalapp.backend.entity.Image;
@@ -29,11 +29,11 @@ import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.entity.Venue;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
-import com.festivalapp.backend.repository.ArtistImageRepository;
-import com.festivalapp.backend.repository.ArtistRepository;
+import com.festivalapp.backend.repository.ParticipantImageRepository;
+import com.festivalapp.backend.repository.ParticipantRepository;
 import com.festivalapp.backend.repository.CategoryRepository;
 import com.festivalapp.backend.repository.CityRepository;
-import com.festivalapp.backend.repository.EventArtistRepository;
+import com.festivalapp.backend.repository.EventParticipantRepository;
 import com.festivalapp.backend.repository.EventCategoryRepository;
 import com.festivalapp.backend.repository.EventImageRepository;
 import com.festivalapp.backend.repository.EventRepository;
@@ -74,7 +74,7 @@ public class OrganizerEventWizardService {
     private final EventRepository eventRepository;
     private final EventCategoryRepository eventCategoryRepository;
     private final EventImageRepository eventImageRepository;
-    private final EventArtistRepository eventArtistRepository;
+    private final EventParticipantRepository eventParticipantRepository;
     private final SessionRepository sessionRepository;
     private final TicketTypeRepository ticketTypeRepository;
 
@@ -83,8 +83,8 @@ public class OrganizerEventWizardService {
     private final UserRepository userRepository;
     private final CityRepository cityRepository;
     private final CategoryRepository categoryRepository;
-    private final ArtistRepository artistRepository;
-    private final ArtistImageRepository artistImageRepository;
+    private final ParticipantRepository participantRepository;
+    private final ParticipantImageRepository participantImageRepository;
     private final VenueRepository venueRepository;
     private final ImageRepository imageRepository;
 
@@ -267,69 +267,69 @@ public class OrganizerEventWizardService {
     }
 
     @Transactional
-    public OrganizerEventWizardResponse updateArtists(Long eventId,
-                                                      OrganizerEventArtistsRequest request,
-                                                      String actorIdentifier) {
+    public OrganizerEventWizardResponse updateParticipants(Long eventId,
+                                                           OrganizerEventParticipantsRequest request,
+                                                           String actorIdentifier) {
         User actor = resolveOrganizer(actorIdentifier);
         Event event = loadManagedEventForUpdate(eventId, actor);
 
-        List<OrganizerEventArtistsRequest.ExistingArtistItem> existingItems = request == null || request.getArtists() == null
+        List<OrganizerEventParticipantsRequest.ExistingParticipantItem> existingItems = request == null || request.getParticipants() == null
             ? List.of()
-            : request.getArtists();
+            : request.getParticipants();
 
-        List<Long> artistIds = new ArrayList<>();
-        Set<Long> uniqueArtistIds = new HashSet<>();
-        for (OrganizerEventArtistsRequest.ExistingArtistItem item : existingItems) {
-            if (item.getArtistId() == null) {
-                throw new BadRequestException("artistId обязателен для существующего артиста");
+        List<Long> participantIds = new ArrayList<>();
+        Set<Long> uniqueParticipantIds = new HashSet<>();
+        for (OrganizerEventParticipantsRequest.ExistingParticipantItem item : existingItems) {
+            if (item.getParticipantId() == null) {
+                throw new BadRequestException("participantId обязателен для существующего участника");
             }
-            if (!uniqueArtistIds.add(item.getArtistId())) {
-                throw new BadRequestException("Один и тот же артист не может быть добавлен дважды");
+            if (!uniqueParticipantIds.add(item.getParticipantId())) {
+                throw new BadRequestException("Один и тот же участник не может быть добавлен дважды");
             }
-            artistIds.add(item.getArtistId());
+            participantIds.add(item.getParticipantId());
         }
 
-        Map<Long, Artist> artistsById = artistRepository.findAllById(artistIds).stream()
-            .filter(artist -> artist.getDeletedAt() == null)
-            .collect(Collectors.toMap(Artist::getId, Function.identity()));
-        if (artistsById.size() != artistIds.size()) {
-            throw new ResourceNotFoundException("Artist not found");
+        Map<Long, Participant> participantsById = participantRepository.findAllById(participantIds).stream()
+            .filter(participant -> participant.getDeletedAt() == null)
+            .collect(Collectors.toMap(Participant::getId, Function.identity()));
+        if (participantsById.size() != participantIds.size()) {
+            throw new ResourceNotFoundException("Participant not found");
         }
 
-        List<EventArtist> currentLinks = eventArtistRepository.findAllByEventIdOrderByIdAsc(event.getId());
-        Map<Long, EventArtist> currentByArtistId = currentLinks.stream()
-            .filter(link -> link.getArtist() != null && link.getArtist().getId() != null)
-            .collect(Collectors.toMap(link -> link.getArtist().getId(), Function.identity(), (left, right) -> left, LinkedHashMap::new));
+        List<EventParticipant> currentLinks = eventParticipantRepository.findAllByEventIdOrderByIdAsc(event.getId());
+        Map<Long, EventParticipant> currentByParticipantId = currentLinks.stream()
+            .filter(link -> link.getParticipant() != null && link.getParticipant().getId() != null)
+            .collect(Collectors.toMap(link -> link.getParticipant().getId(), Function.identity(), (left, right) -> left, LinkedHashMap::new));
 
-        Set<Long> requestedSet = new HashSet<>(artistIds);
-        List<EventArtist> toDelete = currentLinks.stream()
-            .filter(link -> link.getArtist() == null || link.getArtist().getId() == null || !requestedSet.contains(link.getArtist().getId()))
+        Set<Long> requestedSet = new HashSet<>(participantIds);
+        List<EventParticipant> toDelete = currentLinks.stream()
+            .filter(link -> link.getParticipant() == null || link.getParticipant().getId() == null || !requestedSet.contains(link.getParticipant().getId()))
             .toList();
         if (!toDelete.isEmpty()) {
-            eventArtistRepository.deleteAllInBatch(toDelete);
-            eventArtistRepository.flush();
+            eventParticipantRepository.deleteAllInBatch(toDelete);
+            eventParticipantRepository.flush();
         }
 
-        List<EventArtist> toSave = new ArrayList<>();
-        for (Long artistId : artistIds) {
-            EventArtist link = currentByArtistId.get(artistId);
+        List<EventParticipant> toSave = new ArrayList<>();
+        for (Long participantId : participantIds) {
+            EventParticipant link = currentByParticipantId.get(participantId);
             if (link == null) {
-                link = EventArtist.builder()
+                link = EventParticipant.builder()
                     .event(event)
-                    .artist(artistsById.get(artistId))
+                    .participant(participantsById.get(participantId))
                     .build();
             } else {
-                link.setArtist(artistsById.get(artistId));
+                link.setParticipant(participantsById.get(participantId));
             }
             toSave.add(link);
         }
         if (!toSave.isEmpty()) {
-            eventArtistRepository.saveAll(toSave);
+            eventParticipantRepository.saveAll(toSave);
         }
 
         event.setUpdatedAt(OffsetDateTime.now());
         eventRepository.save(event);
-        adminAuditService.log(actorIdentifier, "EVENT_ARTISTS_UPDATED", "Event", event.getId(), "count=" + toSave.size());
+        adminAuditService.log(actorIdentifier, "EVENT_PARTICIPANTS_UPDATED", "Event", event.getId(), "count=" + toSave.size());
         return buildWizardState(event);
     }
 
@@ -601,7 +601,7 @@ public class OrganizerEventWizardService {
     private OrganizerEventWizardResponse buildWizardState(Event event) {
         List<EventCategory> eventCategories = eventCategoryRepository.findAllByEventId(event.getId());
         List<EventImage> eventImages = eventImageRepository.findAllByEventIdOrderBySortOrderAscIdAsc(event.getId());
-        List<EventArtist> eventArtists = eventArtistRepository.findAllByEventIdOrderByIdAsc(event.getId());
+        List<EventParticipant> eventParticipants = eventParticipantRepository.findAllByEventIdOrderByIdAsc(event.getId());
         List<Session> sessions = sessionRepository.findAllByEventIdOrderByStartsAtAsc(event.getId());
 
         Map<Long, List<TicketType>> ticketTypesBySession = new HashMap<>();
@@ -647,23 +647,24 @@ public class OrganizerEventWizardService {
                 .build())
             .toList();
 
-        List<OrganizerEventWizardResponse.ArtistItem> artistItems = eventArtists.stream()
+        List<OrganizerEventWizardResponse.ParticipantItem> participantItems = eventParticipants.stream()
             .map(link -> {
-                Artist artist = link.getArtist();
-                if (artist == null) {
+                Participant participant = link.getParticipant();
+                if (participant == null) {
                     return null;
                 }
-                Long imageId = artistImageRepository.findFirstByArtistIdAndPrimaryIsTrueOrderByIdAsc(artist.getId())
-                    .map(ArtistImage::getImage)
+                Long imageId = participantImageRepository.findFirstByParticipantIdAndPrimaryIsTrueOrderByIdAsc(participant.getId())
+                    .map(ParticipantImage::getImage)
                     .map(Image::getId)
                     .orElse(null);
 
-                return OrganizerEventWizardResponse.ArtistItem.builder()
-                    .artistId(artist.getId())
-                    .name(artist.getName())
-                    .stageName(artist.getStageName())
-                    .description(artist.getDescription())
-                    .genre(artist.getGenre())
+                return OrganizerEventWizardResponse.ParticipantItem.builder()
+                    .participantId(participant.getId())
+                    .name(participant.getName())
+                    .stageName(participant.getStageName())
+                    .description(participant.getDescription())
+                    .genre(participant.getGenre())
+                    .kind(participant.getKind())
                     .imageId(imageId)
                     .build();
             })
@@ -700,7 +701,7 @@ public class OrganizerEventWizardService {
                     .sortOrder(item.getSortOrder())
                     .build())
                 .toList())
-            .artists(artistItems)
+            .participants(participantItems)
             .sessions(sessionItems)
             .validationIssues(issues)
             .readyForModeration(issues.isEmpty())
@@ -750,10 +751,10 @@ public class OrganizerEventWizardService {
             }
         }
 
-        Set<Long> uniqueArtistIds = new HashSet<>();
-        for (EventArtist eventArtist : eventArtistRepository.findAllByEventIdOrderByIdAsc(event.getId())) {
-            if (eventArtist.getArtist() != null && !uniqueArtistIds.add(eventArtist.getArtist().getId())) {
-                issues.add(issue("duplicate_artists", "Артисты в событии не должны дублироваться", "step_3"));
+        Set<Long> uniqueParticipantIds = new HashSet<>();
+        for (EventParticipant eventParticipant : eventParticipantRepository.findAllByEventIdOrderByIdAsc(event.getId())) {
+            if (eventParticipant.getParticipant() != null && !uniqueParticipantIds.add(eventParticipant.getParticipant().getId())) {
+                issues.add(issue("duplicate_participants", "Участники в событии не должны дублироваться", "step_3"));
                 break;
             }
         }

@@ -24,7 +24,7 @@ public class EventDetailsResponse {
     private OrganizationSummary organization;
     private VenueResponse venue;
     private List<CategoryResponse> categories;
-    private List<ArtistSummaryResponse> artists;
+    private List<ParticipantSummaryResponse> participants;
     private List<SessionShortResponse> sessions;
     private Boolean free;
     private BigDecimal minPrice;

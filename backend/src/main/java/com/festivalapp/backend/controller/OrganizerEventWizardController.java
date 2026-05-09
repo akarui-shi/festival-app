@@ -1,6 +1,6 @@
 package com.festivalapp.backend.controller;
 
-import com.festivalapp.backend.dto.OrganizerEventArtistsRequest;
+import com.festivalapp.backend.dto.OrganizerEventParticipantsRequest;
 import com.festivalapp.backend.dto.OrganizerEventBasicInfoRequest;
 import com.festivalapp.backend.dto.OrganizerEventCategoriesRequest;
 import com.festivalapp.backend.dto.OrganizerEventImagesRequest;
@@ -73,11 +73,11 @@ public class OrganizerEventWizardController {
         return ResponseEntity.ok(wizardService.updateImages(eventId, request, extractUsername(principal)));
     }
 
-    @PutMapping("/events/wizard/{eventId}/artists")
-    public ResponseEntity<OrganizerEventWizardResponse> updateArtists(@PathVariable Long eventId,
-                                                                      @Valid @RequestBody OrganizerEventArtistsRequest request,
-                                                                      @AuthenticationPrincipal UserDetails principal) {
-        return ResponseEntity.ok(wizardService.updateArtists(eventId, request, extractUsername(principal)));
+    @PutMapping("/events/wizard/{eventId}/participants")
+    public ResponseEntity<OrganizerEventWizardResponse> updateParticipants(@PathVariable Long eventId,
+                                                                           @Valid @RequestBody OrganizerEventParticipantsRequest request,
+                                                                           @AuthenticationPrincipal UserDetails principal) {
+        return ResponseEntity.ok(wizardService.updateParticipants(eventId, request, extractUsername(principal)));
     }
 
     @PutMapping("/events/wizard/{eventId}/sessions")

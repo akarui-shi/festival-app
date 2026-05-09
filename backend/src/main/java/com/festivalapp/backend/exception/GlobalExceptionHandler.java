@@ -85,13 +85,13 @@ public class GlobalExceptionHandler {
             || (normalized.contains("duplicate key") && normalized.contains("event_categories"))) {
             return buildResponse(HttpStatus.BAD_REQUEST, "Категория уже добавлена к мероприятию");
         }
-        if (normalized.contains("uq_event_artists")
-            || (normalized.contains("duplicate key") && normalized.contains("event_artists"))) {
-            return buildResponse(HttpStatus.BAD_REQUEST, "Артист уже добавлен к мероприятию");
+        if (normalized.contains("uq_event_participants")
+            || (normalized.contains("duplicate key") && normalized.contains("event_participants"))) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Участник уже добавлен к мероприятию");
         }
-        if (normalized.contains("uq_artist_images")
-            || (normalized.contains("duplicate key") && normalized.contains("artist_images"))) {
-            return buildResponse(HttpStatus.BAD_REQUEST, "Изображение артиста уже добавлено");
+        if (normalized.contains("uq_participant_images")
+            || (normalized.contains("duplicate key") && normalized.contains("participant_images"))) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Изображение участника уже добавлено");
         }
         if (normalized.contains("events_venue_id_fkey")) {
             return buildResponse(HttpStatus.BAD_REQUEST, "Нельзя удалить площадку: она используется в мероприятиях");

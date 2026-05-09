@@ -65,9 +65,9 @@ public class EventCreateRequest {
 
     private Set<Long> categoryIds;
 
-    private Set<Long> artistIds;
+    private Set<Long> participantIds;
 
-    private List<String> newArtistNames;
+    private List<String> newParticipantNames;
 
     private List<EventImageRequest> eventImages;
 }

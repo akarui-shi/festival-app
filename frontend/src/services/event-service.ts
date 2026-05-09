@@ -20,8 +20,8 @@ export interface EventUpsertPayload extends Partial<Event> {
   venueContacts?: string;
   venueCapacity?: number;
   eventImages?: EventImagePayload[];
-  artistIds?: Array<number | string>;
-  newArtistNames?: string[];
+  participantIds?: Array<number | string>;
+  newParticipantNames?: string[];
 }
 
 function toNumber(value: unknown): number | undefined {
@@ -39,9 +39,9 @@ function buildEventPayload(data: EventUpsertPayload) {
     .map(toNumber)
     .filter((value): value is number => value !== undefined);
 
-  const artistIds = (data.artistIds && data.artistIds.length > 0
-    ? data.artistIds
-    : data.artists?.length ? data.artists.map((artist) => artist.id) : [])
+  const participantIds = (data.participantIds && data.participantIds.length > 0
+    ? data.participantIds
+    : data.participants?.length ? data.participants.map((participant) => participant.id) : [])
     .map(toNumber)
     .filter((value): value is number => value !== undefined);
 
@@ -62,8 +62,8 @@ function buildEventPayload(data: EventUpsertPayload) {
     venueCapacity: toNumber(data.venueCapacity),
     eventImages: data.eventImages?.length ? data.eventImages : undefined,
     categoryIds: categoryIds.length ? categoryIds : undefined,
-    artistIds: artistIds.length ? artistIds : undefined,
-    newArtistNames: data.newArtistNames?.length ? data.newArtistNames : undefined,
+    participantIds: participantIds.length ? participantIds : undefined,
+    newParticipantNames: data.newParticipantNames?.length ? data.newParticipantNames : undefined,
   };
 }
 
@@ -81,6 +81,8 @@ export const eventService = {
       priceTo: filters?.priceTo,
       registrationOpen: filters?.registrationOpen,
       status: filters?.status,
+      sortBy: filters?.sortBy,
+      sortDir: filters?.sortDir,
     });
 
     const events = response;

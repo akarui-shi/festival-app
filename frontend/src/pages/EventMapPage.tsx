@@ -33,15 +33,19 @@ export default function EventMapPage() {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState('');
 
+  // Перезапрашиваем мероприятия при смене выбранного города. Если город не выбран —
+  // показываем все (cityId=undefined → бэк не фильтрует). Также сбрасываем флаг
+  // зума на город, чтобы карта снова центрировалась на новом выбранном городе.
   useEffect(() => {
-    eventService.getEvents({ size: 200 })
+    cityZoomedRef.current = false;
+    eventService.getEvents({ size: 200, cityId: selectedCity?.id })
       .then((res) => {
         const withCoords = res.content.filter((e) => e.latitude != null && e.longitude != null);
         setEvents(withCoords);
         setFiltered(withCoords);
       })
       .catch(() => {});
-  }, []);
+  }, [selectedCity?.id]);
 
   useEffect(() => {
     const q = search.trim().toLowerCase();
@@ -140,7 +144,11 @@ export default function EventMapPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
           <h1 className="font-heading text-3xl text-foreground">Карта мероприятий</h1>
-          <p className="mt-1 text-muted-foreground">Найдите события рядом с вами</p>
+          <p className="mt-1 text-muted-foreground">
+            {selectedCity
+              ? `События в городе ${selectedCity.name}`
+              : 'Найдите события рядом с вами'}
+          </p>
         </div>
 
         <div className="flex flex-col gap-4 lg:flex-row">
@@ -173,7 +181,11 @@ export default function EventMapPage() {
 
             <div className="max-h-[calc(100vh-22rem)] overflow-y-auto space-y-2 pr-1">
               {filtered.length === 0 && (
-                <p className="py-8 text-center text-sm text-muted-foreground">Нет мероприятий с координатами</p>
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  {selectedCity
+                    ? `В городе ${selectedCity.name} пока нет мероприятий с координатами`
+                    : 'Нет мероприятий с координатами'}
+                </p>
               )}
               {filtered.map((e) => (
                 <button
