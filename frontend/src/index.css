@@ -251,13 +251,28 @@
 
   .text-gradient-warm {
     @apply bg-gradient-to-r from-[hsl(var(--terracotta-dark))] via-primary to-[hsl(var(--golden-dark))] bg-clip-text text-transparent;
+    /* bg-clip-text + serif descenders: reserve ink box so glyphs aren’t clipped */
+    padding-bottom: 0.12em;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
   }
 
   .bg-noise {
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
   }
 
-  .ymap-clean [class*='map-copyrights-promo'] {
+  .ymap-clean [class*='map-copyrights-promo'],
+  .ymap-clean [class*='copyrights-promo'],
+  .ymap-clean [class*='gotoymaps'],
+  .ymap-clean [class*='gototech'],
+  .ymap-clean [class*='gototaxi'],
+  .ymap-clean [class*='map-open-block'],
+  .ymap-clean [class*='map-open'],
+  .ymap-clean [class*='promo'],
+  .ymap-clean a[href*='yandex.ru/maps/?um=constructor'],
+  .ymap-clean a[href*='yandex.ru/map-constructor'],
+  .ymap-clean a[href*='tech.yandex'],
+  .ymap-clean a[href*='constructor'] {
     display: none !important;
   }
 

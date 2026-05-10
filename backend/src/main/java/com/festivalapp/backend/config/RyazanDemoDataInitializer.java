@@ -74,10 +74,6 @@ public class RyazanDemoDataInitializer implements ApplicationRunner {
     private static final String EV_LECT_1 = "images/lecture/alizea-sidorov-2vLe7yNQ-RA-unsplash.jpg";
     private static final String EV_LECT_2 = "images/lecture/jeremy-mcgilvrey-CnAgA4rmGUQ-unsplash.jpg";
 
-    private static final String EV_FAMILY_1 = "images/open air/aranxa-esteve-pOXHU0UEDcg-unsplash.jpg";
-    private static final String EV_FAMILY_2 = "images/open air/colin-lloyd-eiQqGBAMgIE-unsplash.jpg";
-    private static final String EV_FAMILY_3 = "images/open air/david-dvoracek-3kBIZZluhNc-unsplash.jpg";
-
     private static final String EV_LYBED_1 = "images/open air/joey-thompson-4zN_-PKsbWw-unsplash.jpg";
     private static final String EV_LYBED_2 = "images/open air/john-moeses-bauan-oOOlaMzjvY0-unsplash.jpg";
     private static final String EV_LYBED_3 = "images/open air/sebastian-mark-9xsXiWvjnLQ-unsplash.jpg";
@@ -93,12 +89,8 @@ public class RyazanDemoDataInitializer implements ApplicationRunner {
     // Публикации
     private static final String PUB_NIGHT_1 = "images/live music/pexels-andrea-roman-291935393-13388890.jpg";
     private static final String PUB_NIGHT_2 = "images/music stage/magnus-lunay-LHR6tUw8N34-unsplash.jpg";
-    private static final String PUB_LECT = "images/art gallery/praewthida-k-vJejbjXEOxU-unsplash.jpg";
-    private static final String PUB_FAMILY_1 = "images/open air/tony-pham-FUmDe-Bx1LA-unsplash.jpg";
-    private static final String PUB_FAMILY_2 = "images/art/mandell-smock--dQ1n2q5JFg-unsplash.jpg";
     private static final String PUB_LYBED = "images/theatre stage/pexels-eloimotte-26285734.jpg";
     private static final String PUB_DRAMA = "images/music stage/noah-carter-_TJ22WxXJ8U-unsplash.jpg";
-    private static final String PUB_URBAN = "images/music stage/rahul-kukreja-_5MoVxUZxEw-unsplash.jpg";
     private static final String PUB_ELECTRO = "images/music stage/ivaldo-hadi-4AUzJ6hbPJU-unsplash.jpg";
 
     // --- Россия-специфичные картинки (Wikimedia Commons, скачаны автоматически). ---
@@ -124,9 +116,6 @@ public class RyazanDemoDataInitializer implements ApplicationRunner {
     private static final String EV_FREE_WALK_RZ_2 = "images/free-walks/walks-04.jpg";
     private static final String EV_FREE_MUSEUM_RZ_1 = "images/free-museum/museum-03.jpg";
     private static final String EV_FREE_MUSEUM_RZ_2 = "images/free-museum/museum-04.jpg";
-    private static final String EV_FREE_PARK_RZ_1 = "images/free-park/park-03.jpg";
-    private static final String EV_FREE_PARK_RZ_2 = "images/free-park/park-04.jpg";
-    private static final String EV_FREE_CINEMA_RZ_1 = "images/free-park/ryazan-open-air-cinema.jpg";
     private static final String EV_FREE_KIDS_RZ_1 = "images/free-children/ryazan-kids-artwork.jpg";
     private static final String EV_FREE_KIDS_RZ_2 = "images/free-children/raspopova-marina-JrtYJoAIN6A-unsplash.jpg";
 

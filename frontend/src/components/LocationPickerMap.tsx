@@ -46,7 +46,7 @@ export function LocationPickerMap({ latitude, longitude, initialCenter, onPick }
           {
             center,
             zoom: 12,
-            controls: ['zoomControl', 'fullscreenControl'],
+            controls: ['zoomControl'],
           },
           YANDEX_MAP_MINIMAL_OPTIONS,
         );
