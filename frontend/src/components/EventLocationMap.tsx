@@ -12,18 +12,6 @@ interface EventLocationMapProps {
   title?: string;
 }
 
-function buildYandexMapsLink(address?: string, coordinates?: Coordinates | null): string | null {
-  if (coordinates) {
-    return `https://yandex.ru/maps/?ll=${coordinates[1]},${coordinates[0]}&z=16&pt=${coordinates[1]},${coordinates[0]},pm2rdm`;
-  }
-
-  if (address?.trim()) {
-    return `https://yandex.ru/maps/?text=${encodeURIComponent(address.trim())}`;
-  }
-
-  return null;
-}
-
 export function EventLocationMap({ address, latitude, longitude, title }: EventLocationMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
@@ -106,7 +94,7 @@ export function EventLocationMap({ address, latitude, longitude, title }: EventL
           {
             center: resolvedCoordinates,
             zoom: 15,
-            controls: ['zoomControl', 'fullscreenControl'],
+            controls: ['zoomControl'],
           },
           YANDEX_MAP_MINIMAL_OPTIONS,
         );
@@ -162,8 +150,6 @@ export function EventLocationMap({ address, latitude, longitude, title }: EventL
     placemarkRef.current = null;
   }, []);
 
-  const externalLink = buildYandexMapsLink(address, resolvedCoordinates);
-
   if (!address?.trim() && !resolvedCoordinates) {
     return (
       <div className="flex h-72 flex-col items-center justify-center rounded-2xl border border-border bg-muted px-6 text-center">
@@ -188,16 +174,6 @@ export function EventLocationMap({ address, latitude, longitude, title }: EventL
         <MapPin className="h-8 w-8 text-muted-foreground/50" />
         <p className="mt-3 text-sm font-medium text-foreground">Не удалось отобразить карту</p>
         {address && <p className="mt-1 text-xs text-muted-foreground">{address}</p>}
-        {externalLink && (
-          <a
-            href={externalLink}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-4 text-sm font-semibold text-primary hover:underline"
-          >
-            Открыть в Яндекс Картах
-          </a>
-        )}
       </div>
     );
   }
@@ -212,21 +188,11 @@ export function EventLocationMap({ address, latitude, longitude, title }: EventL
           </div>
         )}
       </div>
-      <div className="flex items-start justify-between gap-3 border-t border-border px-4 py-3">
+      <div className="border-t border-border px-4 py-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">{title || 'Место проведения'}</p>
           {address && <p className="truncate text-xs text-muted-foreground">{address}</p>}
         </div>
-        {externalLink && (
-          <a
-            href={externalLink}
-            target="_blank"
-            rel="noreferrer"
-            className="shrink-0 text-sm font-semibold text-primary hover:underline"
-          >
-            Открыть
-          </a>
-        )}
       </div>
     </div>
   );

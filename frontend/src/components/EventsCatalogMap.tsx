@@ -90,7 +90,7 @@ export function EventsCatalogMap({ events }: Props) {
 
         const map = new ymaps.Map(
           containerRef.current,
-          { center: firstCoords as [number, number], zoom: 11, controls: ['zoomControl', 'fullscreenControl'] },
+          { center: firstCoords as [number, number], zoom: 11, controls: ['zoomControl'] },
           YANDEX_MAP_MINIMAL_OPTIONS,
         );
         applyMinimalYandexMapUi(map);
@@ -203,7 +203,7 @@ export function EventsCatalogMap({ events }: Props) {
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border">
+    <div className="ymap-clean relative overflow-hidden rounded-2xl border border-border">
       <div ref={containerRef} className="h-[520px] w-full" />
 
       {mapState === 'loading' && (

@@ -30,6 +30,7 @@ export default function EventMapPage() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const clustererRef = useRef<any>(null);
+  const hasInitialFitRef = useRef(false);
   const cityZoomedRef = useRef(false);
   // Map<eventId, Placemark> — нужен, чтобы менять иконку конкретной метки
   // при выборе/наведении из бокового списка.
@@ -51,6 +52,7 @@ export default function EventMapPage() {
 
   // Загружаем мероприятия выбранного города (или все, если город не выбран).
   useEffect(() => {
+    hasInitialFitRef.current = false;
     cityZoomedRef.current = false;
     eventService.getEvents({ size: 200, cityId: selectedCity?.id })
       .then((res) => {
@@ -106,7 +108,7 @@ export default function EventMapPage() {
 
         const map = new ymaps.Map(
           mapContainerRef.current,
-          { center: [55.75, 37.57], zoom: 5, controls: ['zoomControl', 'fullscreenControl'] },
+          { center: [55.75, 37.57], zoom: 5, controls: ['zoomControl'] },
           YANDEX_MAP_MINIMAL_OPTIONS,
         );
         applyMinimalYandexMapUi(map);
@@ -169,6 +171,27 @@ export default function EventMapPage() {
     }
 
     clustererRef.current.add(placemarks);
+
+    if (!hasInitialFitRef.current && placemarks.length > 0) {
+      hasInitialFitRef.current = true;
+      if (placemarks.length === 1) {
+        const head = Array.from(eventsByCoord.values())[0][0];
+        mapRef.current.setCenter([head.latitude!, head.longitude!], 14, { duration: 500 });
+      } else {
+        try {
+          const bounds = mapRef.current.geoObjects.getBounds();
+          if (bounds) {
+            mapRef.current.setBounds(bounds, {
+              checkZoomRange: true,
+              zoomMargin: 48,
+              duration: 500,
+            });
+          }
+        } catch {
+          // Bounds can be unavailable during the first render tick.
+        }
+      }
+    }
   }, [eventsByCoord, mapLoaded]);
 
   // Подсветка активной/наведённой метки. Работает напрямую через options.set:
@@ -211,6 +234,11 @@ export default function EventMapPage() {
           if (!mapRef.current || cityZoomedRef.current) return;
           const obj = result.geoObjects.get(0);
           if (!obj) return;
+          if (eventsByCoord.size > 0) {
+            cityZoomedRef.current = true;
+            return;
+          }
+
           const bounds = obj.properties.get('boundedBy');
           if (bounds) {
             mapRef.current.setBounds(bounds, { checkZoomRange: true, zoomMargin: 30, duration: 600 });
@@ -222,7 +250,7 @@ export default function EventMapPage() {
         })
         .catch(() => {});
     });
-  }, [mapLoaded, selectedCity]);
+  }, [eventsByCoord.size, mapLoaded, selectedCity]);
 
   // При выборе точки — скроллим к первой её карточке в боковом списке,
   // если карточка вне видимой области.
@@ -354,7 +382,7 @@ export default function EventMapPage() {
           <div className="relative flex-1">
             <div
               ref={mapContainerRef}
-              className="h-[500px] w-full overflow-hidden rounded-2xl border border-border lg:h-[calc(100vh-14rem)]"
+              className="ymap-clean h-[500px] w-full overflow-hidden rounded-2xl border border-border lg:h-[calc(100vh-14rem)]"
             />
 
             {mapError && (

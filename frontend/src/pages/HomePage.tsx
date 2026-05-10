@@ -148,7 +148,7 @@ export default function HomePage() {
                 <Sparkles className="h-3.5 w-3.5" />
                 Культурная жизнь малых городов
               </div>
-              <h1 className="mt-1 font-heading text-4xl leading-[1.1] tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+              <h1 className="mt-1 pt-0.5 font-heading text-4xl leading-tight tracking-tight text-foreground sm:text-5xl lg:text-6xl">
                 Откройте для себя
                 <span className="block text-gradient-warm"> культурные события</span>
               </h1>
