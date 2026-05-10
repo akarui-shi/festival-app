@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ExternalLink, FileText, Search } from 'lucide-react';
+import { Archive, ExternalLink, FileText, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { publicationService } from '@/services/publication-service';
@@ -11,13 +11,14 @@ import { Input } from '@/components/ui/input';
 import { getPublicationStatusBadge } from '@/lib/statuses';
 import type { Publication, PublicationStatus } from '@/types';
 
-type PublicationFilterKey = 'ALL' | 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'DELETED';
+type PublicationFilterKey = 'ALL' | 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED' | 'DELETED';
 
 const FILTER_LABELS: Record<PublicationFilterKey, string> = {
   ALL: 'Все',
   PENDING: 'На модерации',
   PUBLISHED: 'Опубликованные',
   REJECTED: 'Отклонённые',
+  ARCHIVED: 'В архиве',
   DELETED: 'Удалённые',
 };
 
@@ -26,6 +27,7 @@ function normalizePublicationStatus(value?: string | null): PublicationFilterKey
   if (key === 'PENDING' || key === 'DRAFT') return 'PENDING';
   if (key === 'PUBLISHED') return 'PUBLISHED';
   if (key === 'REJECTED') return 'REJECTED';
+  if (key === 'ARCHIVED') return 'ARCHIVED';
   if (key === 'DELETED') return 'DELETED';
   return 'OTHER';
 }
@@ -51,10 +53,11 @@ export default function AdminPublications() {
         if (status === 'PENDING') acc.PENDING += 1;
         if (status === 'PUBLISHED') acc.PUBLISHED += 1;
         if (status === 'REJECTED') acc.REJECTED += 1;
+        if (status === 'ARCHIVED') acc.ARCHIVED += 1;
         if (status === 'DELETED') acc.DELETED += 1;
         return acc;
       },
-      { ALL: 0, PENDING: 0, PUBLISHED: 0, REJECTED: 0, DELETED: 0 },
+      { ALL: 0, PENDING: 0, PUBLISHED: 0, REJECTED: 0, ARCHIVED: 0, DELETED: 0 },
     );
   }, [pubs]);
 
@@ -167,6 +170,11 @@ export default function AdminPublications() {
                         Отклонить
                       </Button>
                     </>
+                  )}
+                  {normalizePublicationStatus(pub.status) !== 'ARCHIVED' && normalizePublicationStatus(pub.status) !== 'DELETED' && (
+                    <Button size="sm" variant="outline" className="gap-1.5" onClick={() => changeStatus(String(pub.publicationId), 'ARCHIVED')}>
+                      <Archive className="h-3.5 w-3.5" />В архив
+                    </Button>
                   )}
                 </div>
               </div>

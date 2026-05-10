@@ -28,6 +28,7 @@ import com.festivalapp.backend.entity.TicketType;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.entity.Venue;
 import com.festivalapp.backend.repository.ParticipantRepository;
+import com.festivalapp.backend.repository.ParticipantImageRepository;
 import com.festivalapp.backend.exception.BadRequestException;
 import com.festivalapp.backend.exception.ResourceNotFoundException;
 import com.festivalapp.backend.repository.CategoryRepository;
@@ -79,6 +80,7 @@ public class EventService {
     private final EventCategoryRepository eventCategoryRepository;
     private final EventParticipantRepository eventParticipantRepository;
     private final ParticipantRepository participantRepository;
+    private final ParticipantImageRepository participantImageRepository;
     private final CategoryRepository categoryRepository;
     private final SessionRepository sessionRepository;
     private final EventImageRepository eventImageRepository;
@@ -241,19 +243,20 @@ public class EventService {
 
         long totalEvents = published.size();
         long totalRegistrations = 0;
-        Set<Long> activeCityIds = new HashSet<>();
-
         for (Event event : published) {
-            if (event.getCity() != null) activeCityIds.add(event.getCity().getId());
             for (Session session : sessionRepository.findAllByEventIdOrderByStartsAtAsc(event.getId())) {
                 totalRegistrations += ticketRepository.countBySessionIdAndStatus(session.getId(), "активен");
             }
         }
 
+        long totalCities = cityRepository.findAllByOrderByNameAsc().stream()
+            .filter(City::isActive)
+            .count();
+
         Map<String, Long> stats = new HashMap<>();
         stats.put("totalEvents", totalEvents);
         stats.put("totalRegistrations", totalRegistrations);
-        stats.put("totalCities", (long) activeCityIds.size());
+        stats.put("totalCities", totalCities);
         return stats;
     }
 
@@ -1106,14 +1109,24 @@ public class EventService {
         return eventParticipantRepository.findAllByEventIdOrderByIdAsc(eventId).stream()
             .map(EventParticipant::getParticipant)
             .filter(Objects::nonNull)
-            .map(participant -> ParticipantSummaryResponse.builder()
-                .id(participant.getId())
-                .name(participant.getName())
-                .stageName(participant.getStageName())
-                .description(participant.getDescription())
-                .genre(participant.getGenre())
-                .kind(participant.getKind())
-                .build())
+            .map(participant -> {
+                List<Long> imageIds = participantImageRepository.findAllByParticipantIdOrderByPrimaryDescIdAsc(participant.getId()).stream()
+                    .map(participantImage -> participantImage.getImage() == null ? null : participantImage.getImage().getId())
+                    .filter(Objects::nonNull)
+                    .toList();
+                Long primaryImageId = imageIds.isEmpty() ? null : imageIds.get(0);
+                return ParticipantSummaryResponse.builder()
+                    .id(participant.getId())
+                    .name(participant.getName())
+                    .stageName(participant.getStageName())
+                    .description(participant.getDescription())
+                    .genre(participant.getGenre())
+                    .kind(participant.getKind())
+                    .imageId(primaryImageId)
+                    .imageIds(imageIds)
+                    .primaryImageId(primaryImageId)
+                    .build();
+            })
             .toList();
     }
 

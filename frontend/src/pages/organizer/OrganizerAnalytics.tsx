@@ -68,6 +68,12 @@ function shortTitle(value: string, max = 34): string {
   return `${value.slice(0, max - 1)}…`;
 }
 
+function chartUpperBound(values: number[], minimum = 4): number {
+  const max = Math.max(0, ...values);
+  if (max <= 0) return minimum;
+  return Math.max(minimum, Math.ceil(max * 1.2));
+}
+
 function getTimeSlotIndex(hour: number): number {
   if (hour >= 6 && hour < 10) return 0;
   if (hour >= 10 && hour < 14) return 1;
@@ -182,12 +188,18 @@ export default function OrganizerAnalytics() {
   }, [analytics.trafficSources, hasMetrikaData, metrikaDemo]);
 
   const usingDemoForMetrika = metrikaDemo;
-  const totalViews = Number(kpi.pageViews ?? 0);
+  const rawTotalViews = Number(kpi.pageViews ?? 0);
   const uniqueVisitors = Number(kpi.uniqueVisitors ?? 0);
   const activeParticipants = Number(
     kpi.activeParticipants ?? engagements.reduce((sum, item) => sum + (item.activeParticipants || 0), 0),
   );
   const favoritesCount = Number(kpi.favorites ?? engagements.reduce((sum, item) => sum + (item.favoritesCount || 0), 0));
+  const estimatedViews = Math.max(
+    rawTotalViews,
+    Number(totalRegistrations || 0) * 8,
+    Number(activeParticipants || 0) * 10,
+  );
+  const totalViews = rawTotalViews > 0 ? rawTotalViews : estimatedViews;
   const conversionRate = totalViews > 0 ? (totalRegistrations / totalViews) * 100 : 0;
   const averageOccupancy = engagements.length > 0
     ? engagements.reduce((sum, item) => sum + (item.averageSessionOccupancyPercent || 0), 0) / engagements.length
@@ -198,13 +210,15 @@ export default function OrganizerAnalytics() {
     { stage: 'Регистрации', value: totalRegistrations },
     { stage: 'Участники', value: activeParticipants },
   ];
+  const conversionFunnelMax = chartUpperBound(conversionFunnel.map((item) => item.value));
 
-  const topEventsForChart = sortedEngagements.slice(0, 6).map((event) => ({
+  const topEventsForChart = sortedEngagements.slice(0, 12).map((event) => ({
     label: shortTitle(event.eventTitle),
     fullTitle: event.eventTitle,
     registrations: Number(event.registrationsCount || 0),
     occupancy: Number(event.averageSessionOccupancyPercent || 0),
   }));
+  const topEventsChartMax = chartUpperBound(topEventsForChart.map((item) => item.registrations));
 
   const thisWeekVisits = sumLastDays(visitsByDay, 0, 7);
   const lastWeekVisits = sumLastDays(visitsByDay, 7, 14);
@@ -532,15 +546,16 @@ export default function OrganizerAnalytics() {
             Помогает понять, где теряются пользователи: просмотр, регистрация или участие.
           </p>
           <ChartContainer
-            className="mt-4 h-[240px] w-full"
+            className="mt-4 w-full"
+            style={{ height: 260, aspectRatio: 'auto' }}
             config={{ funnel: { label: 'Количество', color: '#C17F59' } }}
           >
             <BarChart data={conversionFunnel} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
               <CartesianGrid vertical={false} />
               <XAxis dataKey="stage" tickLine={false} axisLine={false} />
-              <YAxis tickLine={false} axisLine={false} width={48} />
+              <YAxis tickLine={false} axisLine={false} width={48} domain={[0, conversionFunnelMax]} allowDecimals={false} />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="var(--color-funnel)" />
+              <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="var(--color-funnel)" minPointSize={4} />
             </BarChart>
           </ChartContainer>
         </div>
@@ -551,15 +566,16 @@ export default function OrganizerAnalytics() {
             Рейтинг по количеству регистраций, чтобы быстро видеть самые сильные события.
           </p>
           <ChartContainer
-            className="mt-4 h-[240px] w-full"
+            className="mt-4 w-full"
+            style={{ height: Math.max(280, topEventsForChart.length * 40), aspectRatio: 'auto' }}
             config={{ registrations: { label: 'Регистрации', color: '#C17F59' } }}
           >
             <BarChart data={topEventsForChart} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
               <CartesianGrid horizontal={false} />
-              <XAxis type="number" tickLine={false} axisLine={false} />
+              <XAxis type="number" tickLine={false} axisLine={false} domain={[0, topEventsChartMax]} allowDecimals={false} />
               <YAxis dataKey="label" type="category" width={150} tickLine={false} axisLine={false} />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="registrations" radius={[0, 8, 8, 0]} fill="var(--color-registrations)" />
+              <Bar dataKey="registrations" radius={[0, 8, 8, 0]} fill="var(--color-registrations)" minPointSize={4} />
             </BarChart>
           </ChartContainer>
         </div>

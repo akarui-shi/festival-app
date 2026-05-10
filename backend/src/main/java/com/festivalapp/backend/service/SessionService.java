@@ -33,6 +33,7 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -226,20 +227,62 @@ public class SessionService {
             .orElseThrow(() -> new ResourceNotFoundException("Session not found"));
         assertCanManageEvent(actor, session.getEvent());
 
-        return ticketRepository.findAllBySessionIdOrderByIssuedAtDesc(sessionId).stream()
-            .map(ticket -> SessionRegistrationResponse.builder()
-                .registrationId(ticket.getOrderItem() == null || ticket.getOrderItem().getOrder() == null
-                    ? ticket.getId()
-                    : ticket.getOrderItem().getOrder().getId())
-                .userId(ticket.getUser() == null ? null : ticket.getUser().getId())
-                .userFullName(ticket.getUser() == null ? null : (ticket.getUser().getFirstName() + " " + ticket.getUser().getLastName()).trim())
-                .userAvatarImageId(ticket.getUser() == null || ticket.getUser().getAvatarImage() == null ? null : ticket.getUser().getAvatarImage().getId())
-                .quantity(ticket.getOrderItem() == null ? 1 : ticket.getOrderItem().getQuantity())
-                .status(DomainStatusMapper.toRegistrationStatus(ticket.getStatus()))
-                .qrToken(ticket.getQrToken())
-                .createdAt(toBusinessLocal(ticket.getIssuedAt()))
-                .build())
+        Map<String, RegistrationAccumulator> registrations = new LinkedHashMap<>();
+        for (Ticket ticket : ticketRepository.findAllBySessionIdOrderByIssuedAtDesc(sessionId)) {
+            String key = registrationKey(ticket);
+            RegistrationAccumulator accumulator = registrations.computeIfAbsent(key, ignored -> new RegistrationAccumulator(ticket));
+            accumulator.add(ticket);
+        }
+
+        return registrations.values().stream()
+            .map(RegistrationAccumulator::toResponse)
             .toList();
+    }
+
+    private String registrationKey(Ticket ticket) {
+        if (ticket.getOrderItem() != null
+            && ticket.getOrderItem().getOrder() != null
+            && ticket.getOrderItem().getOrder().getId() != null) {
+            return "order:" + ticket.getOrderItem().getOrder().getId();
+        }
+        if (ticket.getUser() != null && ticket.getUser().getId() != null) {
+            return "user:" + ticket.getUser().getId();
+        }
+        return "ticket:" + ticket.getId();
+    }
+
+    private final class RegistrationAccumulator {
+        private final Ticket firstTicket;
+        private int quantity = 0;
+        private String status;
+
+        private RegistrationAccumulator(Ticket firstTicket) {
+            this.firstTicket = firstTicket;
+            this.status = firstTicket.getStatus();
+        }
+
+        private void add(Ticket ticket) {
+            quantity += 1;
+            if ("активен".equals(ticket.getStatus())) {
+                status = ticket.getStatus();
+            }
+        }
+
+        private SessionRegistrationResponse toResponse() {
+            User user = firstTicket.getUser();
+            return SessionRegistrationResponse.builder()
+                .registrationId(firstTicket.getOrderItem() == null || firstTicket.getOrderItem().getOrder() == null
+                    ? firstTicket.getId()
+                    : firstTicket.getOrderItem().getOrder().getId())
+                .userId(user == null ? null : user.getId())
+                .userFullName(user == null ? null : (user.getFirstName() + " " + user.getLastName()).trim())
+                .userAvatarImageId(user == null || user.getAvatarImage() == null ? null : user.getAvatarImage().getId())
+                .quantity(quantity)
+                .status(DomainStatusMapper.toRegistrationStatus(status))
+                .qrToken(firstTicket.getQrToken())
+                .createdAt(toBusinessLocal(firstTicket.getIssuedAt()))
+                .build();
+        }
     }
 
     private SessionShortResponse toShortResponse(Session session) {

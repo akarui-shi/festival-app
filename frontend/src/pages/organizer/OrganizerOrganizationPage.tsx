@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Upload } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ExternalLink, Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoadingState } from '@/components/StateDisplays';
@@ -192,11 +193,19 @@ export default function OrganizerOrganizationPage() {
 
   return (
     <div className="space-y-8">
-      <section>
-        <h1 className="page-title">Организация</h1>
-        <p className="mt-1 text-muted-foreground">
-          Управляйте профилем организации, участниками и заявками на вступление.
-        </p>
+      <section className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="page-title">Организация</h1>
+          <p className="mt-1 text-muted-foreground">
+            Управляйте профилем организации, участниками и заявками на вступление.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" className="gap-1.5" asChild>
+          <Link to={`/organizations/${ownerOrganizationId}`} target="_blank" rel="noreferrer">
+            <ExternalLink className="h-4 w-4" />
+            Посмотреть страницу
+          </Link>
+        </Button>
       </section>
 
       <section className="surface-panel">

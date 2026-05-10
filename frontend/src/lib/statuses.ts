@@ -38,11 +38,14 @@ const PUBLICATION_STATUS_LABELS: Record<string, string> = {
   PENDING: 'На модерации',
   PUBLISHED: 'Опубликовано',
   REJECTED: 'Отклонено',
+  ARCHIVED: 'В архиве',
   DELETED: 'Удалено',
   ЧЕРНОВИК: 'Черновик',
   НА_РАССМОТРЕНИИ: 'На модерации',
   ОПУБЛИКОВАНО: 'Опубликовано',
   ОТКЛОНЕНО: 'Отклонено',
+  АРХИВИРОВАНО: 'В архиве',
+  В_АРХИВЕ: 'В архиве',
   УДАЛЕНО: 'Удалено',
 };
 
@@ -93,6 +96,7 @@ function publicationStatusClass(key: string): string {
   if (['PENDING', 'НА_РАССМОТРЕНИИ'].includes(key)) return 'bg-warning/10 text-warning';
   if (['PUBLISHED', 'ОПУБЛИКОВАНО'].includes(key)) return 'bg-success/10 text-success';
   if (['REJECTED', 'ОТКЛОНЕНО'].includes(key)) return 'bg-destructive/10 text-destructive';
+  if (['ARCHIVED', 'АРХИВИРОВАНО', 'В_АРХИВЕ'].includes(key)) return 'bg-muted text-muted-foreground';
   return 'bg-muted text-muted-foreground';
 }
 

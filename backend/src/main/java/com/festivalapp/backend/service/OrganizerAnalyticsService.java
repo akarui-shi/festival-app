@@ -32,10 +32,12 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -59,10 +61,10 @@ public class OrganizerAnalyticsService {
 
         long favorites = events.stream().mapToLong(event -> favoriteRepository.countByEventId(event.getId())).sum();
 
-        long registrations = 0;
-        int activeParticipants = 0;
+        Set<String> registeredPeople = new HashSet<>();
+        Set<String> activePeople = new HashSet<>();
         List<Session> sessions = new ArrayList<>();
-        Map<LocalDate, Long> registrationsByDay = new HashMap<>();
+        Map<LocalDate, Set<String>> registrationsByDay = new HashMap<>();
 
         for (Event event : events) {
             List<Session> eventSessions = sessionRepository.findAllByEventIdOrderByStartsAtAsc(event.getId());
@@ -73,18 +75,19 @@ public class OrganizerAnalyticsService {
                     if (ticket.getIssuedAt() != null) {
                         LocalDate issuedDate = ticket.getIssuedAt().toLocalDate();
                         if (!issuedDate.isBefore(range.from()) && !issuedDate.isAfter(range.to())) {
-                            registrationsByDay.merge(issuedDate, 1L, Long::sum);
-                            registrations++;
+                            String personKey = personKey(ticket);
+                            registrationsByDay.computeIfAbsent(issuedDate, ignored -> new HashSet<>()).add(personKey);
+                            registeredPeople.add(personKey);
                         }
                     }
                     if ("активен".equals(ticket.getStatus())) {
-                        activeParticipants++;
+                        activePeople.add(personKey(ticket));
                     }
                 }
             }
         }
 
-        List<AnalyticsDatePointResponse> registrationsSeries = buildDailySeries(range, registrationsByDay);
+        List<AnalyticsDatePointResponse> registrationsSeries = buildDailySeries(range, toDailyCounts(registrationsByDay));
         List<AnalyticsSessionLoadResponse> sessionLoads = buildSessionLoads(sessions);
 
         YandexMetrikaService.EventTrafficReport traffic = loadCombinedTraffic(events, range);
@@ -96,8 +99,8 @@ public class OrganizerAnalyticsService {
             .kpi(OrganizerAnalyticsOverviewResponse.OverviewKpi.builder()
                 .pageViews(traffic.getPageViews())
                 .uniqueVisitors(traffic.getUniqueVisitors())
-                .registrations(registrations)
-                .activeParticipants(activeParticipants)
+                .registrations(registeredPeople.size())
+                .activeParticipants(activePeople.size())
                 .favorites(favorites)
                 .averageRating(averageRating)
                 .build())
@@ -132,12 +135,12 @@ public class OrganizerAnalyticsService {
         DateRange range = normalizeRange(fromDate, toDate);
 
         List<Session> sessions = sessionRepository.findAllByEventIdOrderByStartsAtAsc(event.getId());
-        Map<LocalDate, Long> daily = new LinkedHashMap<>();
 
-        long registrationsCount = 0;
+        Set<String> registeredPeople = new HashSet<>();
+        Set<String> activePeople = new HashSet<>();
         long cancellationsCount = 0;
         long activeRegistrations = 0;
-        int activeParticipants = 0;
+        Map<LocalDate, Set<String>> dailyPeople = new LinkedHashMap<>();
 
         for (Session session : sessions) {
             List<Ticket> tickets = ticketRepository.findAllBySessionIdOrderByIssuedAtDesc(session.getId());
@@ -145,8 +148,9 @@ public class OrganizerAnalyticsService {
                 if (ticket.getIssuedAt() != null) {
                     LocalDate issued = ticket.getIssuedAt().toLocalDate();
                     if (!issued.isBefore(range.from()) && !issued.isAfter(range.to())) {
-                        registrationsCount++;
-                        daily.merge(issued, 1L, Long::sum);
+                        String personKey = personKey(ticket);
+                        registeredPeople.add(personKey);
+                        dailyPeople.computeIfAbsent(issued, ignored -> new HashSet<>()).add(personKey);
                     }
                 }
                 if ("возвращён".equals(ticket.getStatus())) {
@@ -154,10 +158,12 @@ public class OrganizerAnalyticsService {
                 }
                 if ("активен".equals(ticket.getStatus())) {
                     activeRegistrations++;
-                    activeParticipants++;
+                    activePeople.add(personKey(ticket));
                 }
             }
         }
+
+        Map<LocalDate, Long> daily = toDailyCounts(dailyPeople);
 
         long favoritesCount = favoriteRepository.countByEventId(event.getId());
         long waitlistCount = sessions.stream()
@@ -176,10 +182,10 @@ public class OrganizerAnalyticsService {
             .eventId(event.getId())
             .eventTitle(event.getTitle())
             .eventPath(eventPath(event.getId()))
-            .registrationsCount(registrationsCount)
+            .registrationsCount(registeredPeople.size())
             .cancellationsCount(cancellationsCount)
             .activeRegistrations(activeRegistrations)
-            .activeParticipants(activeParticipants)
+            .activeParticipants(activePeople.size())
             .sessionsCount(sessions.size())
             .averageSessionOccupancyPercent(avgOccupancy)
             .favoritesCount(favoritesCount)
@@ -338,6 +344,24 @@ public class OrganizerAnalyticsService {
 
     private String eventPath(Long eventId) {
         return "/events/" + eventId;
+    }
+
+    private String personKey(Ticket ticket) {
+        if (ticket.getUser() != null && ticket.getUser().getId() != null) {
+            return "user:" + ticket.getUser().getId();
+        }
+        if (ticket.getOrderItem() != null
+            && ticket.getOrderItem().getOrder() != null
+            && ticket.getOrderItem().getOrder().getId() != null) {
+            return "order:" + ticket.getOrderItem().getOrder().getId();
+        }
+        return "ticket:" + ticket.getId();
+    }
+
+    private Map<LocalDate, Long> toDailyCounts(Map<LocalDate, Set<String>> dailyPeople) {
+        Map<LocalDate, Long> result = new HashMap<>();
+        dailyPeople.forEach((date, people) -> result.put(date, (long) people.size()));
+        return result;
     }
 
     private User resolveActor(String actorIdentifier) {

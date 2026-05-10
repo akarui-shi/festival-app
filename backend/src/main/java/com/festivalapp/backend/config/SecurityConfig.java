@@ -82,7 +82,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/categories", "/api/venues", "/api/cities").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/sessions", "/api/sessions/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/comments/event/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/publications/mine").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/publications/mine", "/api/publications/mine/*").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/publications", "/api/publications/*").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/comments").hasRole("RESIDENT")
                 .requestMatchers(HttpMethod.PUT, "/api/comments/*").authenticated()

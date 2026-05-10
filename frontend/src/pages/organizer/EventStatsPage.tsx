@@ -250,7 +250,8 @@ export default function EventStatsPage() {
   if (loading) return <LoadingState />;
   if (!stats) return <ErrorState message="Не найдено" />;
 
-  const exportUrl = `/api/organizer/events/${id}/attendees/export`;
+  const exportCsvUrl = `/api/organizer/events/${id}/attendees/export`;
+  const exportJsonUrl = `/api/organizer/events/${id}/attendees/export.json`;
 
   return (
     <div className="space-y-8">
@@ -259,12 +260,20 @@ export default function EventStatsPage() {
           <h1 className="page-title">{stats.engagement.eventTitle}</h1>
           <p className="mt-1 text-muted-foreground">Статистика и управление сеансами</p>
         </div>
-        <a href={exportUrl} download>
-          <Button variant="outline" size="sm" className="gap-2 shrink-0">
-            <Download className="h-4 w-4" />
-            Экспорт CSV
-          </Button>
-        </a>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <a href={exportCsvUrl} download>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Download className="h-4 w-4" />
+              CSV
+            </Button>
+          </a>
+          <a href={exportJsonUrl} download>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Download className="h-4 w-4" />
+              JSON
+            </Button>
+          </a>
+        </div>
       </section>
 
       <section className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
