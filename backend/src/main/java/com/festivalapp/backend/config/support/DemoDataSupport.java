@@ -309,16 +309,21 @@ public class DemoDataSupport {
                 .build());
 
             if (ticketTypeRepository.findAllBySessionIdOrderByIdAsc(session.getId()).isEmpty()) {
-                ticketTypeRepository.save(TicketType.builder()
-                    .session(session)
-                    .name(sessionSpec.price().compareTo(BigDecimal.ZERO) <= 0 ? "Бесплатный вход" : "Стандарт")
-                    .price(sessionSpec.price())
-                    .currency("RUB")
-                    .quota(sessionSpec.seatLimit() == null ? 200 : sessionSpec.seatLimit())
-                    .active(true)
-                    .salesStartAt(OffsetDateTime.now().minusDays(1))
-                    .salesEndAt(sessionSpec.startsAt())
-                    .build());
+                for (TicketSeedSpec ticketSpec : sessionSpec.ticketSpecs()) {
+                    Integer quota = ticketSpec.quota() == null
+                        ? (sessionSpec.seatLimit() == null ? 200 : sessionSpec.seatLimit())
+                        : ticketSpec.quota();
+                    ticketTypeRepository.save(TicketType.builder()
+                        .session(session)
+                        .name(ticketSpec.name())
+                        .price(ticketSpec.price() == null ? BigDecimal.ZERO : ticketSpec.price())
+                        .currency("RUB")
+                        .quota(quota)
+                        .active(true)
+                        .salesStartAt(OffsetDateTime.now().minusDays(1))
+                        .salesEndAt(sessionSpec.startsAt())
+                        .build());
+                }
             }
         }
     }
@@ -526,14 +531,42 @@ public class DemoDataSupport {
     /** Сид участника, который привязывается к событиям городов. */
     public record ParticipantSeed(String name, String stageName, String description, String genre, String kind) { }
 
-    /** Сид сессии (один сеанс события) с адресом, временем и ценой. */
+    /** Сид типа билета внутри сеанса. */
+    public record TicketSeedSpec(String name, BigDecimal price, Integer quota) { }
+
+    /** Сид сессии (один сеанс события) с адресом, временем и билетами. */
     public record SessionSeedSpec(String sessionTitle,
                                   OffsetDateTime startsAt,
                                   OffsetDateTime endsAt,
                                   String venueAddress,
                                   String manualAddress,
                                   Integer seatLimit,
-                                  BigDecimal price) { }
+                                  BigDecimal price,
+                                  List<TicketSeedSpec> ticketSpecs) {
+
+        public SessionSeedSpec(String sessionTitle,
+                               OffsetDateTime startsAt,
+                               OffsetDateTime endsAt,
+                               String venueAddress,
+                               String manualAddress,
+                               Integer seatLimit,
+                               BigDecimal price) {
+            this(sessionTitle, startsAt, endsAt, venueAddress, manualAddress, seatLimit, price,
+                defaultTicketSpecs(price, seatLimit));
+        }
+
+        public SessionSeedSpec {
+            ticketSpecs = ticketSpecs == null || ticketSpecs.isEmpty()
+                ? defaultTicketSpecs(price, seatLimit)
+                : List.copyOf(ticketSpecs);
+        }
+
+        private static List<TicketSeedSpec> defaultTicketSpecs(BigDecimal price, Integer seatLimit) {
+            BigDecimal safePrice = price == null ? BigDecimal.ZERO : price;
+            String name = safePrice.compareTo(BigDecimal.ZERO) <= 0 ? "Бесплатный вход" : "Стандарт";
+            return List.of(new TicketSeedSpec(name, safePrice, seatLimit == null ? 200 : seatLimit));
+        }
+    }
 
     /**
      * Сид события. {@code classpathImagePaths} — полные пути к картинкам в classpath,
