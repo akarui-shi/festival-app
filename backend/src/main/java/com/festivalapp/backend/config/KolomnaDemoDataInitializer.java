@@ -72,7 +72,7 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
     private static final String LOGO_IMAGE = "images/art gallery/serg-bataev-pWEFjiRkjDU-unsplash.jpg";
 
     // Картинки для событий (theatre stage / lecture / workshop / art gallery)
-    private static final String EV_JAZZ_1 = "images/theatre stage/hossein-nasr-DeYQxIh-pa4-unsplash.jpg";
+    private static final String EV_JAZZ_1 = "images/theatre stage/kobby-mendez-V3u2hyLPbaM-unsplash.jpg";
     private static final String EV_JAZZ_2 = "images/theatre stage/stefano-stacchini-jhPSJDhiRyQ-unsplash.jpg";
 
     private static final String EV_LECT_COSMOS_1 = "images/lecture/headway-F2KRf_QfCqw-unsplash.jpg";
@@ -86,26 +86,15 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
     private static final String EV_THEATRE_2 = "images/theatre stage/eduardo-pastor-SkEUgyJqJlQ-unsplash.jpg";
     private static final String EV_THEATRE_3 = "images/theatre stage/kyle-head-p6rNTdAPbuk-unsplash.jpg";
 
-    private static final String EV_KALACHI_1 = "images/art gallery/artur-matosyan-4YWUMaftmag-unsplash.jpg";
-    private static final String EV_KALACHI_2 = "images/art gallery/dannie-jing-3GZlhROZIQg-unsplash.jpg";
-
     private static final String EV_LECT_KUPETS_1 = "images/lecture/kevin-gonzalez--NXNaE9lu6w-unsplash.jpg";
     private static final String EV_LECT_KUPETS_2 = "images/lecture/wes-lewis-zt6OxRORM2g-unsplash.jpg";
 
-    private static final String EV_BALLET_1 = "images/theatre stage/rob-laughter-WW1jsInXgwM-unsplash.jpg";
-    private static final String EV_BALLET_2 = "images/theatre stage/yiran-ding-TmvSImvV7vA-unsplash.jpg";
-
     // Картинки для публикаций
-    private static final String PUB_JAZZ_1 = "images/art/alina-chernovolova-Q1AUTlf1D60-unsplash.jpg";
-    private static final String PUB_JAZZ_2 = "images/live music/frank-rolando-romero-vJ5apSa8r14-unsplash.jpg";
-    private static final String PUB_COSMOS = "images/art gallery/darya-tryfanava-UCNaGWn4EfU-unsplash.jpg";
-    private static final String PUB_FAMILY_1 = "images/open air/a-j-FLmujG5l7uE-unsplash.jpg";
-    private static final String PUB_FAMILY_2 = "images/open air/annie-spratt-WS2anBsrum0-unsplash.jpg";
-    private static final String PUB_FAMILY_3 = "images/music stage/danny-howe-bn-D2bCvpik-unsplash.jpg";
+    private static final String PUB_JAZZ_1 = "images/live music/frank-rolando-romero-vJ5apSa8r14-unsplash.jpg";
+    private static final String PUB_COSMOS = "images/art gallery/befca5ad7ead0576c00f47ac15851df1.png";
+    private static final String PUB_FAMILY_1 = "images/open air/annie-spratt-WS2anBsrum0-unsplash.jpg";
     private static final String PUB_THEATRE = "images/theatre stage/hossein-nasr-NcA0pUogtiU-unsplash.jpg";
-    private static final String PUB_KALACHI = "images/art/debby-hudson-3q05_K3eJxM-unsplash.jpg";
     private static final String PUB_KUPETS = "images/art gallery/jessica-pamp-JNTSoyb_bbw-unsplash.jpg";
-    private static final String PUB_BALLET = "images/art gallery/josh-liu-Tjio9DgtIls-unsplash.jpg";
 
     // --- Россия-специфичные картинки (Wikimedia Commons, скачаны автоматически). ---
     // Новые события «День города», «Прогулка по Коломенскому кремлю», «Масленица на посаде»
@@ -126,12 +115,22 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
     private static final String PUB_DEN_GORODA_2 = "images/russian-festival/festival-03.jpg";
     private static final String PUB_KREMLIN = "images/russian-architecture/architecture-03.jpg";
 
+    // --- Картинки для бесплатных событий (по 2 на каждое из 4 событий). ---
+    private static final String EV_FREE_WALK_1 = "images/free-walks/scale_2400.jpeg";
+    private static final String EV_FREE_WALK_2 = "images/free-walks/scale_2400 (1).jpeg";
+    private static final String EV_FREE_MUSEUM_1 = "images/free-museum/museum-01.jpg";
+    private static final String EV_FREE_MUSEUM_2 = "images/free-museum/museum-02.jpg";
+    private static final String EV_FREE_PARK_1 = "images/free-park/aneta-pawlik-h5cFbbecEuY-unsplash.jpg";
+    private static final String EV_FREE_KIDS_1 = "images/free-children/madalyn-cox-l9WYx9r8QCU-unsplash.jpg";
+    private static final String EV_FREE_KIDS_2 = "images/free-children/raspopova-marina-JrtYJoAIN6A-unsplash.jpg";
+
     private final CityRepository cityRepository;
     private final UserRepository userRepository;
     private final OrganizationRepository organizationRepository;
     private final SessionRepository sessionRepository;
     private final PasswordEncoder passwordEncoder;
     private final DemoDataSupport support;
+    private final String number = "123456";
 
     @Value("${app.demo.kolomna-seed-enabled:true}")
     private boolean enabled;
@@ -230,7 +229,7 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
                 .login("organizer_kolomna")
                 .email("organizer.kolomna@festival.local")
                 .phone("+79001230001")
-                .passwordHash(passwordEncoder.encode("123456"))
+                .passwordHash(passwordEncoder.encode(number))
                 .firstName("Алексей")
                 .lastName("Коломенский")
                 .registeredAt(now)
@@ -424,36 +423,6 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
             List.of("Театр «Коломенская маска»")
         ));
 
-        // Событие 5. Калачные традиции — гастрономический мастер-класс на Калачной.
-        // Картинки: 2 из art gallery (предметная съёмка/детали).
-        result.add(new EventSeedSpec(
-            "Калачные традиции: мастер-класс на Калачной",
-            "Гастрономический мастер-класс по выпечке коломенских калачей в исторической калачной.",
-            "Команда «Калачного двора» проведёт двухчасовой мастер-класс по выпечке коломенских калачей " +
-                "на действующей исторической площадке. Участники узнают историю промысла, познакомятся " +
-                "с традиционной технологией, замесят тесто и испекут собственный калач, который заберут с собой.\n\n" +
-                "Программа включает короткую экскурсию по калачной, рассказ о том, как ремесло возродили " +
-                "в начале 2010-х, и дегустацию готовых калачей с чаем. Все материалы и фартуки предоставляются " +
-                "организатором, дополнительно ничего покупать не нужно.\n\n" +
-                "Формат рассчитан на взрослых и детей от 6 лет в сопровождении взрослого. Группа небольшая " +
-                "(до 30 человек), поэтому регистрация обязательна.",
-            "6+",
-            List.of("Мастер-класс"),
-            List.of(EV_KALACHI_1, EV_KALACHI_2),
-            List.of(
-                new SessionSeedSpec(
-                    "Группа выходного дня",
-                    now.plusDays(9).withHour(12).withMinute(0).withSecond(0).withNano(0),
-                    now.plusDays(9).withHour(14).withMinute(0).withSecond(0).withNano(0),
-                    null,
-                    "Московская область, Коломна, улица Зайцева, 14",
-                    30,
-                    new BigDecimal("1500.00")
-                )
-            ),
-            List.of("Мастерская «Калачный двор»")
-        ));
-
         // Событие 6. Лекторий: Купеческая Коломна — историческая лекция.
         // Картинки: 2 из lecture.
         result.add(new EventSeedSpec(
@@ -482,37 +451,6 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
                 )
             ),
             List.of("Анна Воронина")
-        ));
-
-        // Событие 7. Камерный балет в Конькобежном — балетный вечер.
-        // Картинки: 2 из theatre stage.
-        result.add(new EventSeedSpec(
-            "Камерный балет в Конькобежном центре",
-            "Вечер классического балета в адаптированном под концертный формат пространстве.",
-            "Городская балетная труппа представляет программу из трёх миниатюр: фрагменты «Лебединого озера», " +
-                "сольный номер «Умирающий лебедь» в исполнении Ольги Степановой и современный балетный номер " +
-                "под музыку Филипа Гласса.\n\n" +
-                "Программа задумана как знакомство с балетом для широкой публики: между номерами хореограф " +
-                "комментирует, на что обратить внимание, и рассказывает о технике. Спектакль идёт около 80 минут " +
-                "с одним коротким антрактом.\n\n" +
-                "Для зрителей с детьми (от 8 лет) предусмотрены билеты в первый ряд: оттуда лучше видны жесты " +
-                "и мимика танцоров. Для людей с ограниченной мобильностью — отдельные места у прохода " +
-                "по предварительной заявке.",
-            "8+",
-            List.of("Концерт"),
-            List.of(EV_BALLET_1, EV_BALLET_2),
-            List.of(
-                new SessionSeedSpec(
-                    "Балетный вечер",
-                    now.plusDays(20).withHour(19).withMinute(30).withSecond(0).withNano(0),
-                    now.plusDays(20).withHour(21).withMinute(0).withSecond(0).withNano(0),
-                    "Московская область, Коломна, Набережная реки Коломенки, 7",
-                    null,
-                    300,
-                    new BigDecimal("1100.00")
-                )
-            ),
-            List.of("Балерина Ольга Степанова")
         ));
 
         // Событие 8. День города в Коломне — крупный городской фестиваль.
@@ -613,6 +551,124 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
             List.of("Фольклорный ансамбль «Коломенская слобода»", "Мастерская «Калачный двор»")
         ));
 
+        // ===== Бесплатные события (price = 0). Для них создаётся бесплатный входной билет. =====
+
+        // 11. Бесплатная пешая экскурсия по набережной Коломенки.
+        result.add(new EventSeedSpec(
+            "Бесплатная экскурсия: набережная Коломенки",
+            "Пешая прогулка по обновлённой набережной с городским гидом.",
+            "Часовая бесплатная прогулка вдоль реки Коломенки в сопровождении городского экскурсовода. " +
+                "Маршрут начинается у Конькобежного центра, идёт по благоустроенной набережной мимо " +
+                "видовых площадок и заканчивается у пешеходного моста.\n\n" +
+                "Гид расскажет историю реки, как менялась прибрежная застройка от купеческой эпохи " +
+                "до советских лет, и где находились утраченные мельницы. Маршрут ровный, " +
+                "подходит для людей с любым уровнем подготовки и для участников с детскими колясками.\n\n" +
+                "Предварительная запись не нужна — приходите к месту старта. В случае дождя прогулка " +
+                "не отменяется, но просим взять зонт.",
+            "0+",
+            List.of("Лекция", "Фестиваль"),
+            List.of(EV_FREE_WALK_1, EV_FREE_WALK_2),
+            List.of(
+                new SessionSeedSpec(
+                    "Бесплатная прогулка",
+                    now.plusDays(6).withHour(11).withMinute(0).withSecond(0).withNano(0),
+                    now.plusDays(6).withHour(12).withMinute(0).withSecond(0).withNano(0),
+                    "Московская область, Коломна, Набережная реки Коломенки, 7",
+                    null,
+                    60,
+                    BigDecimal.ZERO
+                )
+            ),
+            List.of("Дмитрий Бельский")
+        ));
+
+        // 12. Бесплатный день в краеведческом музее.
+        result.add(new EventSeedSpec(
+            "День открытых дверей в музее",
+            "Свободный вход в краеведческий музей и тематические лекции в течение дня.",
+            "Раз в месяц музей открывает двери для свободного посещения: можно осмотреть постоянную " +
+                "экспозицию, выставку текущего сезона и попасть на 30-минутные тематические лекции, " +
+                "которые сотрудники музея проводят в течение дня.\n\n" +
+                "Рекомендуемое время визита — 1,5–2 часа. На входе дают карту музея с расписанием лекций " +
+                "и подсказками, на что обратить особое внимание. Для детей подготовлен короткий квест " +
+                "по экспозиции — листок с заданиями выдают бесплатно.\n\n" +
+                "Большие сумки и верхняя одежда сдаются в гардероб. Фотосъёмка без вспышки разрешена.",
+            "6+",
+            List.of("Лекция", "Фестиваль"),
+            List.of(EV_FREE_MUSEUM_1, EV_FREE_MUSEUM_2),
+            List.of(
+                new SessionSeedSpec(
+                    "Свободное посещение",
+                    now.plusDays(9).withHour(10).withMinute(0).withSecond(0).withNano(0),
+                    now.plusDays(9).withHour(18).withMinute(0).withSecond(0).withNano(0),
+                    null,
+                    "Московская область, Коломна, улица Лажечникова, 5",
+                    400,
+                    BigDecimal.ZERO
+                )
+            ),
+            List.of("Анна Воронина")
+        ));
+
+        // 13. Бесплатный кинопоказ в парке.
+        result.add(new EventSeedSpec(
+            "Кинопоказ в парке: фильмы под открытым небом",
+            "Вечерний бесплатный показ художественного кино на большом экране в городском парке.",
+            "Городской летний кинолекторий: вечерний показ художественного фильма на большом экране, " +
+                "установленном на лужайке парка. Перед сеансом — короткое вступительное слово куратора " +
+                "программы и розыгрыш сувениров.\n\n" +
+                "Зрители располагаются на собственных пледах или на скамейках, расставленных вокруг экрана. " +
+                "Рядом работает бесплатная зона с горячим чаем и попкорном по символической цене " +
+                "от партнёров. Длительность фильма с обсуждением — около 2,5 часов.\n\n" +
+                "Программа сезона публикуется заранее в сообществе. В случае дождя показ переносится " +
+                "в крытое фойе соседнего ДК — об этом сообщают за два часа до начала.",
+            "12+",
+            List.of("Фестиваль"),
+            List.of(EV_FREE_PARK_1),
+            List.of(
+                new SessionSeedSpec(
+                    "Вечерний показ",
+                    now.plusDays(13).withHour(20).withMinute(0).withSecond(0).withNano(0),
+                    now.plusDays(13).withHour(22).withMinute(30).withSecond(0).withNano(0),
+                    "Московская область, Коломна, Красногвардейская улица, 2",
+                    null,
+                    250,
+                    BigDecimal.ZERO
+                )
+            ),
+            List.of()
+        ));
+
+        // 14. Бесплатная творческая мастерская для детей.
+        result.add(new EventSeedSpec(
+            "Творческая мастерская для детей",
+            "Бесплатное детское занятие по рисованию и декоративному творчеству.",
+            "Полуторачасовое творческое занятие для детей 5–10 лет. На каждом занятии — новая тема: " +
+                "рисование, аппликация, лепка, роспись по дереву или работа с природными материалами. " +
+                "Все материалы предоставляются мастерской бесплатно.\n\n" +
+                "Группа маленькая — до 15 детей, чтобы каждому уделить внимание. Родители могут " +
+                "остаться рядом и помочь, либо подождать в соседнем кафе. По итогам занятия каждый " +
+                "ребёнок забирает свою работу.\n\n" +
+                "Регистрация обязательна: места разбираются за 2–3 дня. Если вы зарегистрировались, " +
+                "но не сможете прийти — обязательно отмените, чтобы место досталось ребёнку из листа " +
+                "ожидания.",
+            "5+",
+            List.of("Мастер-класс"),
+            List.of(EV_FREE_KIDS_1, EV_FREE_KIDS_2),
+            List.of(
+                new SessionSeedSpec(
+                    "Детская мастерская",
+                    now.plusDays(8).withHour(11).withMinute(0).withSecond(0).withNano(0),
+                    now.plusDays(8).withHour(12).withMinute(30).withSecond(0).withNano(0),
+                    null,
+                    "Московская область, Коломна, улица Зайцева, 14",
+                    15,
+                    BigDecimal.ZERO
+                )
+            ),
+            List.of("Павел Громов")
+        ));
+
         return result;
     }
 
@@ -649,7 +705,7 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
                     "приходить за 30–40 минут до начала, чтобы спокойно занять места и заказать напиток. " +
                     "Парковка на территории центра ограничена: удобнее оставить машину на улице Окской " +
                     "и пройти 7–10 минут пешком вдоль набережной.",
-                List.of(PUB_JAZZ_1, PUB_JAZZ_2)
+                List.of(PUB_JAZZ_1)
             )
         ));
 
@@ -718,7 +774,7 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
                     "Если что-то пошло не так — на каждой площадке стоит стол волонтёров с приметным красным " +
                     "флажком. Там можно взять воду, найти потерявшегося ребёнка (всем детям выдают браслеты " +
                     "с номером телефона родителя на входе) и задать любой вопрос организаторам.",
-                List.of(PUB_FAMILY_1, PUB_FAMILY_2, PUB_FAMILY_3)
+                List.of(PUB_FAMILY_1)
             )
         ));
 
@@ -758,41 +814,6 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
             )
         ));
 
-        result.put("Калачные традиции: мастер-класс на Калачной", List.of(
-            new PublicationSeedSpec(
-                "История коломенского калача и подробная программа мастер-класса",
-                "Коломенский калач — один из самых узнаваемых гастрономических символов города. До революции " +
-                    "его пекли в десятках калачных по всей Коломне, потом промысел почти полностью исчез " +
-                    "и был восстановлен только в 2010-х на основании архивных документов и дореволюционных " +
-                    "поваренных книг. Сегодня действующая калачная на Зайцева — одно из немногих мест, " +
-                    "где можно увидеть весь процесс целиком и попробовать испечь калач самому.\n\n" +
-                    "Что такое настоящий калач. Это пшеничный хлеб особой формы — с «ручкой», «губой» и « " +
-                    "животиком», — на хмелевой закваске, без яиц и молока. Тесто долгое, выдерживается " +
-                    "в нескольких подходах; пекут в дровяной печи на поду. Историческая фишка — «лядовое тесто», " +
-                    "которое перед выпечкой охлаждают, а потом раскатывают вручную: именно так получается " +
-                    "характерная плотная мякоть и тонкая хрустящая корка.\n\n" +
-                    "Программа мастер-класса. Сначала — короткая экскурсия по калачной (15 минут): покажем " +
-                    "печь, расскажем про восстановление рецепта, дадим попробовать готовый калач с маслом. " +
-                    "Затем — основная часть (1 час 15 минут): замес теста, формовка, отдых, выпечка. " +
-                    "Параллельно ведущая объясняет, что и зачем мы делаем. Финал — чаепитие со свежим калачом " +
-                    "и забор своего калача в фирменной упаковке (около 30 минут).\n\n" +
-                    "Что нужно знать заранее. Все материалы и фартуки выдаются на месте, ничего покупать " +
-                    "и приносить не нужно. Если у вас аллергия на пшеничную муку — мастер-класс не подойдёт, " +
-                    "к сожалению, безглютенового варианта мы не делаем (рецептура исторически жёсткая). " +
-                    "Дети с 6 лет участвуют наравне со взрослыми, младше — могут наблюдать вместе с родителем, " +
-                    "но без отдельного места за столом.\n\n" +
-                    "Группы небольшие — до 30 человек. Мы специально не собираем большие потоки: только так " +
-                    "ведущий успевает уделить внимание каждому участнику и помочь, если тесто капризничает. " +
-                    "Регистрация обязательна, оплата на сайте — мест физически не хватает на всех желающих, " +
-                    "и листы ожидания заполняются быстро.\n\n" +
-                    "Как добраться. Площадка — улица Зайцева, 14, в исторической части города. От железнодорожной " +
-                    "станции «Коломна» — 15 минут на автобусе или 25 минут пешком приятным маршрутом мимо " +
-                    "Коломенского кремля. Парковка ограниченная, рекомендуем общественный транспорт " +
-                    "или такси.",
-                List.of(PUB_KALACHI)
-            )
-        ));
-
         result.put("Лекторий: Купеческая Коломна", List.of(
             new PublicationSeedSpec(
                 "Маршрут после лекции: три купеческих особняка в десяти минутах ходьбы",
@@ -826,44 +847,6 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
                     "архивных фотографий. После лекции карта остаётся вам, можно вернуться к маршруту в любой " +
                     "удобный день.",
                 List.of(PUB_KUPETS)
-            )
-        ));
-
-        result.put("Камерный балет в Конькобежном центре", List.of(
-            new PublicationSeedSpec(
-                "Программа балетного вечера: что увидите и на что обратить внимание",
-                "Балетный вечер задуман как дружелюбное знакомство с классикой для всех — от тех, кто на балете " +
-                    "впервые, до постоянных зрителей. Программа — три миниатюры разной эпохи и настроения, " +
-                    "общая длительность около 80 минут с одним коротким антрактом. В этой публикации — " +
-                    "подробный разбор номеров и небольшие подсказки, на что смотреть.\n\n" +
-                    "Номер 1. Фрагменты «Лебединого озера» Чайковского. Возьмём две сцены: «Лебедь» " +
-                    "(Pas de deux) и «Чёрный лебедь» (Pas de deux в III акте). Это классика классики, " +
-                    "но в нашей постановке акцент сделан не на чистый канон, а на эмоциональную линию: " +
-                    "хореограф специально работала с парой, чтобы передать характер двух героинь — нежной " +
-                    "Одетты и хищной Одиллии. Обратите внимание на 32 фуэте в Чёрном лебеде: классическая " +
-                    "вершина балерины, после которой обычно зал взрывается аплодисментами.\n\n" +
-                    "Номер 2. «Умирающий лебедь» — соло Ольги Степановой. Миниатюра Сен-Санса, поставленная " +
-                    "Михаилом Фокиным в 1907 году. Меньше четырёх минут чистой эмоции и техники: руки балерины " +
-                    "имитируют движения крыльев, тело едва касается сцены. Это номер, который Степанова " +
-                    "танцует уже десять лет, и каждый раз — немного по-новому. На что смотреть: на работу рук " +
-                    "и на то, как балерина управляет дыханием — в зале с хорошей акустикой это слышно.\n\n" +
-                    "Антракт (15 минут). Можно встать, размяться, выпить воды или кофе в фойе. " +
-                    "Хореограф будет в фойе и ответит на любые вопросы о первом отделении.\n\n" +
-                    "Номер 3. Современный балетный номер на музыку Филипа Гласса (Piano Etude No. 2). " +
-                    "Это не классика — это современная хореография, выстроенная вокруг повторов и небольших " +
-                    "вариаций. Танцует ансамбль из четырёх артистов. Если кажется, что «ничего особенного " +
-                    "не происходит» — это нормально, такая хореография держится на тонких сдвигах и общей " +
-                    "атмосфере. На что смотреть: на синхронность группы и на то, как одна и та же фраза " +
-                    "повторяется с микроизменениями.\n\n" +
-                    "Что взять. Электронный билет, документ; для детей удобнее всего сидеть в первом ряду — " +
-                    "там лучше видно жесты и мимику. Зал немного прохладный (около +18°C), может быть " +
-                    "комфортно в кардигане. Если у вас место в дальних рядах — бинокль не помешает, но " +
-                    "хореография рассчитана на восприятие без него.\n\n" +
-                    "Доступность. Для людей с ограниченной мобильностью — отдельные места у прохода " +
-                    "по предварительной заявке (напишите на почту организаторов за 24 часа). Лифт " +
-                    "до зала работает с 18:30. Слабослышащие зрители — на сайте есть PDF с программой " +
-                    "и краткими описаниями каждого номера, можно скачать заранее.",
-                List.of(PUB_BALLET)
             )
         ));
 
