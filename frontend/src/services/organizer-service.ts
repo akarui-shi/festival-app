@@ -16,9 +16,8 @@ export const organizerService = {
       apiGet<OrganizerAnalyticsOverview>('/organizer/analytics/overview'),
     ]);
 
-    const topCandidates = events.slice(0, 3);
     const engagements = await Promise.all(
-      topCandidates.map((event) =>
+      events.map((event) =>
         apiGet<OrganizerEventEngagement>(`/organizer/analytics/events/${event.id}/engagement`),
       ),
     );

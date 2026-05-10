@@ -25,6 +25,17 @@ export const directoryService = {
     });
   },
 
+  async updateCategory(id: Id, data: Partial<Category>): Promise<Category> {
+    return apiPut<Category>(`/admin/categories/${id}`, {
+      name: data.name,
+      description: data.description,
+    });
+  },
+
+  async deleteCategory(id: Id): Promise<void> {
+    await apiDelete(`/admin/categories/${id}`);
+  },
+
   async createCity(data: Partial<City>): Promise<City> {
     return apiPost<City>('/admin/cities', {
       name: data.name,

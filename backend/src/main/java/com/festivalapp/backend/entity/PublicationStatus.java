@@ -4,5 +4,6 @@ public enum PublicationStatus {
     PENDING,
     PUBLISHED,
     REJECTED,
+    ARCHIVED,
     DELETED
 }

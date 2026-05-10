@@ -6,6 +6,29 @@ export interface RegistrationItemInput {
   quantity: number;
 }
 
+function mergeRegistrations(registrations: SessionRegistration[]): SessionRegistration[] {
+  const grouped = new Map<string, SessionRegistration>();
+
+  registrations.forEach((registration) => {
+    const key = `${registration.registrationId}:${registration.userId ?? ''}`;
+    const existing = grouped.get(key);
+    if (!existing) {
+      grouped.set(key, { ...registration, quantity: Number(registration.quantity || 1) });
+      return;
+    }
+
+    grouped.set(key, {
+      ...existing,
+      quantity: Number(existing.quantity || 0) + Number(registration.quantity || 1),
+      status: existing.status === 'CONFIRMED' ? existing.status : registration.status,
+      qrToken: existing.qrToken || registration.qrToken,
+      createdAt: existing.createdAt || registration.createdAt,
+    });
+  });
+
+  return Array.from(grouped.values());
+}
+
 export const registrationService = {
   async createRegistration(
     sessionId: Id,
@@ -53,7 +76,7 @@ export const registrationService = {
     const response = await Promise.all(
       sessions.map(async (session) => apiGet<SessionRegistration[]>(`/sessions/${session.id}/registrations`)),
     );
-    return response.flat();
+    return mergeRegistrations(response.flat());
   },
 
   async getWaitlistByEvent(eventId: Id): Promise<WaitlistEntry[]> {

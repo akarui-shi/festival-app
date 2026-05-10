@@ -359,6 +359,19 @@ export default function EventFormPage() {
 
   const organizerCityName = wizardState?.cityName || organizations[0]?.cityName || null;
 
+  const participantImageId = (participant?: Participant | null) => (
+    participant?.primaryImageId ?? participant?.imageId ?? participant?.imageIds?.[0] ?? null
+  );
+
+  const participantInitials = (participant: Participant) => (
+    (participant.stageName || participant.name || '?')
+      .split(/\s+/)
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase()
+  );
+
   useEffect(() => {
     if (!organizerCityName) return;
 
@@ -940,7 +953,8 @@ export default function EventFormPage() {
     addressSearchTimeoutRef.current[session.localId] = window.setTimeout(async () => {
       setAddressLoadingBySession((prev) => ({ ...prev, [session.localId]: true }));
       try {
-        const suggestions = await yandexMapsService.searchAddressSuggestions(query, 6);
+        const lookupQuery = buildSessionAddressQuery(session, query);
+        const suggestions = await yandexMapsService.searchAddressSuggestions(lookupQuery, 6);
         setAddressSuggestionsBySession((prev) => ({ ...prev, [session.localId]: suggestions }));
       } catch {
         setAddressSuggestionsBySession((prev) => ({ ...prev, [session.localId]: [] }));
@@ -948,6 +962,14 @@ export default function EventFormPage() {
         setAddressLoadingBySession((prev) => ({ ...prev, [session.localId]: false }));
       }
     }, 350);
+  };
+
+  const buildSessionAddressQuery = (session: SessionDraft, query: string) => {
+    const trimmed = query.trim();
+    const cityName = session.cityName || organizerCityName || organizations[0]?.cityName || '';
+    if (!cityName) return trimmed;
+    if (trimmed.toLowerCase().includes(cityName.toLowerCase())) return trimmed;
+    return [cityName, session.cityRegion, trimmed].filter(Boolean).join(', ');
   };
 
   const onManualAddressChange = (session: SessionDraft, value: string) => {
@@ -1245,14 +1267,18 @@ export default function EventFormPage() {
                         const label = participant?.stageName
                           ? `${participant.name} (${participant.stageName})`
                           : participant?.name || `Участник #${selected.participantId}`;
+                        const imageId = participantImageId(participant);
                         return (
                           <button
                             key={selected.participantId}
                             type="button"
                             onClick={() => toggleExistingParticipant(selected.participantId, false)}
-                            className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
+                            className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"
                             title="Убрать участника"
                           >
+                            {imageId ? (
+                              <img src={imageSrc(imageId)} alt="" className="h-5 w-5 rounded-full object-cover" />
+                            ) : null}
                             {label} ×
                           </button>
                         );
@@ -1269,9 +1295,18 @@ export default function EventFormPage() {
                   )}
                   {participantOptions.map((participant) => {
                     const checked = existingParticipants.some((item) => item.participantId === Number(participant.id));
+                    const imageId = participantImageId(participant);
                     return (
                       <div key={participant.id} className={`flex items-center justify-between rounded-lg border p-3 ${checked ? 'border-primary/40 bg-primary/5' : 'border-border'}`}>
-                        <div>
+                        <div className="flex min-w-0 items-center gap-3">
+                          {imageId ? (
+                            <img src={imageSrc(imageId)} alt="" className="h-11 w-11 shrink-0 rounded-full object-cover" />
+                          ) : (
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+                              {participantInitials(participant)}
+                            </div>
+                          )}
+                          <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="text-sm font-semibold">{participant.name}</p>
                             {participant.kind && (
@@ -1280,6 +1315,7 @@ export default function EventFormPage() {
                           </div>
                           {participant.stageName && <p className="text-xs text-muted-foreground">{participant.stageName}</p>}
                           {participant.genre && <p className="text-xs text-muted-foreground">{participant.genre}</p>}
+                          </div>
                         </div>
                         <Button
                           type="button"
@@ -1711,13 +1747,24 @@ export default function EventFormPage() {
                     <div className="grid gap-2 sm:grid-cols-2">
                       {selectedParticipantsDetailed.map((participant) => (
                         <div key={`preview-participant-${participant.id}`} className="rounded-lg border border-border bg-muted/30 p-2">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold">{participant.name}</p>
-                            {participant.kind && (
-                              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{participant.kind}</span>
+                          <div className="flex items-center gap-3">
+                            {participantImageId(participant) ? (
+                              <img src={imageSrc(participantImageId(participant)!)} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
+                            ) : (
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-background text-xs font-semibold text-muted-foreground">
+                                {participantInitials(participant)}
+                              </div>
                             )}
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-sm font-semibold">{participant.name}</p>
+                                {participant.kind && (
+                                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{participant.kind}</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground">{participant.stageName || participant.genre || 'Информация об участнике'}</p>
+                            </div>
                           </div>
-                          <p className="text-xs text-muted-foreground">{participant.stageName || participant.genre || 'Информация об участнике'}</p>
                         </div>
                       ))}
                     </div>

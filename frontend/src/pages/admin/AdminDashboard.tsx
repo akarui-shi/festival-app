@@ -30,11 +30,11 @@ function buildDemoSeries(days: number, base: number, delta: number): { label: st
 }
 
 const DEMO_TRAFFIC_SOURCES = [
-  { source: 'Поисковые системы', value: 312 },
-  { source: 'Прямые переходы', value: 178 },
-  { source: 'Социальные сети', value: 94 },
-  { source: 'Реферальные ссылки', value: 61 },
-  { source: 'Другие', value: 29 },
+  { source: 'Поисковые системы', visits: 312 },
+  { source: 'Прямые переходы', visits: 178 },
+  { source: 'Социальные сети', visits: 94 },
+  { source: 'Реферальные ссылки', visits: 61 },
+  { source: 'Другие', visits: 29 },
 ];
 
 function formatLabel(rawDate?: string | null): string {
@@ -135,24 +135,24 @@ export default function AdminDashboard() {
   const hasMetrikaData = Boolean(metrikaStatus?.available);
 
   const visitsByDay = useMemo(() => {
-    if (metrikaDemo) return buildDemoSeries(30, 200, 120);
+    if (metrikaDemo) return buildDemoSeries(30, 200, 120).map((point) => ({ label: point.label, visits: point.value }));
     const raw = effectiveAnalytics.visitsByDay || [];
     if (hasMetrikaData && raw.length > 0) {
-      return raw.map((point) => ({ label: formatLabel(point.date), value: Number(point.value || 0) }));
+      return raw.map((point) => ({ label: formatLabel(point.date), visits: Number(point.value || 0) }));
     }
     return [];
   }, [effectiveAnalytics.visitsByDay, hasMetrikaData, metrikaDemo]);
 
   const registrationsByDay = useMemo(() => {
     const raw = effectiveAnalytics.registrationsByDay || [];
-    return raw.map((point) => ({ label: formatLabel(point.date), value: Number(point.value || 0) }));
+    return raw.map((point) => ({ label: formatLabel(point.date), registrations: Number(point.value || 0) }));
   }, [effectiveAnalytics.registrationsByDay]);
 
   const trafficSources = useMemo(() => {
     if (metrikaDemo) return DEMO_TRAFFIC_SOURCES;
     const raw = effectiveAnalytics.trafficSources || [];
     if (hasMetrikaData && raw.length > 0) {
-      return raw.map((source) => ({ source: source.source || 'Не определено', value: Number(source.visits || 0) }));
+      return raw.map((source) => ({ source: source.source || 'Не определено', visits: Number(source.visits || 0) }));
     }
     return [];
   }, [effectiveAnalytics.trafficSources, hasMetrikaData, metrikaDemo]);
@@ -254,7 +254,7 @@ export default function AdminDashboard() {
                 <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
                 <YAxis tickLine={false} axisLine={false} width={36} tick={{ fontSize: 11 }} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Line type="monotone" dataKey="value" stroke="var(--color-visits)" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+                <Line type="monotone" dataKey="visits" stroke="var(--color-visits)" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
               </LineChart>
             </ChartContainer>
           ) : (
@@ -274,7 +274,7 @@ export default function AdminDashboard() {
             <ChartContainer
               className="mt-4 h-[240px] w-full"
               config={{
-                value: { label: 'Визиты', color: '#C17F59' },
+                visits: { label: 'Визиты', color: '#C17F59' },
                 p1: { label: 'Поиск', color: '#C17F59' },
                 p2: { label: 'Прямые', color: '#CFA07D' },
                 p3: { label: 'Соцсети', color: '#D9B49A' },
@@ -283,7 +283,7 @@ export default function AdminDashboard() {
             >
               <PieChart>
                 <ChartTooltip content={<ChartTooltipContent nameKey="source" />} />
-                <Pie data={trafficSources} dataKey="value" nameKey="source" innerRadius={46} outerRadius={90} paddingAngle={2}>
+                <Pie data={trafficSources} dataKey="visits" nameKey="source" innerRadius={46} outerRadius={90} paddingAngle={2}>
                   {trafficSources.map((_, index) => (
                     <Cell key={`source-${index}`} fill={['#C17F59', '#CFA07D', '#D9B49A', '#E5CFC0', '#B56A3F'][index % 5]} />
                   ))}
@@ -311,7 +311,7 @@ export default function AdminDashboard() {
             <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
             <YAxis tickLine={false} axisLine={false} width={36} tick={{ fontSize: 11 }} />
             <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="value" radius={[6, 6, 0, 0]} fill="var(--color-registrations)" />
+            <Bar dataKey="registrations" radius={[6, 6, 0, 0]} fill="var(--color-registrations)" />
           </BarChart>
         </ChartContainer>
       </section>

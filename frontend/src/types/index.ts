@@ -380,7 +380,7 @@ export interface Registration {
   issuedAt?: string | null;
 }
 
-export type PublicationStatus = 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'DELETED';
+export type PublicationStatus = 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED' | 'DELETED';
 
 export interface Publication {
   publicationId: Id;

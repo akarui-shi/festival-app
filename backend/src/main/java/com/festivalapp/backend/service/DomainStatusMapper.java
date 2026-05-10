@@ -56,6 +56,7 @@ public final class DomainStatusMapper {
             return switch (dbStatus) {
                 case "опубликовано" -> PublicationStatus.PUBLISHED;
                 case "отклонено" -> PublicationStatus.REJECTED;
+                case "архив", "архивировано", "в_архиве" -> PublicationStatus.ARCHIVED;
                 default -> PublicationStatus.PENDING;
             };
         }

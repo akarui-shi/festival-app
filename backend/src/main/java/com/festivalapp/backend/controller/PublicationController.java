@@ -54,6 +54,12 @@ public class PublicationController {
         return ResponseEntity.ok(publicationService.getMine(extractUsername(principal)));
     }
 
+    @GetMapping("/mine/{id}")
+    public ResponseEntity<PublicationDetailsResponse> getMineById(@PathVariable Long id,
+                                                                  @AuthenticationPrincipal UserDetails principal) {
+        return ResponseEntity.ok(publicationService.getMineById(id, extractUsername(principal)));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<PublicationDetailsResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(publicationService.getPublicById(id));

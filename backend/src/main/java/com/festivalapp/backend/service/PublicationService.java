@@ -164,6 +164,15 @@ public class PublicationService {
     }
 
     @Transactional(readOnly = true)
+    public PublicationDetailsResponse getMineById(Long id, String actorIdentifier) {
+        User actor = resolveActor(actorIdentifier);
+        Publication publication = publicationRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Publication not found"));
+        assertCanEdit(actor, publication);
+        return toDetails(publication);
+    }
+
+    @Transactional(readOnly = true)
     public PublicationDetailsResponse getByIdForAdmin(Long id) {
         Publication publication = publicationRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Publication not found"));

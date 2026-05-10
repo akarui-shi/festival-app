@@ -1,6 +1,7 @@
 package com.festivalapp.backend.config.support;
 
 import com.festivalapp.backend.entity.Participant;
+import com.festivalapp.backend.entity.ParticipantImage;
 import com.festivalapp.backend.entity.Category;
 import com.festivalapp.backend.entity.City;
 import com.festivalapp.backend.entity.Event;
@@ -20,6 +21,7 @@ import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.entity.UserRole;
 import com.festivalapp.backend.entity.Venue;
 import com.festivalapp.backend.repository.ParticipantRepository;
+import com.festivalapp.backend.repository.ParticipantImageRepository;
 import com.festivalapp.backend.repository.CategoryRepository;
 import com.festivalapp.backend.repository.EventParticipantRepository;
 import com.festivalapp.backend.repository.EventCategoryRepository;
@@ -71,6 +73,7 @@ public class DemoDataSupport {
     private final OrganizationMemberRepository organizationMemberRepository;
     private final CategoryRepository categoryRepository;
     private final ParticipantRepository participantRepository;
+    private final ParticipantImageRepository participantImageRepository;
     private final EventRepository eventRepository;
     private final EventCategoryRepository eventCategoryRepository;
     private final EventImageRepository eventImageRepository;
@@ -157,6 +160,34 @@ public class DemoDataSupport {
                 .build()));
         }
         return byName;
+    }
+
+    /** Привязывает к участникам актуальные демо-изображения, заменяя прежнюю seed-картинку. */
+    public void ensureParticipantImages(Map<String, Participant> participants,
+                                        Map<String, String> classpathImagePathsByParticipantName,
+                                        User uploader,
+                                        OffsetDateTime now,
+                                        String demoKey) {
+        for (Map.Entry<String, String> entry : classpathImagePathsByParticipantName.entrySet()) {
+            Participant participant = participants.get(entry.getKey().toLowerCase());
+            if (participant == null) {
+                continue;
+            }
+            Image image = ensureImage(demoKey, entry.getValue(), "participant-" + participant.getId(), uploader, now);
+            List<ParticipantImage> existing = participantImageRepository.findAllByParticipantIdOrderByPrimaryDescIdAsc(participant.getId());
+            boolean alreadyLinked = existing.stream()
+                .anyMatch(link -> link.getImage() != null && image.getId().equals(link.getImage().getId()));
+            if (alreadyLinked) {
+                continue;
+            }
+            participantImageRepository.deleteByParticipantId(participant.getId());
+            participantImageRepository.flush();
+            participantImageRepository.save(ParticipantImage.builder()
+                .participant(participant)
+                .image(image)
+                .primary(true)
+                .build());
+        }
     }
 
     /**

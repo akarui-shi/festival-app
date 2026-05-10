@@ -51,6 +51,11 @@ export const publicationService = {
     }
   },
 
+  async getOwnPublicationById(id: Id): Promise<Publication> {
+    const response = await apiGet<Publication>(`/publications/mine/${id}`);
+    return normalizePublication(response);
+  },
+
   async createPublication(data: Partial<Publication>): Promise<Publication> {
     const response = await apiPost<Publication>('/publications', {
       title: data.title,
