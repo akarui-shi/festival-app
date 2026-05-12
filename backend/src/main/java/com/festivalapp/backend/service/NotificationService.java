@@ -22,7 +22,6 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import org.springframework.web.client.RestClient;
 
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
@@ -40,13 +39,6 @@ public class NotificationService {
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
-    private final RestClient.Builder restClientBuilder;
-
-    @Value("${app.notifications.telegram-bot-token:}")
-    private String telegramBotToken;
-
-    @Value("${app.notifications.telegram-chat-id:}")
-    private String telegramChatId;
 
     @Value("${app.notifications.email-from:noreply@festival.local}")
     private String emailFrom;
@@ -93,7 +85,6 @@ public class NotificationService {
             }
 
             mailSender.send(mimeMessage);
-            sendTelegram("Отправлены билеты на email: заказ #" + order.getId() + ", пользователь " + user.getEmail());
         } catch (Exception ex) {
             log.warn("Failed to send ticket email to {}: {}", user.getEmail(), ex.getMessage());
         }
@@ -199,29 +190,6 @@ public class NotificationService {
         }
 
         return line.toString();
-    }
-
-    private void sendTelegram(String text) {
-        if (!StringUtils.hasText(telegramBotToken) || !StringUtils.hasText(telegramChatId)) {
-            log.info("Telegram is not configured. Mock telegram notification: {}", text);
-            return;
-        }
-
-        String baseUrl = "https://api.telegram.org";
-        try {
-            restClientBuilder.baseUrl(baseUrl)
-                .build()
-                .post()
-                .uri("/bot{token}/sendMessage", telegramBotToken)
-                .body(java.util.Map.of(
-                    "chat_id", telegramChatId,
-                    "text", text
-                ))
-                .retrieve()
-                .toBodilessEntity();
-        } catch (Exception ex) {
-            log.warn("Failed to send telegram notification: {}", ex.getMessage());
-        }
     }
 
     public record EmailSendResult(boolean success, String reason) {

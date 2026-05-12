@@ -1,0 +1,121 @@
+<mxfile host="Electron">
+  <diagram name="Диаграмма компонентов C4 бэк" id="c4-components-backend">
+    <mxGraphModel dx="1280" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1280" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="x1" value="&lt;b&gt;React SPA&lt;/b&gt;&lt;br&gt;[Container]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Клиентское приложение&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8C8496;strokeColor=#736782;fontColor=#ffffff;align=center;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="520" y="40" width="240" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="b1" value="&lt;b&gt;Spring Boot Backend&lt;/b&gt;&lt;br&gt;[Container: Java 17, Spring Boot 3.3]" style="rounded=1;fontSize=11;whiteSpace=wrap;html=1;dashed=1;arcSize=20;fillColor=none;strokeColor=#666666;fontColor=#333333;align=left;verticalAlign=top;spacing=10;dashPattern=8 4;connectable=0;pointerEvents=0;" vertex="1" parent="1">
+          <mxGeometry x="70" y="200" width="980" height="680" as="geometry" />
+        </mxCell>
+        <mxCell id="c1" value="&lt;b&gt;Security components&lt;/b&gt;&lt;br&gt;[Component: SecurityConfig, JwtAuthFilter, JwtService, OAuth2 handlers]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;JWT-аутентификация, OAuth2 login, роли и правила доступа&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#63BEF2;strokeColor=#2086C9;fontColor=#ffffff;align=center;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="110" y="270" width="260" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="c2" value="&lt;b&gt;REST Controllers&lt;/b&gt;&lt;br&gt;[Component: controller/*]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;HTTP API для auth, events, sessions, orders, tickets, admin, organizer, publications и справочников&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#63BEF2;strokeColor=#2086C9;fontColor=#ffffff;align=center;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="430" y="270" width="260" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="c3" value="&lt;b&gt;Auth and User services&lt;/b&gt;&lt;br&gt;[Component: AuthService, UserService, SocialAuthService, EmailVerificationService]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Регистрация, вход, профиль, смена email, подтверждение почты и социальный вход&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#63BEF2;strokeColor=#2086C9;fontColor=#ffffff;align=center;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="750" y="270" width="260" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="c4" value="&lt;b&gt;Content and event services&lt;/b&gt;&lt;br&gt;[Component: EventService, SessionService, ParticipantService, OrganizationService, PublicationService, FileStorageService]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Афиша, сеансы, организации, площадки, участники, публикации, изображения, избранное, комментарии и список ожидания&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#63BEF2;strokeColor=#2086C9;fontColor=#ffffff;align=center;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="110" y="460" width="260" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="c5" value="&lt;b&gt;Order, payment and ticket services&lt;/b&gt;&lt;br&gt;[Component: OrderService, TicketService, PaymentGatewayService, PromoCodeService]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Заказы, билеты, QR-токены, промокоды, платежные ссылки и проверка оплаты&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#63BEF2;strokeColor=#2086C9;fontColor=#ffffff;align=center;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="430" y="460" width="260" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="c6" value="&lt;b&gt;Admin and moderation services&lt;/b&gt;&lt;br&gt;[Component: AdminManagementService, ModerationService, AdminAuditService, DirectoryService]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Пользователи, роли, справочники, модерация контента, заявки организаций и аудит действий&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#63BEF2;strokeColor=#2086C9;fontColor=#ffffff;align=center;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="750" y="460" width="260" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="c7" value="&lt;b&gt;Notification components&lt;/b&gt;&lt;br&gt;[Component: NotificationService, EventNotificationService, EventReminderScheduler, InAppNotificationService]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Email-уведомления, QR-вложения, напоминания по расписанию и внутренние уведомления&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#63BEF2;strokeColor=#2086C9;fontColor=#ffffff;align=center;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="110" y="650" width="260" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="c8" value="&lt;b&gt;Analytics components&lt;/b&gt;&lt;br&gt;[Component: AdminAnalyticsService, OrganizerAnalyticsService, YandexMetrikaService]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Административные и организаторские метрики, загрузка статистики Яндекс Метрики&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#63BEF2;strokeColor=#2086C9;fontColor=#ffffff;align=center;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="430" y="650" width="260" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="c9" value="&lt;b&gt;Repository layer&lt;/b&gt;&lt;br&gt;[Component: repository/*, Spring Data JPA]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Доступ к сущностям пользователей, мероприятий, заказов, билетов, платежей, справочников и уведомлений&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#63BEF2;strokeColor=#2086C9;fontColor=#ffffff;align=center;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="750" y="650" width="260" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="x2" value="&lt;b&gt;PostgreSQL&lt;/b&gt;&lt;br&gt;[Container: Реляционная СУБД]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Основные данные приложения и миграции Flyway&lt;/font&gt;" style="shape=cylinder3;size=15;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#23A2D9;strokeColor=#0E7DAD;fontColor=#ffffff;align=center;" vertex="1" parent="1">
+          <mxGeometry x="790" y="930" width="240" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="x3" value="&lt;b&gt;OAuth2-провайдеры&lt;/b&gt;&lt;br&gt;[Software System: Google, Яндекс]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Профиль пользователя для внешнего входа&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8C8496;strokeColor=#736782;fontColor=#ffffff;align=center;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="930" width="240" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="x4" value="&lt;b&gt;SMTP-сервер&lt;/b&gt;&lt;br&gt;[Software System]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Доставка транзакционных email&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8C8496;strokeColor=#736782;fontColor=#ffffff;align=center;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="310" y="930" width="220" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="x5" value="&lt;b&gt;YooKassa&lt;/b&gt;&lt;br&gt;[Software System]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Платежный шлюз&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8C8496;strokeColor=#736782;fontColor=#ffffff;align=center;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="560" y="930" width="210" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="x6" value="&lt;b&gt;Яндекс Метрика API&lt;/b&gt;&lt;br&gt;[Software System]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Статистика посещаемости&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8C8496;strokeColor=#736782;fontColor=#ffffff;align=center;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="650" width="210" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="Вызывает REST API&lt;br&gt;[HTTPS/JSON]" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="x1" target="c1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="Фильтрует и авторизует запросы" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c1" target="c2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="Передают запросы к контенту и событиям" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c2" target="c4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="Используют auth/user logic" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c2" target="c3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="Проверяет сеансы, квоты и типы билетов" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c5" target="c4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="Записывают события аудита и модерации" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c6" target="c9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="Читают и записывают сущности" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c4" target="c9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="Читают и записывают сущности" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c5" target="c9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="Отправляет письма&lt;br&gt;[SMTP/STARTTLS или SSL]" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c7" target="x4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" value="Создает платежи и проверяет статус&lt;br&gt;[HTTPS API]" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c5" target="x5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" value="Запрашивает профиль&lt;br&gt;[HTTPS/OIDC]" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c3" target="x3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" value="Запрашивает статистику&lt;br&gt;[HTTPS API/OAuth]" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c8" target="x6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" value="Доступ к данным&lt;br&gt;[JDBC/JPA]" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c9" target="x2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" value="Используют уведомления" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c5" target="c7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" value="Запрашивают аналитические отчеты" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c2" target="c8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" value="Передают запросы заказов и билетов" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c2" target="c5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" value="Передают административные команды" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c2" target="c6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" value="Читают уведомления пользователя" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c2" target="c7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e19" value="Читают и изменяют пользователей, роли и токены" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c3" target="c9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e20" value="Сохраняют внутренние уведомления" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c7" target="c9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e21" value="Читают данные для отчетов" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="c8" target="c9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
