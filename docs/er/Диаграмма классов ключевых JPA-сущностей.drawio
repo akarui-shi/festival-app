@@ -1,0 +1,302 @@
+<mxfile host="Electron">
+  <diagram name="Диаграмма классов ключевых JPA-сущностей" id="jpa-key-entities-uml">
+    <mxGraphModel dx="1483" dy="1162" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1450" pageHeight="940" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="city" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=0;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;rounded=0;whiteSpace=wrap;html=1;fontSize=10;spacing=0;" value="City" vertex="1">
+          <mxGeometry height="86" width="220" x="40" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="city_attr" parent="city" style="text;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=10;" value="- id: Long&lt;br&gt;- name: String&lt;br&gt;- region: String&lt;br&gt;- active: boolean" vertex="1">
+          <mxGeometry height="60" width="220" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="user" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=0;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;rounded=0;whiteSpace=wrap;html=1;fontSize=10;spacing=0;" value="User" vertex="1">
+          <mxGeometry height="128" width="250" x="40" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="user_attr" parent="user" style="text;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=10;" value="- id: Long&lt;br&gt;- login: String&lt;br&gt;- email: String&lt;br&gt;- firstName: String&lt;br&gt;- lastName: String&lt;br&gt;- active: boolean&lt;br&gt;- emailVerified: boolean" vertex="1">
+          <mxGeometry height="102" width="250" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="organization" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=0;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;rounded=0;whiteSpace=wrap;html=1;fontSize=10;spacing=0;" value="Organization" vertex="1">
+          <mxGeometry height="116" width="260" x="300" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="organization_attr" parent="organization" style="text;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=10;" value="- id: Long&lt;br&gt;- name: String&lt;br&gt;- contactEmail: String&lt;br&gt;- contactPhone: String&lt;br&gt;- moderationStatus: String&lt;br&gt;- deletedAt: OffsetDateTime" vertex="1">
+          <mxGeometry height="90" width="260" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="event" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=0;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;rounded=0;whiteSpace=wrap;html=1;fontSize=10;spacing=0;" value="Event" vertex="1">
+          <mxGeometry height="140" width="280" x="670" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="event_attr" parent="event" style="text;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=10;" value="- id: Long&lt;br&gt;- title: String&lt;br&gt;- shortDescription: String&lt;br&gt;- ageRestriction: String&lt;br&gt;- free: boolean&lt;br&gt;- status: String&lt;br&gt;- startsAt: OffsetDateTime&lt;br&gt;- endsAt: OffsetDateTime" vertex="1">
+          <mxGeometry height="114" width="280" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="category" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=0;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;rounded=0;whiteSpace=wrap;html=1;fontSize=10;spacing=0;" value="Category" vertex="1">
+          <mxGeometry height="72" width="220" x="1070" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="category_attr" parent="category" style="text;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=10;" value="- id: Long&lt;br&gt;- name: String&lt;br&gt;- description: String" vertex="1">
+          <mxGeometry height="46" width="220" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="venue" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=0;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;rounded=0;whiteSpace=wrap;html=1;fontSize=10;spacing=0;" value="Venue" vertex="1">
+          <mxGeometry height="112" width="250" x="350" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="venue_attr" parent="venue" style="text;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=10;" value="- id: Long&lt;br&gt;- name: String&lt;br&gt;- address: String&lt;br&gt;- latitude: BigDecimal&lt;br&gt;- longitude: BigDecimal&lt;br&gt;- capacity: Integer" vertex="1">
+          <mxGeometry height="86" width="250" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="session" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=0;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;rounded=0;whiteSpace=wrap;html=1;fontSize=10;spacing=0;" value="Session" vertex="1">
+          <mxGeometry height="128" width="260" x="730" y="286" as="geometry" />
+        </mxCell>
+        <mxCell id="session_attr" parent="session" style="text;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=10;" value="- id: Long&lt;br&gt;- sessionTitle: String&lt;br&gt;- startsAt: OffsetDateTime&lt;br&gt;- endsAt: OffsetDateTime&lt;br&gt;- seatLimit: Integer&lt;br&gt;- manualAddress: String&lt;br&gt;- status: String" vertex="1">
+          <mxGeometry height="102" width="260" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="ticketType" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=0;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;rounded=0;whiteSpace=wrap;html=1;fontSize=10;spacing=0;" value="TicketType" vertex="1">
+          <mxGeometry height="112" width="250" x="1060" y="244" as="geometry" />
+        </mxCell>
+        <mxCell id="ticketType_attr" parent="ticketType" style="text;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=10;" value="- id: Long&lt;br&gt;- name: String&lt;br&gt;- price: BigDecimal&lt;br&gt;- currency: String&lt;br&gt;- quota: Integer&lt;br&gt;- active: boolean" vertex="1">
+          <mxGeometry height="86" width="250" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="eventCategory" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=0;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;rounded=0;whiteSpace=wrap;html=1;fontSize=10;spacing=0;" value="EventCategory" vertex="1">
+          <mxGeometry height="46" width="220" x="1030" y="184" as="geometry" />
+        </mxCell>
+        <mxCell id="eventCategory_attr" parent="eventCategory" style="text;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=10;" value="- id: Long" vertex="1">
+          <mxGeometry height="20" width="220" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="order" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=0;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;rounded=0;whiteSpace=wrap;html=1;fontSize=10;spacing=0;" value="Order" vertex="1">
+          <mxGeometry height="112" width="260" x="360" y="414" as="geometry" />
+        </mxCell>
+        <mxCell id="order_attr" parent="order" style="text;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=10;" value="- id: Long&lt;br&gt;- status: String&lt;br&gt;- totalAmount: BigDecimal&lt;br&gt;- currency: String&lt;br&gt;- createdAt: OffsetDateTime&lt;br&gt;- updatedAt: OffsetDateTime" vertex="1">
+          <mxGeometry height="86" width="260" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="payment" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=0;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;rounded=0;whiteSpace=wrap;html=1;fontSize=10;spacing=0;" value="Payment" vertex="1">
+          <mxGeometry height="112" width="260" x="360" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="payment_attr" parent="payment" style="text;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=10;" value="- id: Long&lt;br&gt;- externalPaymentId: String&lt;br&gt;- provider: String&lt;br&gt;- status: String&lt;br&gt;- amount: BigDecimal&lt;br&gt;- currency: String" vertex="1">
+          <mxGeometry height="86" width="260" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="orderItem" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=0;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;rounded=0;whiteSpace=wrap;html=1;fontSize=10;spacing=0;" value="OrderItem" vertex="1">
+          <mxGeometry height="86" width="250" x="685" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="orderItem_attr" parent="orderItem" style="text;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=10;" value="- id: Long&lt;br&gt;- quantity: Integer&lt;br&gt;- unitPrice: BigDecimal&lt;br&gt;- lineTotal: BigDecimal" vertex="1">
+          <mxGeometry height="60" width="250" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="ticket" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=0;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;rounded=0;whiteSpace=wrap;html=1;fontSize=10;spacing=0;" value="Ticket" vertex="1">
+          <mxGeometry height="100" width="250" x="1060" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="ticket_attr" parent="ticket" style="text;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=10;" value="- id: Long&lt;br&gt;- status: String&lt;br&gt;- qrToken: String&lt;br&gt;- issuedAt: OffsetDateTime&lt;br&gt;- usedAt: OffsetDateTime" vertex="1">
+          <mxGeometry height="74" width="250" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="a_city_user" edge="1" parent="1" source="city" style="endArrow=open;endFill=0;endSize=10;startArrow=diamondThin;startFill=0;startSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="user" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_city_user_1" parent="a_city_user" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="0..1" vertex="1">
+          <mxGeometry relative="1" x="-1" as="geometry">
+            <mxPoint x="10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_city_user_2" parent="a_city_user" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="0..*" vertex="1">
+          <mxGeometry relative="1" x="1" as="geometry">
+            <mxPoint x="5" y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a_city_org" edge="1" parent="1" source="city" style="endArrow=open;endFill=0;endSize=10;startArrow=diamondThin;startFill=0;startSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=-0.004;entryY=0.682;entryDx=0;entryDy=0;entryPerimeter=0;" target="organization_attr" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="150" y="167" />
+              <mxPoint x="210" y="167" />
+            </Array>
+            <mxPoint x="240" y="167" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_city_org_1" parent="a_city_org" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="1" vertex="1">
+          <mxGeometry relative="1" x="-1" as="geometry">
+            <mxPoint x="10" y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_city_org_2" parent="a_city_org" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="0..*" vertex="1">
+          <mxGeometry relative="1" x="1" as="geometry">
+            <mxPoint x="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a_city_venue" edge="1" parent="1" source="city" style="endArrow=open;endFill=0;endSize=10;startArrow=diamondThin;startFill=0;startSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.55;entryX=0;entryY=0.55;" target="venue" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_city_venue_1" parent="a_city_venue" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="1" vertex="1">
+          <mxGeometry relative="1" x="-1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_city_venue_2" parent="a_city_venue" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="0..*" vertex="1">
+          <mxGeometry relative="1" x="1" as="geometry">
+            <mxPoint x="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a_org_event" edge="1" parent="1" source="organization" style="endArrow=open;endFill=0;endSize=10;startArrow=diamondThin;startFill=0;startSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="event" value="организует">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_org_event_1" parent="a_org_event" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="1" vertex="1">
+          <mxGeometry relative="1" x="-1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_org_event_2" parent="a_org_event" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="0..*" vertex="1">
+          <mxGeometry relative="1" x="1" as="geometry">
+            <mxPoint x="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a_event_eventCategory" edge="1" parent="1" source="event" style="endArrow=open;endFill=0;endSize=10;startArrow=diamondThin;startFill=1;startSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.6;entryX=0;entryY=0.5;" target="eventCategory" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_event_eventCategory_1" parent="a_event_eventCategory" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="1" vertex="1">
+          <mxGeometry relative="1" x="-1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_event_eventCategory_2" parent="a_event_eventCategory" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="0..*" vertex="1">
+          <mxGeometry relative="1" x="1" as="geometry">
+            <mxPoint x="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a_category_eventCategory" edge="1" parent="1" source="category" style="endArrow=open;endFill=0;endSize=10;startArrow=none;rounded=0;edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="eventCategory" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_category_eventCategory_1" parent="a_category_eventCategory" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="1" vertex="1">
+          <mxGeometry relative="1" x="-1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_category_eventCategory_2" parent="a_category_eventCategory" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="0..*" vertex="1">
+          <mxGeometry relative="1" x="1" as="geometry">
+            <mxPoint x="10" y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a_event_session" edge="1" parent="1" source="event" style="endArrow=open;endFill=0;endSize=10;startArrow=diamondThin;startFill=1;startSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="session" value="содержит">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_event_session_1" parent="a_event_session" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="1" vertex="1">
+          <mxGeometry relative="1" x="-1" as="geometry">
+            <mxPoint x="10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_event_session_2" parent="a_event_session" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="0..*" vertex="1">
+          <mxGeometry relative="1" x="1" as="geometry">
+            <mxPoint x="10" y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a_venue_session" edge="1" parent="1" source="venue" style="endArrow=open;endFill=0;endSize=10;startArrow=none;rounded=0;edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="session" value="место&amp;nbsp;&lt;div&gt;проведения&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.3107" y="-4" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_venue_session_1" parent="a_venue_session" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="0..1" vertex="1">
+          <mxGeometry relative="1" x="-1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_venue_session_2" parent="a_venue_session" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="0..*" vertex="1">
+          <mxGeometry relative="1" x="1" as="geometry">
+            <mxPoint x="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a_session_ticketType" edge="1" parent="1" source="session" style="endArrow=open;endFill=0;endSize=10;startArrow=diamondThin;startFill=1;startSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="ticketType" value="имеет типы&amp;nbsp;&lt;div&gt;билетов&lt;/div&gt;">
+          <mxGeometry relative="1" x="-0.08" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_session_ticketType_1" parent="a_session_ticketType" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="1" vertex="1">
+          <mxGeometry relative="1" x="-1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_session_ticketType_2" parent="a_session_ticketType" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="0..*" vertex="1">
+          <mxGeometry relative="1" x="1" as="geometry">
+            <mxPoint x="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a_user_order" edge="1" parent="1" source="user" style="endArrow=open;endFill=0;endSize=10;startArrow=none;rounded=0;edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="order" value="оформляет">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_user_order_1" parent="a_user_order" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="1" vertex="1">
+          <mxGeometry relative="1" x="-1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_user_order_2" parent="a_user_order" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="0..*" vertex="1">
+          <mxGeometry relative="1" x="1" as="geometry">
+            <mxPoint x="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a_event_order" edge="1" parent="1" source="event_attr" style="endArrow=open;endFill=0;endSize=10;startArrow=none;rounded=0;edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=0.113;exitY=1.003;entryX=0.5;entryY=0;exitDx=0;exitDy=0;exitPerimeter=0;" target="order" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="702" y="400" />
+              <mxPoint x="490" y="400" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_event_order_1" parent="a_event_order" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="1" vertex="1">
+          <mxGeometry relative="1" x="-1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_event_order_2" parent="a_event_order" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="0..*" vertex="1">
+          <mxGeometry relative="1" x="1" as="geometry">
+            <mxPoint y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a_order_payment" edge="1" parent="1" source="order" style="endArrow=open;endFill=0;endSize=10;startArrow=diamondThin;startFill=1;startSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="payment" value="оплачивается">
+          <mxGeometry relative="1" x="0.0625" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_order_payment_1" parent="a_order_payment" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="1" vertex="1">
+          <mxGeometry relative="1" x="-1" as="geometry">
+            <mxPoint x="10" y="-5" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_order_payment_2" parent="a_order_payment" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="0..*" vertex="1">
+          <mxGeometry relative="1" x="1" as="geometry">
+            <mxPoint x="10" y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a_order_orderItem" edge="1" parent="1" source="order" style="endArrow=open;endFill=0;endSize=10;startArrow=diamondThin;startFill=1;startSize=10;rounded=0;edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="orderItem" value="содержит">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_order_orderItem_1" parent="a_order_orderItem" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="1" vertex="1">
+          <mxGeometry relative="1" x="-1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_order_orderItem_2" parent="a_order_orderItem" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="1..*" vertex="1">
+          <mxGeometry relative="1" x="1" as="geometry">
+            <mxPoint x="-25" y="-3" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a_ticketType_orderItem" edge="1" parent="1" source="ticketType" style="endArrow=open;endFill=0;endSize=10;startArrow=none;rounded=0;edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="orderItem" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1185" y="450" />
+              <mxPoint x="815" y="450" />
+              <mxPoint x="815" y="570" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_ticketType_orderItem_1" parent="a_ticketType_orderItem" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="1" vertex="1">
+          <mxGeometry relative="1" x="-1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_ticketType_orderItem_2" parent="a_ticketType_orderItem" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="0..*" vertex="1">
+          <mxGeometry relative="1" x="1" as="geometry">
+            <mxPoint y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a_orderItem_ticket" edge="1" parent="1" source="orderItem" style="endArrow=open;endFill=0;endSize=10;startArrow=diamondThin;startFill=1;startSize=12;rounded=0;edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="ticket" value="формирует">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_orderItem_ticket_1" parent="a_orderItem_ticket" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="1" vertex="1">
+          <mxGeometry relative="1" x="-1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_orderItem_ticket_2" parent="a_orderItem_ticket" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="0..*" vertex="1">
+          <mxGeometry relative="1" x="1" as="geometry">
+            <mxPoint x="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a_session_ticket" edge="1" parent="1" source="session" style="endArrow=open;endFill=0;endSize=10;startArrow=none;rounded=0;edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="ticket" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="860" y="470" />
+              <mxPoint x="1185" y="470" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_session_ticket_1" parent="a_session_ticket" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="1" vertex="1">
+          <mxGeometry relative="1" x="-1" as="geometry">
+            <mxPoint y="-4" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_session_ticket_2" parent="a_session_ticket" style="edgeLabel;resizable=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;" value="0..*" vertex="1">
+          <mxGeometry relative="1" x="1" as="geometry">
+            <mxPoint x="5" y="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
