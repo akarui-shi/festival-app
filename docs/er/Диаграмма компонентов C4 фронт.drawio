@@ -1,0 +1,100 @@
+<mxfile host="Electron">
+  <diagram name="Диаграмма компонентов C4 фронт" id="c4-components-frontend">
+    <mxGraphModel dx="1200" dy="820" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="950" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="user" value="&lt;b&gt;Пользователь&lt;/b&gt;&lt;br&gt;[Person]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Житель, организатор или администратор&lt;/font&gt;" style="html=1;fontSize=11;dashed=0;whiteSpace=wrap;fillColor=#083F75;strokeColor=#06315C;fontColor=#ffffff;shape=mxgraph.c4.person2;align=center;resizable=0;" vertex="1" parent="1">
+          <mxGeometry x="500" y="30" width="200" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="boundary" value="&lt;b&gt;React SPA&lt;/b&gt;&lt;br&gt;[Container: React 18, TypeScript, Vite, React Router]" style="rounded=1;fontSize=11;whiteSpace=wrap;html=1;dashed=1;arcSize=20;fillColor=none;strokeColor=#666666;fontColor=#333333;align=left;verticalAlign=top;spacing=10;dashPattern=8 4;connectable=0;pointerEvents=0;" vertex="1" parent="1">
+          <mxGeometry x="70" y="230" width="920" height="570" as="geometry" />
+        </mxCell>
+        <mxCell id="routing" value="&lt;b&gt;Маршрутизация и доступ&lt;/b&gt;&lt;br&gt;[Component: App.tsx, React Router, ProtectedRoute]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Выбирает раздел приложения, проверяет авторизацию и роли&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#63BEF2;strokeColor=#2086C9;fontColor=#ffffff;align=center;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="410" y="290" width="250" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="state" value="&lt;b&gt;Состояние приложения&lt;/b&gt;&lt;br&gt;[Component: AuthContext, CityContext]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Текущий пользователь, JWT, роли, выбранный город и localStorage&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#63BEF2;strokeColor=#2086C9;fontColor=#ffffff;align=center;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="710" y="290" width="250" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="public" value="&lt;b&gt;Публичная зона&lt;/b&gt;&lt;br&gt;[Component: public pages + PublicLayout]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Главная, каталог, карточки мероприятий, карта, публикации, участники и рекомендации&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#63BEF2;strokeColor=#2086C9;fontColor=#ffffff;align=center;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="100" y="470" width="250" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="resident" value="&lt;b&gt;Кабинет жителя&lt;/b&gt;&lt;br&gt;[Component: resident pages]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Профиль, избранное, билеты, QR-коды, платёжные страницы и подтверждение email&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#63BEF2;strokeColor=#2086C9;fontColor=#ffffff;align=center;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="410" y="470" width="250" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="staff" value="&lt;b&gt;Кабинеты организатора и администратора&lt;/b&gt;&lt;br&gt;[Component: OrganizerLayout, AdminLayout, role pages]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Управление событиями, организациями, публикациями, промокодами, справочниками, модерацией и аналитикой&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#63BEF2;strokeColor=#2086C9;fontColor=#ffffff;align=center;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="710" y="470" width="250" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="api" value="&lt;b&gt;API service layer&lt;/b&gt;&lt;br&gt;[Component: api-client + services]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;HTTP-клиент, Bearer JWT, сервисы событий, заказов, публикаций, организаций, справочников и администрирования&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#63BEF2;strokeColor=#2086C9;fontColor=#ffffff;align=center;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="240" y="660" width="250" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="ui" value="&lt;b&gt;UI-компоненты&lt;/b&gt;&lt;br&gt;[Component: components/ui + common components]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Формы, таблицы, карточки, диалоги, уведомления, состояния загрузки и переиспользуемые виджеты&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#63BEF2;strokeColor=#2086C9;fontColor=#ffffff;align=center;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="540" y="660" width="250" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="mapsAdapter" value="&lt;b&gt;Yandex Maps adapter&lt;/b&gt;&lt;br&gt;[Component: yandex-maps-service + map components]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;Загрузка JS SDK, отображение карт, поиск адресов, геокодирование и обратное геокодирование&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#63BEF2;strokeColor=#2086C9;fontColor=#ffffff;align=center;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="840" y="660" width="250" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="backend" value="&lt;b&gt;Spring Boot Backend&lt;/b&gt;&lt;br&gt;[Container]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;REST API приложения&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8C8496;strokeColor=#736782;fontColor=#ffffff;align=center;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="250" y="830" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="maps" value="&lt;b&gt;Яндекс Карты API&lt;/b&gt;&lt;br&gt;[Software System]&lt;br&gt;&lt;font style=&quot;font-size: 11px&quot;&gt;JS SDK, карты и геокодирование&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8C8496;strokeColor=#736782;fontColor=#ffffff;align=center;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="850" y="830" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="Использует UI&lt;br&gt;[HTTPS]" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="user" target="routing">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="Проверяет сессию и роли" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="routing" target="state">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="Открывает публичные маршруты" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="routing" target="public">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="Открывает личные маршруты" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="routing" target="resident">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="Открывает ролевые маршруты" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="routing" target="staff">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="Используют состояние пользователя и города" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="resident" target="state">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="Используют состояние пользователя и города" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="public" target="state">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="Используют состояние пользователя" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="staff" target="state">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="Запрашивают данные" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="public" target="api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" value="Запрашивает и изменяет данные" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="resident" target="api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" value="Управляет данными" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="staff" target="api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" value="Используют UI-компоненты" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="public" target="ui">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" value="Использует UI-компоненты" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="resident" target="ui">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" value="Используют UI-компоненты" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="staff" target="ui">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" value="Показывает карты событий" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="public" target="mapsAdapter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" value="Ищет адреса площадок" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="staff" target="mapsAdapter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" value="Вызывает REST API&lt;br&gt;[HTTPS/JSON, Bearer JWT]" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="api" target="backend">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" value="Загружает SDK и геокодирует&lt;br&gt;[HTTPS/JS SDK]" style="endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeColor=#828282;endFill=1;edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="mapsAdapter" target="maps">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,137 @@
+<mxfile host="Electron">
+  <diagram name="Диаграмма последовательности процесса оформления и оплаты заказа" id="z0OLUXAaUTnn4RKvg6IM">
+    <mxGraphModel dx="2410" dy="1660" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-1" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&quot;edgeStyle&quot;:&quot;elbowEdgeStyle&quot;,&quot;elbow&quot;:&quot;vertical&quot;,&quot;curved&quot;:0,&quot;rounded&quot;:0};participant=umlActor;verticalAlign=bottom;labelPosition=center;verticalLabelPosition=top;align=center;size=65;labelBackgroundColor=none;" value="Пользователь" vertex="1">
+          <mxGeometry height="928" width="35" x="90" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-2" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&quot;edgeStyle&quot;:&quot;elbowEdgeStyle&quot;,&quot;elbow&quot;:&quot;vertical&quot;,&quot;curved&quot;:0,&quot;rounded&quot;:0};size=65;labelBackgroundColor=none;" value="Frontend" vertex="1">
+          <mxGeometry height="928" width="150" x="390" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-3" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&quot;edgeStyle&quot;:&quot;elbowEdgeStyle&quot;,&quot;elbow&quot;:&quot;vertical&quot;,&quot;curved&quot;:0,&quot;rounded&quot;:0};size=65;labelBackgroundColor=none;" value="Backend" vertex="1">
+          <mxGeometry height="928" width="150" x="695" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-4" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&quot;edgeStyle&quot;:&quot;elbowEdgeStyle&quot;,&quot;elbow&quot;:&quot;vertical&quot;,&quot;curved&quot;:0,&quot;rounded&quot;:0};size=65;labelBackgroundColor=none;" value="БД" vertex="1">
+          <mxGeometry height="928" width="150" x="1119" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-5" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&quot;edgeStyle&quot;:&quot;elbowEdgeStyle&quot;,&quot;elbow&quot;:&quot;vertical&quot;,&quot;curved&quot;:0,&quot;rounded&quot;:0};size=65;labelBackgroundColor=none;" value="YooKassa" vertex="1">
+          <mxGeometry height="928" width="150" x="1319" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-6" edge="1" parent="1" source="hXy0uM5QeqM7-cPKSgsV-1" style="verticalAlign=bottom;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endArrow=block;labelBackgroundColor=none;fontColor=default;" target="hXy0uM5QeqM7-cPKSgsV-2" value="Выбирает тип билета и подтверждает заказ">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="194" y="213" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-7" edge="1" parent="1" source="hXy0uM5QeqM7-cPKSgsV-2" style="verticalAlign=bottom;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endArrow=block;labelBackgroundColor=none;fontColor=default;" target="hXy0uM5QeqM7-cPKSgsV-3" value="POST /api/orders {ticketTypeId, quantity}">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="596" y="261" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-8" edge="1" parent="1" source="hXy0uM5QeqM7-cPKSgsV-3" style="verticalAlign=bottom;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endArrow=block;labelBackgroundColor=none;fontColor=default;" target="hXy0uM5QeqM7-cPKSgsV-4" value="Проверить квоту ticket_types">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="991" y="309" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-9" edge="1" parent="1" source="hXy0uM5QeqM7-cPKSgsV-4" style="verticalAlign=bottom;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;dashed=1;dashPattern=2 3;endArrow=block;labelBackgroundColor=none;fontColor=default;" target="hXy0uM5QeqM7-cPKSgsV-3" value="Квота доступна">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="994" y="357" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-10" edge="1" parent="1" source="hXy0uM5QeqM7-cPKSgsV-3" style="verticalAlign=bottom;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endArrow=block;labelBackgroundColor=none;fontColor=default;" target="hXy0uM5QeqM7-cPKSgsV-4" value="INSERT INTO orders (status=&#39;ожидает_оплаты&#39;)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="991" y="405" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-11" edge="1" parent="1" source="hXy0uM5QeqM7-cPKSgsV-3" style="verticalAlign=bottom;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endArrow=block;labelBackgroundColor=none;fontColor=default;" target="hXy0uM5QeqM7-cPKSgsV-4" value="INSERT INTO order_items">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="991" y="453" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-12" edge="1" parent="1" source="hXy0uM5QeqM7-cPKSgsV-3" style="verticalAlign=bottom;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endArrow=block;labelBackgroundColor=none;fontColor=default;" target="hXy0uM5QeqM7-cPKSgsV-5" value="Создать платёж (amount, returnUrl)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1091" y="501" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-13" edge="1" parent="1" source="hXy0uM5QeqM7-cPKSgsV-5" style="verticalAlign=bottom;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;dashed=1;dashPattern=2 3;endArrow=block;labelBackgroundColor=none;fontColor=default;" target="hXy0uM5QeqM7-cPKSgsV-3" value="{paymentId, confirmationUrl}">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1094" y="549" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-14" edge="1" parent="1" source="hXy0uM5QeqM7-cPKSgsV-3" style="verticalAlign=bottom;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endArrow=block;labelBackgroundColor=none;fontColor=default;" target="hXy0uM5QeqM7-cPKSgsV-4" value="INSERT INTO payments (status=&#39;pending&#39;)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="991" y="597" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-15" edge="1" parent="1" source="hXy0uM5QeqM7-cPKSgsV-3" style="verticalAlign=bottom;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;dashed=1;dashPattern=2 3;endArrow=block;labelBackgroundColor=none;fontColor=default;" target="hXy0uM5QeqM7-cPKSgsV-2" value="{orderId, confirmationUrl}">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="599" y="645" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-16" edge="1" parent="1" source="hXy0uM5QeqM7-cPKSgsV-2" style="verticalAlign=bottom;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endArrow=block;labelBackgroundColor=none;fontColor=default;" target="hXy0uM5QeqM7-cPKSgsV-1" value="Перенаправление на страницу оплаты YooKassa">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="197" y="693" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-17" edge="1" parent="1" source="hXy0uM5QeqM7-cPKSgsV-5" style="verticalAlign=bottom;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endArrow=block;labelBackgroundColor=none;fontColor=default;" target="hXy0uM5QeqM7-cPKSgsV-3" value="Webhook: payment.succeeded">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1094" y="741" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-18" edge="1" parent="1" source="hXy0uM5QeqM7-cPKSgsV-3" style="verticalAlign=bottom;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endArrow=block;labelBackgroundColor=none;fontColor=default;" target="hXy0uM5QeqM7-cPKSgsV-4" value="UPDATE payments SET status=&#39;succeeded&#39;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="991" y="789" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-19" edge="1" parent="1" source="hXy0uM5QeqM7-cPKSgsV-3" style="verticalAlign=bottom;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endArrow=block;labelBackgroundColor=none;fontColor=default;" target="hXy0uM5QeqM7-cPKSgsV-4" value="UPDATE orders SET status=&#39;оплачен&#39;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="991" y="837" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-20" edge="1" parent="1" source="hXy0uM5QeqM7-cPKSgsV-3" style="verticalAlign=bottom;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endArrow=block;labelBackgroundColor=none;fontColor=default;" target="hXy0uM5QeqM7-cPKSgsV-4" value="INSERT INTO tickets (qr_token=UUID)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="991" y="885" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hXy0uM5QeqM7-cPKSgsV-21" edge="1" parent="1" source="hXy0uM5QeqM7-cPKSgsV-3" style="verticalAlign=bottom;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;dashed=1;dashPattern=2 3;endArrow=block;labelBackgroundColor=none;fontColor=default;" target="hXy0uM5QeqM7-cPKSgsV-1" value="Email с QR-билетом">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="379" y="933" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
