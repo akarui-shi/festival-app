@@ -51,7 +51,6 @@ export default function AdminDashboard() {
     reviews: 0,
     publications: 0,
     pendingEvents: 0,
-    pendingReviews: 0,
     pendingPubs: 0,
   });
   const [analytics, setAnalytics] = useState<OrganizerAnalyticsOverview | null>(null);
@@ -74,7 +73,6 @@ export default function AdminDashboard() {
           reviews: reviews.length,
           publications: pubs.length,
           pendingEvents: events.filter((event) => event.status === 'PENDING_APPROVAL').length,
-          pendingReviews: 0,
           pendingPubs: pubs.filter((publication) => publication.status === 'PENDING').length,
         });
         setAnalytics(analyticsResponse);
@@ -120,7 +118,6 @@ export default function AdminDashboard() {
 
   const pendingItems = [
     { label: 'Мероприятий на модерации', count: stats.pendingEvents, link: '/admin/events', urgent: stats.pendingEvents > 0 },
-    { label: 'Комментариев на удаление', count: stats.pendingReviews, link: '/admin/comments', urgent: stats.pendingReviews > 0 },
     { label: 'Публикаций на модерации', count: stats.pendingPubs, link: '/admin/publications', urgent: stats.pendingPubs > 0 },
   ];
 
@@ -168,7 +165,7 @@ export default function AdminDashboard() {
     );
   }
 
-  const totalPending = stats.pendingEvents + stats.pendingReviews + stats.pendingPubs;
+  const totalPending = stats.pendingEvents + stats.pendingPubs;
 
   return (
     <div className="space-y-6">

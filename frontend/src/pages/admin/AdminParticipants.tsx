@@ -14,8 +14,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Participant, ParticipantKind } from '@/types';
 
-const KIND_OPTIONS: ParticipantKind[] = ['исполнитель', 'лектор', 'экскурсовод', 'ансамбль', 'спикер', 'другое'];
-const DEFAULT_KIND: ParticipantKind = 'исполнитель';
+const KIND_OPTIONS: ParticipantKind[] = ['Исполнитель', 'Лектор', 'Экскурсовод', 'Ансамбль', 'Спикер', 'Другое'];
+const DEFAULT_KIND: ParticipantKind = 'Исполнитель';
+const MUSICAL_KINDS = ['Исполнитель', 'Ансамбль'];
 
 type ParticipantDraft = {
   id?: string | number;
@@ -295,10 +296,12 @@ export default function AdminParticipants() {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label>Жанр</Label>
-            <Input value={newParticipant.genre} onChange={(e) => setNewParticipant((prev) => ({ ...prev, genre: e.target.value }))} placeholder="Джаз" />
-          </div>
+          {MUSICAL_KINDS.includes(newParticipant.kind) && (
+            <div>
+              <Label>Жанр</Label>
+              <Input value={newParticipant.genre} onChange={(e) => setNewParticipant((prev) => ({ ...prev, genre: e.target.value }))} placeholder="Джаз" />
+            </div>
+          )}
           <div className="space-y-2">
             <Label className="block">Фотографии</Label>
             <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border bg-background px-3 text-sm">
@@ -475,13 +478,15 @@ export default function AdminParticipants() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
-                      <Label>Жанр</Label>
-                      <Input
-                        value={draft.genre}
-                        onChange={(e) => setEditDrafts((prev) => ({ ...prev, [key]: { ...draft, genre: e.target.value } }))}
-                      />
-                    </div>
+                    {MUSICAL_KINDS.includes(draft.kind) && (
+                      <div>
+                        <Label>Жанр</Label>
+                        <Input
+                          value={draft.genre}
+                          onChange={(e) => setEditDrafts((prev) => ({ ...prev, [key]: { ...draft, genre: e.target.value } }))}
+                        />
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label className="block">Фотографии</Label>
                       <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border bg-background px-3 text-sm">
