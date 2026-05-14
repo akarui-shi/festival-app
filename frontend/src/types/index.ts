@@ -118,7 +118,7 @@ export interface PromoValidation {
   description?: string | null;
 }
 
-export type ParticipantKind = 'исполнитель' | 'лектор' | 'экскурсовод' | 'ансамбль' | 'спикер' | 'другое';
+export type ParticipantKind = 'Исполнитель' | 'Лектор' | 'Экскурсовод' | 'Ансамбль' | 'Спикер' | 'Другое';
 
 export interface Participant {
   id: Id;

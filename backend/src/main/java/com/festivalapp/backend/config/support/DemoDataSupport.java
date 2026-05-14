@@ -154,7 +154,7 @@ public class DemoDataSupport {
                 .stageName(seed.stageName())
                 .description(seed.description())
                 .genre(seed.genre())
-                .kind(seed.kind())
+                .kind(normalizeParticipantKind(seed.kind()))
                 .createdAt(now)
                 .updatedAt(now)
                 .build()));
@@ -551,6 +551,22 @@ public class DemoDataSupport {
             case ".gif" -> "image/gif";
             case ".svg" -> "image/svg+xml";
             default -> "application/octet-stream";
+        };
+    }
+
+    private String normalizeParticipantKind(String kind) {
+        if (kind == null || kind.isBlank()) {
+            return "Исполнитель";
+        }
+        String normalized = kind.trim().toLowerCase();
+        return switch (normalized) {
+            case "исполнитель" -> "Исполнитель";
+            case "лектор" -> "Лектор";
+            case "экскурсовод" -> "Экскурсовод";
+            case "ансамбль" -> "Ансамбль";
+            case "спикер" -> "Спикер";
+            case "другое" -> "Другое";
+            default -> kind.trim();
         };
     }
 

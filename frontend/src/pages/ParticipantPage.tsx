@@ -82,7 +82,7 @@ export default function ParticipantPage() {
                     {participant.kind}
                   </span>
                 )}
-                {participant.genre && (
+                {participant.genre && ['Исполнитель', 'Ансамбль'].includes(participant.kind || '') && (
                   <span className="section-label">
                     <Mic2 className="h-3.5 w-3.5" />
                     {participant.genre}
