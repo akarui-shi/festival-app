@@ -3,6 +3,7 @@ import { Plus, Tag, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Label } from '@/components/ui/label';
 import {
   Dialog,
@@ -166,12 +167,10 @@ export default function OrganizerPromoCodes() {
 
               <div className="space-y-1.5">
                 <Label>Срок действия (необязательно)</Label>
-                <Input
-                  type="datetime-local"
+                <DateTimePicker
                   value={form.expiresAt ?? ''}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, expiresAt: e.target.value || undefined }))
-                  }
+                  onChange={(v) => setForm((p) => ({ ...p, expiresAt: v || undefined }))}
+                  placeholder="Без ограничений"
                 />
               </div>
             </div>
