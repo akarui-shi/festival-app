@@ -5,6 +5,7 @@ import com.festivalapp.backend.entity.City;
 import com.festivalapp.backend.entity.Comment;
 import com.festivalapp.backend.entity.Event;
 import com.festivalapp.backend.entity.Favorite;
+import com.festivalapp.backend.entity.Image;
 import com.festivalapp.backend.entity.Order;
 import com.festivalapp.backend.entity.OrderItem;
 import com.festivalapp.backend.entity.Payment;
@@ -41,6 +42,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -80,6 +82,7 @@ public class DemoActivityDataInitializer implements ApplicationRunner {
         OffsetDateTime now = OffsetDateTime.now();
         Role residentRole = support.ensureRole(RoleName.ROLE_RESIDENT, "Обычный житель");
         List<User> residents = ensureResidents(now, residentRole);
+        ensureResidentAvatars(residents, now);
         List<Event> events = eventRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc().stream()
             .filter(event -> event.getTitle() != null && event.getCity() != null)
             .sorted(Comparator.comparing(Event::getId))
@@ -204,6 +207,45 @@ public class DemoActivityDataInitializer implements ApplicationRunner {
             result.add(user);
         }
         return result;
+    }
+
+    private void ensureResidentAvatars(List<User> residents, OffsetDateTime now) {
+        Map<String, String> avatarsByEmail = Map.of(
+            "anna.smirnova@demo.local", "images/avatars/anna-portrait.jpg",
+            "ivan.petrov@demo.local", "images/avatars/ivan-portrait.jpg",
+            "maria.volkova@demo.local", "images/avatars/maria-portrait.jpg",
+            "pavel.sokolov@demo.local", "images/avatars/pavel-portrait.jpg",
+            "olga.pavlova@demo.local", "images/avatars/olga-portrait.jpg",
+            "sergey.vasiliev@demo.local", "images/avatars/sergey-portrait.jpg",
+            "ksenia.mikhailova@demo.local", "images/avatars/ksenia-portrait.jpg",
+            "alexey.nikolaev@demo.local", "images/avatars/alexey-portrait.jpg",
+            "daria.stepanova@demo.local", "images/avatars/daria-portrait.jpg"
+        );
+
+        for (User resident : residents) {
+            String avatarPath = avatarsByEmail.get(resident.getEmail());
+            if (avatarPath == null) {
+                continue;
+            }
+
+            Image currentAvatar = resident.getAvatarImage();
+            if (currentAvatar != null && !shouldReplaceSeedAvatar(currentAvatar)) {
+                continue;
+            }
+
+            Image avatar = support.ensureImage("resident-avatar", avatarPath, "user-" + resident.getId(), resident, now);
+            resident.setAvatarImage(avatar);
+            resident.setUpdatedAt(now);
+            userRepository.save(resident);
+        }
+    }
+
+    private boolean shouldReplaceSeedAvatar(Image currentAvatar) {
+        String fileName = currentAvatar.getFileName();
+        if (fileName == null || !fileName.startsWith("seed-resident-avatar-user-")) {
+            return false;
+        }
+        return !fileName.contains("-portrait");
     }
 
     private City resolveCity(String name) {

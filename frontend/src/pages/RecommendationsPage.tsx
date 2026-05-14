@@ -7,19 +7,30 @@ import { LoadingState } from '@/components/StateDisplays';
 import { Button } from '@/components/ui/button';
 import { eventService } from '@/services/event-service';
 import { directoryService } from '@/services/directory-service';
+import { favoriteService } from '@/services/favorite-service';
 import { useCity } from '@/contexts/CityContext';
-import type { Category, Event } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
+import type { Category, Event, Id } from '@/types';
 
 export default function RecommendationsPage() {
   const { selectedCity } = useCity();
+  const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     directoryService.getCategories().then(setCategories).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    favoriteService.getMyFavorites(user.id)
+      .then((favs) => setFavoriteIds(new Set(favs.map((f) => String(f.eventId)))))
+      .catch(() => {});
+  }, [user]);
 
   useEffect(() => {
     setLoading(true);
@@ -29,6 +40,18 @@ export default function RecommendationsPage() {
       .catch(() => setEvents([]))
       .finally(() => setLoading(false));
   }, [selectedCity?.id]);
+
+  const toggleFavorite = async (eventId: Id) => {
+    if (!user) return;
+    const key = String(eventId);
+    if (favoriteIds.has(key)) {
+      await favoriteService.removeFavorite(user.id, eventId);
+      setFavoriteIds((prev) => { const next = new Set(prev); next.delete(key); return next; });
+    } else {
+      await favoriteService.addFavorite(user.id, eventId);
+      setFavoriteIds((prev) => new Set(prev).add(key));
+    }
+  };
 
   const filtered = selectedCategoryId
     ? events.filter((e) =>
@@ -87,7 +110,12 @@ export default function RecommendationsPage() {
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((event) => (
-              <EventCard key={event.id} event={event} />
+              <EventCard
+                key={event.id}
+                event={event}
+                isFavorite={favoriteIds.has(String(event.id))}
+                onFavoriteToggle={user ? toggleFavorite : undefined}
+              />
             ))}
           </div>
         )}

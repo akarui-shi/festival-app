@@ -240,6 +240,11 @@ public class OrderService {
         List<OrderItem> items = orderItemRepository.findAllByOrderId(order.getId());
         List<Ticket> issued = issueTickets(order.getUser(), null, items, OffsetDateTime.now());
         notificationService.notifyTicketIssued(order.getUser(), order, issued);
+        String paidEventTitle = order.getEvent() != null ? order.getEvent().getTitle() : "мероприятие";
+        inAppNotificationService.create(order.getUser().getId(), "TICKET_ISSUED",
+            "Билеты оформлены",
+            "Вы успешно зарегистрированы на «" + paidEventTitle + "»",
+            order.getEvent() != null ? "/events/" + order.getEvent().getId() : null);
 
         return toOrderResponse(order, items, payment);
     }
