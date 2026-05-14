@@ -153,7 +153,8 @@ function formatTicketPrice(value?: number | null, currency?: string | null): str
   if (value == null || Number.isNaN(Number(value)) || Number(value) <= 0) {
     return 'Бесплатно';
   }
-  return `${Number(value).toLocaleString('ru-RU')} ${currency || 'RUB'}`;
+  const symbol = (!currency || currency === 'RUB') ? '₽' : currency;
+  return `${Number(value).toLocaleString('ru-RU')} ${symbol}`;
 }
 
 function buildQrPayload(ticket: Ticket): string {
@@ -275,116 +276,118 @@ export default function RegistrationsPage() {
                   <div className="absolute -top-5 right-[164px] z-20 hidden h-10 w-10 rounded-full md:block" style={{ backgroundColor: '#ffffff' }} />
                   <div className="absolute -bottom-5 right-[164px] z-20 hidden h-10 w-10 rounded-full md:block" style={{ backgroundColor: '#ffffff' }} />
 
-                  <div className="relative grid min-h-[172px] md:min-h-[156px] md:grid-cols-[1fr_184px]">
-                    <div className={`flex flex-col py-2.5 pl-5 pr-4 text-left text-white md:py-3 md:pl-8 md:pr-6 ${theme.mainPanel}`}>
+                  <div className="relative grid md:grid-cols-[1fr_184px]">
+                    <div className={`flex flex-col gap-3 py-4 pl-5 pr-4 text-left text-white md:py-5 md:pl-8 md:pr-6 ${theme.mainPanel}`}>
+
+                      {/* date + status */}
                       <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-heading text-[2.2rem] leading-[0.82] text-white drop-shadow-sm">{dateParts.day}</p>
-                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-white/88">{dateParts.month}</p>
-                          <p className="text-[1rem] font-bold text-white/95">{dateParts.time}</p>
+                        <div className="flex items-end gap-3">
+                          <div>
+                            <p className="font-heading text-[2.4rem] leading-none text-white drop-shadow-sm">{dateParts.day}</p>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-white/80">{dateParts.month}</p>
+                          </div>
+                          <div className="mb-0.5">
+                            <p className="text-[1.1rem] font-bold leading-none text-white/95">
+                              {dateParts.time}
+                              {ticket.sessionEndsAt && (
+                                <span className="text-white/60"> — {new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' }).format(new Date(ticket.sessionEndsAt))}</span>
+                              )}
+                            </p>
+                            {venueLabel && (
+                              <p className="mt-0.5 text-[11px] text-white/70">{venueLabel}</p>
+                            )}
+                          </div>
                         </div>
-                        <div className="mr-4 text-right md:mr-6">
+                        <div className="shrink-0 text-right">
                           <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.06em] shadow-sm ${statusPillClass}`}>
                             {status.label}
                           </span>
-                          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/84">
+                          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/70">
                             {ticketNumberLabel}
                           </p>
                         </div>
                       </div>
 
-                      <Link
-                        to={ticket.eventId ? `/events/${ticket.eventId}` : '/events'}
-                        className="mt-0.5 block break-words font-heading text-[1.9rem] leading-[0.95] text-white hover:text-white/90"
-                      >
-                        {eventLabel}
-                      </Link>
-                      <p className="break-words text-[16px] font-bold tracking-[0.02em] text-white/94">
-                        {sessionLabel}
-                      </p>
-                      {shortDescription && (
-                        <p className="mt-0.5 max-h-7 overflow-hidden break-words text-[12px] leading-snug text-white/88">
-                          {shortDescription}
-                        </p>
-                      )}
-
-                      <div className="mt-1 space-y-0.5 text-[13px] text-white/94">
-                        <p><span className="font-bold text-white">Начало:</span> {startsAtLabel}</p>
-                        <p><span className="font-bold text-white">Окончание:</span> {endsAtLabel}</p>
-                        <p><span className="font-bold text-white">Тип:</span> {ticketTypeLabel}</p>
-                        {venueLabel && (
-                          <p><span className="font-bold text-white">Место:</span> {venueLabel}</p>
-                        )}
+                      {/* event title + session */}
+                      <div>
+                        <Link
+                          to={ticket.eventId ? `/events/${ticket.eventId}` : '/events'}
+                          className="block font-heading text-[1.75rem] leading-[1] text-white hover:text-white/90"
+                        >
+                          {eventLabel}
+                        </Link>
+                        <p className="mt-0.5 text-[13px] font-semibold text-white/80">{sessionLabel}</p>
                       </div>
-                      <div className="mt-0.5 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
-                        <p className="min-w-0 max-h-4 overflow-hidden break-words text-[10px] leading-none text-white/80">
-                          {usefulInfo || '\u00A0'}
-                        </p>
-                        <div className="mr-4 shrink-0 self-end text-right md:mr-6">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/84">Цена</p>
+
+                      {/* meta + price */}
+                      <div className="mt-auto flex items-end justify-between gap-3">
+                        <div className="space-y-0.5 text-[12px] text-white/70">
+                          <p><span className="font-semibold text-white/90">Тип:</span> {ticketTypeLabel}</p>
+                          {ticket.issuedAt && <p>Выдан: {formatDateTime(ticket.issuedAt)}</p>}
+                        </div>
+                        <div className="shrink-0 text-right">
                           {originalPriceLabel && (
-                            <p className="text-[11px] leading-none text-white/60 line-through">{originalPriceLabel}</p>
+                            <p className="text-[11px] leading-none text-white/50 line-through">{originalPriceLabel}</p>
                           )}
-                          <p className="font-heading text-[2.2rem] leading-none text-white">{ticketPriceLabel}</p>
+                          <p className="font-heading text-[2rem] leading-none text-white">{ticketPriceLabel}</p>
                         </div>
                       </div>
 
-                      <div className="mt-auto flex items-center gap-2 pt-1">
-                        <div className="flex min-h-[28px] flex-wrap items-center gap-2">
-                          {canRefund && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className={`h-7 border px-2.5 text-[10px] font-semibold uppercase tracking-[0.05em] ${theme.actionButton}`}
-                              onClick={() => refundTicket(ticket.ticketId)}
-                            >
-                              <X className="mr-1 h-4 w-4" />
-                              Вернуть
-                            </Button>
-                          )}
-                          {canCancelPending && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className={`h-7 border px-2.5 text-[10px] font-semibold uppercase tracking-[0.05em] ${theme.actionButton}`}
-                              onClick={() => cancelPendingOrder(ticket.orderId!, ticket.ticketId)}
-                            >
-                              <X className="mr-1 h-4 w-4" />
-                              Отменить
-                            </Button>
-                          )}
-                          {ticket.requiresPayment && ticket.paymentUrl && (
-                            <Button
-                              size="sm"
-                              className={`h-7 px-2.5 text-[10px] font-semibold uppercase tracking-[0.05em] ${theme.payButton}`}
-                              onClick={() => window.location.assign(ticket.paymentUrl!)}
-                            >
-                              <CreditCard className="mr-1 h-4 w-4" />
-                              Оплатить
-                            </Button>
-                          )}
-                        </div>
+                      {/* actions */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {canRefund && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`h-7 border px-2.5 text-[10px] font-semibold uppercase tracking-[0.05em] ${theme.actionButton}`}
+                            onClick={() => refundTicket(ticket.ticketId)}
+                          >
+                            <X className="mr-1 h-4 w-4" />
+                            Вернуть
+                          </Button>
+                        )}
+                        {canCancelPending && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`h-7 border px-2.5 text-[10px] font-semibold uppercase tracking-[0.05em] ${theme.actionButton}`}
+                            onClick={() => cancelPendingOrder(ticket.orderId!, ticket.ticketId)}
+                          >
+                            <X className="mr-1 h-4 w-4" />
+                            Отменить
+                          </Button>
+                        )}
+                        {ticket.requiresPayment && ticket.paymentUrl && (
+                          <Button
+                            size="sm"
+                            className={`h-7 px-2.5 text-[10px] font-semibold uppercase tracking-[0.05em] ${theme.payButton}`}
+                            onClick={() => window.location.assign(ticket.paymentUrl!)}
+                          >
+                            <CreditCard className="mr-1 h-4 w-4" />
+                            Оплатить
+                          </Button>
+                        )}
                       </div>
                     </div>
 
-                    <div className={`relative flex flex-col items-center justify-between p-2 md:border-l ${theme.stubBg}`}>
+                    <div className={`relative flex flex-col items-center justify-between gap-2 p-3 md:border-l ${theme.stubBg}`}>
                       <div className="absolute left-0 top-2 bottom-2 hidden border-l-2 border-dashed border-white/48 md:block" />
-                      <span className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${theme.qrText}`}>
-                        Stub
-                      </span>
+                      <p className={`text-[10px] font-bold uppercase tracking-[0.1em] ${theme.qrText}`}>
+                        {ticketNumberLabel}
+                      </p>
                       {hasQr ? (
                         <div className={`rounded-lg border bg-white p-1.5 shadow-sm ${theme.qrBorder}`}>
                           <QRCode value={qrValue} size={114} />
                         </div>
                       ) : (
-                        <div className="rounded-lg border border-dashed border-white/40 bg-white/16 px-2 py-4 text-center">
-                          <p className={`text-[11px] font-medium ${theme.qrText}`}>PAY</p>
+                        <div className="rounded-lg border border-dashed border-white/40 bg-white/16 px-4 py-6 text-center">
+                          <p className={`text-[11px] font-semibold ${theme.qrText}`}>Ожидает оплаты</p>
                         </div>
                       )}
-                      <p className={`text-center text-[10px] font-bold ${theme.qrText}`}>{formatDateTime(startsAt, '--')}</p>
-                      <p className={`max-w-[150px] break-all text-center text-[10px] font-semibold ${theme.qrText}`}>
-                        {hasQr ? ticket.qrToken : ticketTypeLabel}
-                      </p>
+                      <div className="text-center">
+                        <p className={`text-[10px] font-bold ${theme.qrText}`}>{dateParts.day} {dateParts.month.toLowerCase()}, {dateParts.time}</p>
+                        <p className={`mt-0.5 text-[10px] font-medium opacity-70 ${theme.qrText}`}>{ticketTypeLabel}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
