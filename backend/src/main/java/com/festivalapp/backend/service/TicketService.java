@@ -5,6 +5,7 @@ import com.festivalapp.backend.entity.Order;
 import com.festivalapp.backend.entity.OrderItem;
 import com.festivalapp.backend.entity.Payment;
 import com.festivalapp.backend.entity.RoleName;
+import com.festivalapp.backend.entity.Session;
 import com.festivalapp.backend.entity.Ticket;
 import com.festivalapp.backend.entity.TicketType;
 import com.festivalapp.backend.entity.User;
@@ -46,14 +47,22 @@ public class TicketService {
         List<Order> pendingOrders = orderRepository.findAllByUserIdAndStatusOrderByCreatedAtDesc(actor.getId(), "ожидает_оплаты");
         for (Order order : pendingOrders) {
             Payment payment = paymentRepository.findFirstByOrderIdOrderByCreatedAtDesc(order.getId()).orElse(null);
+            List<OrderItem> pendingItems = orderItemRepository.findAllByOrderId(order.getId());
+            OrderItem firstItem = pendingItems.isEmpty() ? null : pendingItems.get(0);
+            Session session = firstItem == null || firstItem.getTicketType() == null ? null : firstItem.getTicketType().getSession();
             responses.add(TicketResponse.builder()
                 .ticketId(-order.getId())
                 .orderId(order.getId())
                 .eventId(order.getEvent() == null ? null : order.getEvent().getId())
                 .eventTitle(order.getEvent() == null ? null : order.getEvent().getTitle())
                 .eventShortDescription(order.getEvent() == null ? null : order.getEvent().getShortDescription())
-                .sessionId(null)
-                .sessionTitle("Ожидает оплаты")
+                .sessionId(session == null ? null : session.getId())
+                .sessionTitle(session == null ? "Ожидает оплаты" : session.getSessionTitle())
+                .sessionStartsAt(session == null || session.getStartsAt() == null ? null : session.getStartsAt().toLocalDateTime())
+                .sessionEndsAt(session == null || session.getEndsAt() == null ? null : session.getEndsAt().toLocalDateTime())
+                .venueName(session == null || session.getVenue() == null ? null : session.getVenue().getName())
+                .venueAddress(session == null || session.getVenue() == null ? null : session.getVenue().getAddress())
+                .cityName(session == null || session.getVenue() == null || session.getVenue().getCity() == null ? null : session.getVenue().getCity().getName())
                 .status("ожидает_оплаты")
                 .qrToken(null)
                 .issuedAt(order.getCreatedAt() == null ? null : order.getCreatedAt().toLocalDateTime())
