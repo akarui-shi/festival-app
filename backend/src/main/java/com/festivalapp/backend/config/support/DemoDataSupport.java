@@ -224,7 +224,7 @@ public class DemoDataSupport {
             .free(isFree)
             .startsAt(startsAt)
             .endsAt(endsAt)
-            .status("опубликовано")
+            .status(spec.status())
             .createdAt(now)
             .updatedAt(now)
             .build());
@@ -351,7 +351,7 @@ public class DemoDataSupport {
                         .currency("RUB")
                         .quota(quota)
                         .active(true)
-                        .salesStartAt(OffsetDateTime.now().minusDays(1))
+                        .salesStartAt(sessionSpec.startsAt().minusDays(30))
                         .salesEndAt(sessionSpec.startsAt())
                         .build());
                 }
@@ -602,6 +602,8 @@ public class DemoDataSupport {
     /**
      * Сид события. {@code classpathImagePaths} — полные пути к картинкам в classpath,
      * например {@code "images/live music/foo.jpg"}.
+     * {@code status} — строковое значение статуса (например {@code "опубликовано"}, {@code "черновик"}).
+     * Восьмипараметрный конструктор (без status) подставляет {@code "опубликовано"} по умолчанию.
      */
     public record EventSeedSpec(String title,
                                 String shortDescription,
@@ -610,7 +612,25 @@ public class DemoDataSupport {
                                 List<String> categoryNames,
                                 List<String> classpathImagePaths,
                                 List<SessionSeedSpec> sessions,
-                                List<String> participantNames) { }
+                                List<String> participantNames,
+                                String status) {
+
+        public EventSeedSpec(String title,
+                             String shortDescription,
+                             String fullDescription,
+                             String ageRestriction,
+                             List<String> categoryNames,
+                             List<String> classpathImagePaths,
+                             List<SessionSeedSpec> sessions,
+                             List<String> participantNames) {
+            this(title, shortDescription, fullDescription, ageRestriction, categoryNames,
+                classpathImagePaths, sessions, participantNames, "опубликовано");
+        }
+
+        public EventSeedSpec {
+            status = (status == null || status.isBlank()) ? "опубликовано" : status;
+        }
+    }
 
     /**
      * Сид публикации (новости/материала вокруг события). Картинки задаются полными

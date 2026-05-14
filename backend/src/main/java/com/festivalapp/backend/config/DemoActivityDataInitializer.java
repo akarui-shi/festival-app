@@ -291,26 +291,28 @@ public class DemoActivityDataInitializer implements ApplicationRunner {
     private boolean ensureComment(Event event, User user, int eventIndex, int commentIndex, OffsetDateTime createdAt) {
         boolean exists = commentRepository.findAllByEventIdOrderByCreatedAtDesc(event.getId()).stream()
             .anyMatch(comment -> comment.getUser() != null
-                && comment.getUser().getId().equals(user.getId())
-                && comment.getContent() != null
-                && comment.getContent().startsWith("Демо-отзыв:"));
+                && comment.getUser().getId().equals(user.getId()));
         if (exists) {
             return false;
         }
 
         String[] phrases = {
-            "отличная организация, всё было понятно с билетами и входом.",
-            "понравилась атмосфера и подбор площадки, хочется прийти ещё.",
-            "событие получилось живым, ведущие хорошо держали внимание.",
-            "удобное расписание, но хотелось бы больше навигации на месте.",
-            "очень тёплая команда и хороший звук, рекомендую друзьям.",
-            "интересная программа, после события подписались на организацию."
+            "Отличная организация — с билетами всё было понятно, вход прошёл без очереди. Обязательно приду ещё.",
+            "Очень понравилась атмосфера и выбор площадки. Такие события нужны городу чаще, уже жду следующего.",
+            "Событие получилось живым и тёплым. Ведущие хорошо держали аудиторию, время пролетело незаметно.",
+            "Удобное расписание, хорошие спикеры. Единственное пожелание — чуть больше навигационных указателей на месте.",
+            "Прекрасная команда организаторов и качественный звук. С удовольствием рекомендую друзьям.",
+            "Интересная насыщенная программа. После мероприятия сразу подписались на организацию — хочется быть в курсе.",
+            "Первый раз был на таком формате — очень понравилось. Ощущение живого городского события, а не официального концерта.",
+            "Спасибо за бесплатный вход — доступно для всех, кто хочет провести время с пользой и удовольствием.",
+            "Площадка выбрана идеально, акустика хорошая. Буду следить за новыми событиями от этих организаторов.",
+            "Дети были в восторге, да и мы тоже. Грамотно продуманный тайминг, без пустых пауз."
         };
         int rating = Math.max(3, 5 - ((eventIndex + commentIndex) % 3 == 0 ? 1 : 0));
         commentRepository.save(Comment.builder()
             .event(event)
             .user(user)
-            .content("Демо-отзыв: " + phrases[(eventIndex + commentIndex) % phrases.length])
+            .content(phrases[(eventIndex + commentIndex) % phrases.length])
             .rating(rating)
             .moderationStatus(commentIndex % 7 == 0 ? "на_рассмотрении" : "одобрено")
             .createdAt(createdAt)

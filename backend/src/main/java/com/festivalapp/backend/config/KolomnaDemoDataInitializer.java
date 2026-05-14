@@ -16,8 +16,10 @@ import com.festivalapp.backend.entity.Organization;
 import com.festivalapp.backend.entity.Role;
 import com.festivalapp.backend.entity.RoleName;
 import com.festivalapp.backend.entity.User;
+import com.festivalapp.backend.entity.PromoCode;
 import com.festivalapp.backend.repository.CityRepository;
 import com.festivalapp.backend.repository.OrganizationRepository;
+import com.festivalapp.backend.repository.PromoCodeRepository;
 import com.festivalapp.backend.repository.SessionRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -132,10 +134,23 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
     private static final String EV_PLANT_EXCHANGE_1 = "images/free-garden/kolomna-plant-exchange.jpg";
     private static final String EV_PLANT_EXCHANGE_2 = "images/free-garden/kolomna-garden-gathering.jpg";
 
+    // --- Картинки для событий в разных статусах (новые, загружены отдельно). ---
+    private static final String EV_JAZZ_DRAFT_1 = "images/jazz-draft/jazz-01.jpg";
+    private static final String EV_JAZZ_DRAFT_2 = "images/jazz-draft/jazz-02.jpg";
+    private static final String EV_PHOTO_EXH_1 = "images/photo-exhibition/exhibit-01.jpg";
+    private static final String EV_PHOTO_EXH_2 = "images/photo-exhibition/exhibit-02.jpg";
+    private static final String EV_NIGHT_WALK_1 = "images/night-walk/night-01.jpg";
+    private static final String EV_NIGHT_WALK_2 = "images/night-walk/night-02.jpg";
+    private static final String EV_SPRING_FEST_1 = "images/spring-festival/spring-01.jpg";
+    private static final String EV_SPRING_FEST_2 = "images/spring-festival/spring-02.jpg";
+    private static final String EV_WATERCOLOR_1 = "images/watercolor/watercolor-01.jpg";
+    private static final String EV_WATERCOLOR_2 = "images/watercolor/watercolor-02.jpg";
+
     private final CityRepository cityRepository;
     private final UserRepository userRepository;
     private final OrganizationRepository organizationRepository;
     private final SessionRepository sessionRepository;
+    private final PromoCodeRepository promoCodeRepository;
     private final PasswordEncoder passwordEncoder;
     private final DemoDataSupport support;
     private final String number = "123456";
@@ -212,7 +227,10 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
             support.normalizePrimaryImage(event.getId());
         }
 
-        // 5. Подчищаем координаты сессий, у которых их нет (например, после ручных правок).
+        // 5. Промокоды для демонстрации скидочной системы.
+        ensurePromoCodes(organization, now);
+
+        // 6. Подчищаем координаты сессий, у которых их нет (например, после ручных правок).
         support.patchMissingSessionCoordinates();
 
         log.info("Kolomna demo data has been seeded/verified: {} events", eventSpecs.size());
@@ -303,35 +321,6 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
 
     private List<EventSeedSpec> buildEventSpecs(OffsetDateTime now) {
         List<EventSeedSpec> result = new ArrayList<>();
-
-        // Событие 1. Джазовый вечер у Коломенки — концерт на Конькобежном центре.
-        // Картинки: 2 из theatre stage (концертный свет/сцена).
-        result.add(new EventSeedSpec(
-            "Джазовый вечер у Коломенки",
-            "Камерный джазовый концерт у набережной реки Коломенки.",
-            "Вечер живого джаза с саксофоном, авторскими композициями и атмосферой большого концертного зала. " +
-                "Программу формируют Илья Лебедев и Алексей Руденко: первая часть — стандарты Майлза Дэвиса и Джона Колтрейна " +
-                "в современных аранжировках, вторая — авторский материал с электронными подкладами.\n\n" +
-                "Площадка — Конькобежный центр «Коломна», знакомый горожанам по крупным культурным событиям. " +
-                "Зал перестраивается под камерный формат: 350 мест с хорошей видимостью сцены и качественным звуком.\n\n" +
-                "Концерт подойдёт и опытным меломанам, и тем, кто впервые приходит на живой джаз. " +
-                "Перед началом — короткое выступление куратора программы, в антракте — встреча с музыкантами в фойе.",
-            "12+",
-            List.of("Концерт", "Фестиваль"),
-            List.of(EV_JAZZ_1, EV_JAZZ_2),
-            List.of(
-                new SessionSeedSpec(
-                    "Вечерний концерт",
-                    now.plusDays(7).withHour(19).withMinute(0).withSecond(0).withNano(0),
-                    now.plusDays(7).withHour(21).withMinute(30).withSecond(0).withNano(0),
-                    "Московская область, Коломна, Набережная реки Коломенки, 7",
-                    null,
-                    350,
-                    new BigDecimal("900.00")
-                )
-            ),
-            List.of("Илья Лебедев", "Алексей Руденко")
-        ));
 
         // Событие 2. Лекторий: Космос над Коломной — научно-популярная лекция.
         // Картинки: 2 из lecture (лекторий, аудитория).
@@ -786,6 +775,157 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
             List.of("Садовый клуб «Коломенские ростки»")
         ));
 
+        // ===== События в разных статусах (для демонстрации полного жизненного цикла). =====
+
+        // DRAFT — джазовый вечер в стадии подготовки.
+        result.add(new EventSeedSpec(
+            "Джазовый вечер с Алексеем Руденко",
+            "Камерный джазовый концерт с саксофонистом Алексеем Руденко — готовится к анонсу.",
+            "Алексей Руденко (Rudenko Sax) возвращается на коломенскую сцену с новой камерной программой. " +
+                "Вечер строится вокруг авторских тем и джазовых стандартов — бибоп, cool jazz, " +
+                "несколько свободных импровизаций. Состав: саксофон, контрабас, фортепиано.\n\n" +
+                "Площадка — небольшой зал с хорошей акустикой, не более 60 слушателей. " +
+                "Именно такой формат позволяет слышать каждую ноту и чувствовать живое дыхание " +
+                "музыкантов. После концерта — короткое общение с Алексеем, можно задать вопросы.\n\n" +
+                "Билеты появятся после финального согласования даты. Подпишитесь на организацию, " +
+                "чтобы не пропустить анонс.",
+            "16+",
+            List.of("Концерт"),
+            List.of(EV_JAZZ_DRAFT_1, EV_JAZZ_DRAFT_2),
+            List.of(
+                new SessionSeedSpec(
+                    "Камерный концерт",
+                    now.plusDays(45).withHour(19).withMinute(30).withSecond(0).withNano(0),
+                    now.plusDays(45).withHour(21).withMinute(30).withSecond(0).withNano(0),
+                    null,
+                    "Московская область, Коломна, улица Октябрьской Революции, 205",
+                    60,
+                    new BigDecimal("800.00")
+                )
+            ),
+            List.of("Алексей Руденко"),
+            "черновик"
+        ));
+
+        // PENDING_APPROVAL — фотовыставка на рассмотрении модератора.
+        result.add(new EventSeedSpec(
+            "Выставка коломенских фотографов",
+            "Групповая фотовыставка участников городского фотоклуба — ждёт публикации.",
+            "Городской фотоклуб «Кадр и свет» представляет групповую выставку: двенадцать авторов, " +
+                "более сорока работ, снятых в Коломне за последние два года. Темы разные — " +
+                "уличная фотография, архитектурные детали, портреты горожан, городской пейзаж " +
+                "в разное время суток и сезонов.\n\n" +
+                "Выставка разместится в галерейном пространстве арт-кластера на Лажечникова. " +
+                "Работы напечатаны на матовой бумаге форматом 40×60 см, оформлены в рамы. " +
+                "Вход свободный, посетить можно в любой день работы выставки.\n\n" +
+                "Открытие пройдёт с небольшим вечером: авторы расскажут об историях за снимками, " +
+                "будет горячий чай и живая музыка. Точная дата уточняется.",
+            "0+",
+            List.of("Фестиваль", "Лекция"),
+            List.of(EV_PHOTO_EXH_1, EV_PHOTO_EXH_2),
+            List.of(
+                new SessionSeedSpec(
+                    "Открытие выставки",
+                    now.plusDays(40).withHour(18).withMinute(0).withSecond(0).withNano(0),
+                    now.plusDays(40).withHour(21).withMinute(0).withSecond(0).withNano(0),
+                    null,
+                    "Московская область, Коломна, улица Лажечникова, 5",
+                    200,
+                    BigDecimal.ZERO
+                )
+            ),
+            List.of(),
+            "на_рассмотрении"
+        ));
+
+        // REJECTED — ночная прогулка, отклонённая модератором.
+        result.add(new EventSeedSpec(
+            "Ночная прогулка у кремля",
+            "Поздняя прогулка по периметру кремля с фонарями — отклонена организаторами площадки.",
+            "Организаторы предложили формат позднего вечернего маршрута: фонари, тишина, " +
+                "городские легенды у стен кремля. Маршрут должен был начинаться в 22:30 у " +
+                "Маринкиной башни и проходить по внешнему периметру крепостных стен.\n\n" +
+                "Событие не получило согласование администрации: прогулки у кремля после 22:00 " +
+                "требуют специального разрешения охранной зоны, которое на момент подачи заявки " +
+                "получить не удалось. Организаторы рассматривают перенос на более раннее время.\n\n" +
+                "Следите за анонсами — при изменении условий событие выйдет заново.",
+            "16+",
+            List.of("Лекция", "Фестиваль"),
+            List.of(EV_NIGHT_WALK_1, EV_NIGHT_WALK_2),
+            List.of(
+                new SessionSeedSpec(
+                    "Ночной маршрут",
+                    now.plusDays(50).withHour(22).withMinute(30).withSecond(0).withNano(0),
+                    now.plusDays(51).withHour(0).withMinute(0).withSecond(0).withNano(0),
+                    null,
+                    "Московская область, Коломна, улица Лажечникова, 5",
+                    30,
+                    new BigDecimal("300.00")
+                )
+            ),
+            List.of("Дмитрий Бельский"),
+            "отклонено"
+        ));
+
+        // ARCHIVED — весенний фестиваль, который уже прошёл.
+        result.add(new EventSeedSpec(
+            "Весенний фестиваль Коломны 2024",
+            "Большой уличный фестиваль открытия сезона — прошёл в апреле прошлого года.",
+            "Ежегодный праздник открытия тёплого сезона собрал более двух тысяч гостей на " +
+                "площадях исторического центра. Три сцены работали параллельно: главная у набережной, " +
+                "камерная в сквере у кремля и детская у Дома мастеров.\n\n" +
+                "В программе — четырнадцать выступлений, ярмарка весенних растений, кулинарные " +
+                "мастер-классы от коломенских поваров и уличные художники. Фестиваль шёл с 12:00 " +
+                "до 21:00, погода порадовала: тепло и солнечно весь день.\n\n" +
+                "В этом году фестиваль пройдёт снова — следите за анонсами организации.",
+            "0+",
+            List.of("Фестиваль", "Концерт", "Мастер-класс"),
+            List.of(EV_SPRING_FEST_1, EV_SPRING_FEST_2),
+            List.of(
+                new SessionSeedSpec(
+                    "Весенний день",
+                    now.minusDays(30).withHour(12).withMinute(0).withSecond(0).withNano(0),
+                    now.minusDays(30).withHour(21).withMinute(0).withSecond(0).withNano(0),
+                    null,
+                    "Московская область, Коломна, улица Лажечникова, 5",
+                    2000,
+                    BigDecimal.ZERO
+                )
+            ),
+            List.of("Марина Соколова", "Фольклорный ансамбль «Коломенская слобода»"),
+            "завершено"
+        ));
+
+        // CANCELLED — мастер-класс по акварели, отменённый по болезни мастера.
+        result.add(new EventSeedSpec(
+            "Мастер-класс по акварели",
+            "Занятие по акварельной живописи для начинающих — отменено по болезни мастера.",
+            "Художник Мария Ефимова планировала провести трёхчасовой мастер-класс по акварели " +
+                "для начинающих: основы цветопередачи, работа с мокрой бумагой, техника " +
+                "размытия и наложения слоёв. Участники должны были написать небольшой " +
+                "городской пейзаж с натуры.\n\n" +
+                "К сожалению, мастер-класс отменён из-за болезни мастера. Все зарегистрированные " +
+                "участники получили уведомление и возврат средств. Следующая дата будет объявлена " +
+                "после выздоровления Марии — ориентировочно через три недели.\n\n" +
+                "Если хотите попасть на перенесённое занятие, подпишитесь на организацию.",
+            "12+",
+            List.of("Мастер-класс"),
+            List.of(EV_WATERCOLOR_1, EV_WATERCOLOR_2),
+            List.of(
+                new SessionSeedSpec(
+                    "Занятие по акварели",
+                    now.plusDays(20).withHour(14).withMinute(0).withSecond(0).withNano(0),
+                    now.plusDays(20).withHour(17).withMinute(0).withSecond(0).withNano(0),
+                    null,
+                    "Московская область, Коломна, улица Зайцева, 14",
+                    20,
+                    new BigDecimal("1200.00")
+                )
+            ),
+            List.of(),
+            "отменено"
+        ));
+
         return result;
     }
 
@@ -797,34 +937,6 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
      */
     private Map<String, List<PublicationSeedSpec>> buildPublicationSpecsByEventTitle() {
         Map<String, List<PublicationSeedSpec>> result = new java.util.LinkedHashMap<>();
-
-        result.put("Джазовый вечер у Коломенки", List.of(
-            new PublicationSeedSpec(
-                "Программа джазового вечера: что готовят Илья Лебедев и Алексей Руденко",
-                "В этот четверг Конькобежный центр «Коломна» превратится в камерный джазовый зал на 350 мест: " +
-                    "уберём ледовое покрытие, установим деревянный подиум для сцены и развесим мягкое заливное " +
-                    "освещение. Команда звукорежиссёров провела два дня настройки акустики, чтобы добиться " +
-                    "ощущения уютного клуба, а не спортивного объекта.\n\n" +
-                    "Первое отделение — стандарты бибопа и кул-джаза в живых аранжировках. Илья Лебедев готовит " +
-                    "версию So What Майлза Дэвиса с электронными вкраплениями: drone-подложка из модульного " +
-                    "синтезатора, тёплый Rhodes на гармонии, акустический контрабас. Алексей Руденко возьмёт " +
-                    "на себя главные соло на тенор-саксофоне — у него за плечами десять лет джазовых джемов " +
-                    "в Москве и собственная программа на BeFM.\n\n" +
-                    "Во втором отделении — оригинальный материал. Это шесть композиций, написанных дуэтом " +
-                    "за последний год специально для коломенских концертов: лиричные баллады, две почти " +
-                    "танцевальные темы и одна импровизационная с открытой структурой. К дуэту присоединятся " +
-                    "ритм-секция (контрабас + барабаны) и гостевая клавиша.\n\n" +
-                    "В антракте — короткая встреча с музыкантами в фойе, можно подойти, задать вопрос " +
-                    "и взять автограф на программку. После концерта традиционный «джем-after» в баре фойе: " +
-                    "приходите со своим инструментом, если хотите включиться.\n\n" +
-                    "Что взять с собой: документ, электронный билет (в приложении или распечатанный QR), " +
-                    "удобную одежду — в зале комфортные +20°C. Гардероб работает с 18:00, рекомендуем " +
-                    "приходить за 30–40 минут до начала, чтобы спокойно занять места и заказать напиток. " +
-                    "Парковка на территории центра ограничена: удобнее оставить машину на улице Окской " +
-                    "и пройти 7–10 минут пешком вдоль набережной.",
-                List.of(PUB_JAZZ_1)
-            )
-        ));
 
         result.put("Лекторий: Космос над Коломной", List.of(
             new PublicationSeedSpec(
@@ -1104,5 +1216,36 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
         ));
 
         return result;
+    }
+
+    // ===== Промокоды =====
+
+    private void ensurePromoCodes(Organization organization, OffsetDateTime now) {
+        createPromoCodeIfAbsent("KOLOMNA10",  "PERCENT", new BigDecimal("10"),  null, now.plusDays(365), organization, now);
+        createPromoCodeIfAbsent("ГОСТЬ100",   "FIXED",   new BigDecimal("100"), 50,  now.plusDays(180), organization, now);
+        createPromoCodeIfAbsent("ФЕСТ0",      "FREE",    new BigDecimal("100"), 5,   now.plusDays(90),  organization, now);
+    }
+
+    private void createPromoCodeIfAbsent(String code,
+                                         String discountType,
+                                         BigDecimal discountValue,
+                                         Integer maxUsages,
+                                         OffsetDateTime expiresAt,
+                                         Organization organization,
+                                         OffsetDateTime now) {
+        if (promoCodeRepository.findByCodeIgnoreCase(code).isPresent()) {
+            return;
+        }
+        promoCodeRepository.save(PromoCode.builder()
+            .code(code)
+            .discountType(discountType)
+            .discountValue(discountValue)
+            .maxUsages(maxUsages)
+            .usageCount(0)
+            .expiresAt(expiresAt)
+            .organization(organization)
+            .active(true)
+            .createdAt(now)
+            .build());
     }
 }
