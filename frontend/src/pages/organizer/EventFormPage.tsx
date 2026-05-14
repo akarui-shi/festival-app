@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -1416,11 +1417,11 @@ export default function EventFormPage() {
                       </div>
                       <div>
                         <Label>Дата и время начала *</Label>
-                        <Input type="datetime-local" value={session.startsAt} onChange={(event) => updateSession(session.localId, { startsAt: event.target.value })} />
+                        <DateTimePicker value={session.startsAt} onChange={(v) => updateSession(session.localId, { startsAt: v })} />
                       </div>
                       <div>
                         <Label>Дата и время окончания</Label>
-                        <Input type="datetime-local" value={session.endsAt} onChange={(event) => updateSession(session.localId, { endsAt: event.target.value })} />
+                        <DateTimePicker value={session.endsAt} onChange={(v) => updateSession(session.localId, { endsAt: v })} />
                       </div>
 
                       {session.locationMode === 'venue' ? (
@@ -1619,11 +1620,11 @@ export default function EventFormPage() {
                           </div>
                           <div>
                             <Label>Начало продаж</Label>
-                            <Input type="datetime-local" value={ticketType.salesStartAt} onChange={(event) => updateTicketType(session.localId, ticketIndex, { salesStartAt: event.target.value })} />
+                            <DateTimePicker value={ticketType.salesStartAt} onChange={(v) => updateTicketType(session.localId, ticketIndex, { salesStartAt: v })} />
                           </div>
                           <div>
                             <Label>Окончание продаж</Label>
-                            <Input type="datetime-local" value={ticketType.salesEndAt} onChange={(event) => updateTicketType(session.localId, ticketIndex, { salesEndAt: event.target.value })} />
+                            <DateTimePicker value={ticketType.salesEndAt} onChange={(v) => updateTicketType(session.localId, ticketIndex, { salesEndAt: v })} />
                           </div>
                         </div>
                       </div>

@@ -4,6 +4,7 @@ import { ArrowDownUp, CalendarRange, LayoutList, Map, Search, SlidersHorizontal,
 import { toast } from 'sonner';
 import { EventsCatalogMap } from '@/components/EventsCatalogMap';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -584,11 +585,10 @@ export default function EventsCatalogPage() {
                         <CalendarRange className="h-3.5 w-3.5 shrink-0" aria-hidden />
                         <span>с</span>
                       </label>
-                      <Input
-                        type="date"
-                        className="w-full min-w-0 h-10 py-0 leading-normal [&::-webkit-datetime-edit]:py-0 [&::-webkit-datetime-edit-fields-wrapper]:p-0"
+                      <DatePicker
                         value={draftFilters.dateFrom}
-                        onChange={(event) => updateDraftFilter('dateFrom', event.target.value)}
+                        onChange={(v) => updateDraftFilter('dateFrom', v)}
+                        placeholder="с"
                       />
                     </div>
                     <div className="flex min-w-0 flex-col gap-1.5">
@@ -596,11 +596,10 @@ export default function EventsCatalogPage() {
                         <CalendarRange className="h-3.5 w-3.5 shrink-0" aria-hidden />
                         <span>по</span>
                       </label>
-                      <Input
-                        type="date"
-                        className="w-full min-w-0 h-10 py-0 leading-normal [&::-webkit-datetime-edit]:py-0 [&::-webkit-datetime-edit-fields-wrapper]:p-0"
+                      <DatePicker
                         value={draftFilters.dateTo}
-                        onChange={(event) => updateDraftFilter('dateTo', event.target.value)}
+                        onChange={(v) => updateDraftFilter('dateTo', v)}
+                        placeholder="по"
                       />
                     </div>
                   </div>

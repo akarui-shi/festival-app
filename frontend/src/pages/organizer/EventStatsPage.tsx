@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { getRegistrationStatusBadge } from '@/lib/statuses';
 import { imageSrc } from '@/lib/image';
@@ -484,7 +485,7 @@ export default function EventStatsPage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div>
                 <Label>Дата</Label>
-                <Input type="date" value={newSession.date} onChange={(e) => setNewSession((p) => ({ ...p, date: e.target.value }))} />
+                <DatePicker value={newSession.date} onChange={(v) => setNewSession((p) => ({ ...p, date: v }))} />
               </div>
               <div>
                 <Label>Начало</Label>
