@@ -94,7 +94,8 @@ const App = () => (
               </Route>
 
               <Route path="/admin" element={<ProtectedRoute roles={['ADMIN']}><AdminLayout /></ProtectedRoute>}>
-                <Route index element={<AdminDashboard />} />
+                <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                <Route path="dashboard" element={<AdminDashboard />} />
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="events" element={<AdminEvents />} />
                 <Route path="participants" element={<AdminParticipants />} />
