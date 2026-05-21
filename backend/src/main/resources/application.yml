@@ -5,9 +5,9 @@ spring:
     import: optional:file:./.env[.properties],optional:file:./backend/.env[.properties]
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/festival_db
-    username: postgres
-    password: 1234
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:festival_db}}
+    username: ${SPRING_DATASOURCE_USERNAME:${PGUSER:postgres}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${PGPASSWORD:1234}}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -78,8 +78,8 @@ spring:
       max-request-size: 5MB
 
 server:
-  port: 8080
-  address: 127.0.0.1
+  port: ${PORT:8080}
+  address: ${SERVER_ADDRESS:0.0.0.0}
 
 security:
   jwt:

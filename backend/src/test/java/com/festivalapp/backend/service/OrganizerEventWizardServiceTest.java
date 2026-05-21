@@ -18,17 +18,17 @@ import com.festivalapp.backend.entity.TicketType;
 import com.festivalapp.backend.entity.User;
 import com.festivalapp.backend.entity.UserRole;
 import com.festivalapp.backend.exception.BadRequestException;
-import com.festivalapp.backend.repository.ArtistImageRepository;
-import com.festivalapp.backend.repository.ArtistRepository;
 import com.festivalapp.backend.repository.CategoryRepository;
 import com.festivalapp.backend.repository.CityRepository;
-import com.festivalapp.backend.repository.EventArtistRepository;
 import com.festivalapp.backend.repository.EventCategoryRepository;
 import com.festivalapp.backend.repository.EventImageRepository;
+import com.festivalapp.backend.repository.EventParticipantRepository;
 import com.festivalapp.backend.repository.EventRepository;
 import com.festivalapp.backend.repository.ImageRepository;
 import com.festivalapp.backend.repository.OrganizationMemberRepository;
 import com.festivalapp.backend.repository.OrganizationRepository;
+import com.festivalapp.backend.repository.ParticipantImageRepository;
+import com.festivalapp.backend.repository.ParticipantRepository;
 import com.festivalapp.backend.repository.SessionRepository;
 import com.festivalapp.backend.repository.TicketTypeRepository;
 import com.festivalapp.backend.repository.UserRepository;
@@ -69,7 +69,7 @@ class OrganizerEventWizardServiceTest {
     @Mock private EventRepository eventRepository;
     @Mock private EventCategoryRepository eventCategoryRepository;
     @Mock private EventImageRepository eventImageRepository;
-    @Mock private EventArtistRepository eventArtistRepository;
+    @Mock private EventParticipantRepository eventParticipantRepository;
     @Mock private SessionRepository sessionRepository;
     @Mock private TicketTypeRepository ticketTypeRepository;
 
@@ -78,8 +78,8 @@ class OrganizerEventWizardServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private CityRepository cityRepository;
     @Mock private CategoryRepository categoryRepository;
-    @Mock private ArtistRepository artistRepository;
-    @Mock private ArtistImageRepository artistImageRepository;
+    @Mock private ParticipantRepository participantRepository;
+    @Mock private ParticipantImageRepository participantImageRepository;
     @Mock private VenueRepository venueRepository;
     @Mock private ImageRepository imageRepository;
 
@@ -258,6 +258,14 @@ class OrganizerEventWizardServiceTest {
         Category category = Category.builder().id(1L).name("Концерты").build();
         when(eventCategoryRepository.findAllByEventId(event.getId())).thenReturn(List.of(
             EventCategory.builder().event(event).category(category).build()
+        ));
+        when(eventImageRepository.findAllByEventIdOrderBySortOrderAscIdAsc(event.getId())).thenReturn(List.of(
+            EventImage.builder()
+                .event(event)
+                .image(Image.builder().id(44L).fileName("cover.jpg").mimeType("image/jpeg").build())
+                .primary(true)
+                .sortOrder(0)
+                .build()
         ));
 
         Session session = Session.builder()

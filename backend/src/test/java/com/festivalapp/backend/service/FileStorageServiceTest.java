@@ -15,12 +15,10 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.OffsetDateTime;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.atLeast;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -71,14 +69,14 @@ class FileStorageServiceTest {
         Image saved = fileStorageService.storeEventImage(file, "org");
 
         ArgumentCaptor<Image> imageCaptor = ArgumentCaptor.forClass(Image.class);
-        verify(imageRepository, atLeast(2)).save(imageCaptor.capture());
-        List<Image> allSaved = imageCaptor.getAllValues();
-        Image firstSave = allSaved.get(0);
+        verify(imageRepository).save(imageCaptor.capture());
+        Image firstSave = imageCaptor.getValue();
 
         assertThat(firstSave.getFileData()).isNotNull();
         assertThat(firstSave.getFileData().length).isGreaterThan(0);
         assertThat(firstSave.getMimeType()).isEqualTo("image/png");
         assertThat(firstSave.getUploadedByUser()).isNotNull();
+        assertThat(saved.getId()).isEqualTo(101L);
     }
 
     @Test
