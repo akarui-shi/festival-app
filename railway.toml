@@ -1,0 +1,6 @@
+# Railway config is per service. This monorepo uses:
+# - /backend/railway.toml for the Spring Boot API
+# - /frontend/railway.toml for the Vite/nginx frontend
+#
+# In Railway, create two services from the same repo and set each service's
+# Config File Path to the matching file above.
