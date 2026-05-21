@@ -1,0 +1,21 @@
+[build]
+builder = "DOCKERFILE"
+
+[[services]]
+name = "backend"
+source = "backend"
+
+[services.build]
+dockerfilePath = "backend/Dockerfile"
+
+[services.deploy]
+startCommand = "java -jar app.jar"
+healthcheckPath = "/api/events"
+healthcheckTimeout = 60
+
+[[services]]
+name = "frontend"
+source = "frontend"
+
+[services.build]
+dockerfilePath = "frontend/Dockerfile"
