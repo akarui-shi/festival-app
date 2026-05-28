@@ -511,7 +511,7 @@ public class EventService {
         event.setUpdatedAt(OffsetDateTime.now());
         Event saved = eventRepository.save(event);
         if (previousStatus != EventStatus.PUBLISHED && targetStatus == EventStatus.PUBLISHED) {
-            eventNotificationService.notifyNewPublishedEvent(hydrateEvent(saved));
+            eventNotificationService.notifyNewPublishedEvent(saved.getId());
         }
         return toShortResponse(hydrateEvent(saved));
     }

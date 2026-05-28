@@ -139,7 +139,7 @@ WHERE NOT EXISTS (
 
 -- =============================================================
 -- СИСТЕМНЫЙ АДМИНИСТРАТОР
--- Логин: admin_local  Пароль: Admin2025!
+-- Логин: admin_local  Пароль: 123456
 -- =============================================================
 
 WITH admin_role AS (
@@ -156,7 +156,7 @@ upserted_user AS (
     SELECT
         'admin_local',
         'admin_local@festival.local',
-        '$2a$10$07zJ.P24JTaAg3OIE0nmC.MHL3zb/L6/kfdLcsSf2HDtmVacu2mfG',
+        '$2b$10$0Prpcl/wQ7pczCLXDTBG.uUx5XebatYc8kuuq.LcKdt2kOD8oRJ2W',
         'Системный',
         'Администратор',
         TRUE,

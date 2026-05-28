@@ -37,6 +37,7 @@ export default function AdminEvents() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<EventFilterKey>('PENDING');
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   useEffect(() => {
     eventService.getAllEvents().then((response) => {
@@ -82,9 +83,18 @@ export default function AdminEvents() {
   }, [events, filter, query]);
 
   const changeStatus = async (id: string, status: EventStatus) => {
-    const updated = await eventService.updateEvent(id, { status });
-    setEvents((prev) => prev.map((event) => (String(event.id) === String(id) ? { ...event, ...updated } : event)));
-    toast.success('Статус обновлён');
+    setPendingId(id);
+    try {
+      const updated = await eventService.updateEvent(id, { status });
+      setEvents((prev) => prev.map((event) => (String(event.id) === String(id) ? { ...event, ...updated } : event)));
+      toast.success('Статус обновлён');
+    } catch (error) {
+      console.error('Failed to update event status', error);
+      const message = error instanceof Error ? error.message : 'Не удалось обновить статус';
+      toast.error(message);
+    } finally {
+      setPendingId(null);
+    }
   };
 
   if (loading) return <LoadingState />;
@@ -197,20 +207,27 @@ export default function AdminEvents() {
                         size="sm"
                         className="bg-[hsl(var(--success))] text-white hover:bg-[hsl(var(--success)/0.85)] shadow-sm"
                         onClick={() => changeStatus(String(event.id), 'PUBLISHED')}
+                        disabled={pendingId === String(event.id)}
                       >
-                        Опубликовать
+                        {pendingId === String(event.id) ? 'Публикуется…' : 'Опубликовать'}
                       </Button>
                       <Button
                         size="sm"
                         variant="destructive"
                         onClick={() => changeStatus(String(event.id), 'REJECTED')}
+                        disabled={pendingId === String(event.id)}
                       >
                         Отклонить
                       </Button>
                     </>
                   )}
                   {normalizedStatus === 'PUBLISHED' && (
-                    <Button size="sm" variant="outline" onClick={() => changeStatus(String(event.id), 'ARCHIVED')}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => changeStatus(String(event.id), 'ARCHIVED')}
+                      disabled={pendingId === String(event.id)}
+                    >
                       В архив
                     </Button>
                   )}
