@@ -2,10 +2,12 @@ package com.festivalapp.backend.service;
 
 import com.festivalapp.backend.entity.Event;
 import com.festivalapp.backend.entity.User;
+import com.festivalapp.backend.repository.EventRepository;
 import com.festivalapp.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -21,14 +23,20 @@ public class EventNotificationService {
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
     private final UserRepository userRepository;
+    private final EventRepository eventRepository;
     private final NotificationService notificationService;
 
     @Value("${app.frontend-base-url:http://localhost:5173}")
     private String frontendBaseUrl;
 
+    @Async
     @Transactional(readOnly = true)
-    public void notifyNewPublishedEvent(Event event) {
-        if (event == null || event.getId() == null || !StringUtils.hasText(event.getTitle())) {
+    public void notifyNewPublishedEvent(Long eventId) {
+        if (eventId == null) {
+            return;
+        }
+        Event event = eventRepository.findByIdAndDeletedAtIsNull(eventId).orElse(null);
+        if (event == null || !StringUtils.hasText(event.getTitle())) {
             return;
         }
 

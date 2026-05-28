@@ -96,7 +96,7 @@ public class ModerationService {
 
         EventStatus currentStatus = DomainStatusMapper.toEventStatus(saved.getStatus());
         if (previousStatus != EventStatus.PUBLISHED && currentStatus == EventStatus.PUBLISHED) {
-            eventNotificationService.notifyNewPublishedEvent(saved);
+            eventNotificationService.notifyNewPublishedEvent(saved.getId());
         }
     }
 
