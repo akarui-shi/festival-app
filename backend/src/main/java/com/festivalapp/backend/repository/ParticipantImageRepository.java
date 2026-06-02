@@ -15,5 +15,8 @@ public interface ParticipantImageRepository extends JpaRepository<ParticipantIma
     @EntityGraph(attributePaths = {"image"})
     List<ParticipantImage> findAllByParticipantIdOrderByPrimaryDescIdAsc(Long participantId);
 
+    @EntityGraph(attributePaths = {"participant", "image"})
+    List<ParticipantImage> findAllByParticipantIdInOrderByParticipantIdAscPrimaryDescIdAsc(List<Long> participantIds);
+
     void deleteByParticipantId(Long participantId);
 }

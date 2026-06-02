@@ -100,6 +100,10 @@ public class DemoActivityDataInitializer implements ApplicationRunner {
 
         for (int eventIndex = 0; eventIndex < events.size(); eventIndex += 1) {
             Event event = events.get(eventIndex);
+            // Лекторий: Космос — данные управляются KolomnaJazzFestivalAnalyticsInitializer
+            if ("Лекторий: Космос над Коломной".equals(event.getTitle())) {
+                continue;
+            }
             List<Session> sessions = sessionRepository.findAllByEventIdOrderByStartsAtAsc(event.getId());
             if (sessions.isEmpty()) {
                 continue;
