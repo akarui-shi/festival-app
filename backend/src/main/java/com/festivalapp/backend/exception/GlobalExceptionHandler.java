@@ -157,6 +157,7 @@ public class GlobalExceptionHandler {
         body.put("timestamp", LocalDateTime.now());
         body.put("status", status.value());
         body.put("error", message);
+        body.put("message", message);
         return ResponseEntity.status(status).body(body);
     }
 }

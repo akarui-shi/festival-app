@@ -15,6 +15,9 @@ public interface EventImageRepository extends JpaRepository<EventImage, Long> {
     @EntityGraph(attributePaths = {"image"})
     List<EventImage> findAllByEventIdOrderBySortOrderAscIdAsc(Long eventId);
 
+    @EntityGraph(attributePaths = {"event", "image"})
+    List<EventImage> findAllByEventIdInOrderByEventIdAscSortOrderAscIdAsc(List<Long> eventIds);
+
     @EntityGraph(attributePaths = {"image"})
     Optional<EventImage> findFirstByEventIdAndPrimaryIsTrueOrderBySortOrderAscIdAsc(Long eventId);
 

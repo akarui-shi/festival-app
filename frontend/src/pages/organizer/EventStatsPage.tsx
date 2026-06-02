@@ -363,7 +363,7 @@ export default function EventStatsPage() {
             Как распределены заявки по текущим статусам.
           </p>
           <ChartContainer
-            className="mt-4 h-[280px] w-full"
+            className="mt-4 h-[240px] w-full"
             config={{ value: { label: 'Количество', color: '#C17F59' } }}
           >
             <PieChart>
@@ -378,6 +378,23 @@ export default function EventStatsPage() {
               </Pie>
             </PieChart>
           </ChartContainer>
+          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+            {statusDistribution.map((item, index) => {
+              const total = statusDistribution.reduce((s, d) => s + d.value, 0);
+              const pct   = total > 0 ? Math.round((item.value / total) * 100) : 0;
+              return (
+                <div key={item.status} className="flex items-center gap-2 text-sm">
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: ['#C17F59', '#CFA07D', '#D9B49A', '#E5CFC0', '#B56A3F'][index % 5] }}
+                  />
+                  <span className="text-muted-foreground">{item.status}</span>
+                  <span className="font-semibold text-foreground">{item.value}</span>
+                  <span className="text-xs text-muted-foreground">({pct}%)</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </section>
 

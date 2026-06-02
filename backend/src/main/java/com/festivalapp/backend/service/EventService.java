@@ -69,12 +69,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class EventService {
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Europe/Moscow");
+    private static final long PUBLIC_CACHE_TTL_MS = 5_000L;
+    private static final int PUBLIC_CACHE_MAX_SIZE = 128;
 
     private final EventRepository eventRepository;
     private final EventCategoryRepository eventCategoryRepository;
@@ -98,6 +103,9 @@ public class EventService {
     private final OrganizationFollowRepository organizationFollowRepository;
     private final EventNotificationService eventNotificationService;
 
+    private final ConcurrentMap<EventListCacheKey, TimedCache<List<EventShortResponse>>> eventListCache = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, TimedCache<Map<String, Long>>> platformStatsCache = new ConcurrentHashMap<>();
+
     @Transactional(readOnly = true)
     public List<EventShortResponse> getAll(String title,
                                            String q,
@@ -115,6 +123,13 @@ public class EventService {
                                            String status,
                                            String sortBy,
                                            String sortDir) {
+        EventListCacheKey cacheKey = new EventListCacheKey(title, q, categoryId, venueId, cityId, organizationId,
+            date, dateFrom, dateTo, participationType, priceFrom, priceTo, registrationOpen, status, sortBy, sortDir);
+        List<EventShortResponse> cached = readCache(eventListCache.get(cacheKey));
+        if (cached != null) {
+            return cached;
+        }
+
         Set<Long> ftsIds = null;
         String searchQuery = StringUtils.hasText(q) ? q.trim() : (StringUtils.hasText(title) ? title.trim() : null);
         if (StringUtils.hasText(searchQuery)) {
@@ -134,10 +149,10 @@ public class EventService {
         final Set<Long> ftsIdsFinal = ftsIds;
 
         List<Event> events = eventRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc();
+        EventCatalogData catalogData = hydrateEvents(events);
 
-        return events.stream()
+        List<EventShortResponse> response = events.stream()
             .filter(e -> ftsIdsFinal == null || ftsIdsFinal.contains(e.getId()))
-            .map(this::hydrateEvent)
             .filter(event -> matchesFilters(
                 event,
                 title,
@@ -153,11 +168,14 @@ public class EventService {
                 priceFrom,
                 priceTo,
                 registrationOpen,
-                status
+                status,
+                catalogData
             ))
-            .sorted(resolveSort(sortBy, sortDir))
-            .map(this::toShortResponse)
+            .sorted(resolveSort(sortBy, sortDir, catalogData))
+            .map(event -> toShortResponse(event, catalogData))
             .toList();
+        writeCache(eventListCache, cacheKey, response);
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -237,17 +255,20 @@ public class EventService {
 
     @Transactional(readOnly = true)
     public Map<String, Long> getPlatformStats() {
+        Map<String, Long> cached = readCache(platformStatsCache.get("platform-stats"));
+        if (cached != null) {
+            return cached;
+        }
+
         List<Event> published = eventRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc().stream()
             .filter(e -> DomainStatusMapper.toEventStatus(e.getStatus()) == EventStatus.PUBLISHED)
             .toList();
 
         long totalEvents = published.size();
-        long totalRegistrations = 0;
-        for (Event event : published) {
-            for (Session session : sessionRepository.findAllByEventIdOrderByStartsAtAsc(event.getId())) {
-                totalRegistrations += ticketRepository.countBySessionIdAndStatus(session.getId(), "активен");
-            }
-        }
+        long totalRegistrations = ticketRepository.countByStatusForPublishedEvents(
+            "активен",
+            DomainStatusMapper.toEventDbStatus(EventStatus.PUBLISHED)
+        );
 
         long totalCities = cityRepository.findAllByOrderByNameAsc().stream()
             .filter(City::isActive)
@@ -257,6 +278,7 @@ public class EventService {
         stats.put("totalEvents", totalEvents);
         stats.put("totalRegistrations", totalRegistrations);
         stats.put("totalCities", totalCities);
+        writeCache(platformStatsCache, "platform-stats", stats);
         return stats;
     }
 
@@ -427,6 +449,7 @@ public class EventService {
             ensureSessionForVenue(saved, venue, now);
         }
 
+        clearPublicCache();
         return toShortResponse(hydrateEvent(saved));
     }
 
@@ -473,6 +496,7 @@ public class EventService {
             upsertSessionVenue(saved, venue);
         }
 
+        clearPublicCache();
         return toShortResponse(hydrateEvent(saved));
     }
 
@@ -484,6 +508,7 @@ public class EventService {
         event.setStatus("завершено");
         event.setUpdatedAt(OffsetDateTime.now());
         eventRepository.save(event);
+        clearPublicCache();
         return Map.of("success", true);
     }
 
@@ -513,6 +538,7 @@ public class EventService {
         if (previousStatus != EventStatus.PUBLISHED && targetStatus == EventStatus.PUBLISHED) {
             eventNotificationService.notifyNewPublishedEvent(saved.getId());
         }
+        clearPublicCache();
         return toShortResponse(hydrateEvent(saved));
     }
 
@@ -524,6 +550,7 @@ public class EventService {
         event.setDeletedAt(OffsetDateTime.now());
         event.setUpdatedAt(OffsetDateTime.now());
         eventRepository.save(event);
+        clearPublicCache();
         return Map.of("success", true);
     }
 
@@ -547,6 +574,88 @@ public class EventService {
         return event;
     }
 
+    private EventCatalogData hydrateEvents(List<Event> events) {
+        if (events.isEmpty()) {
+            return EventCatalogData.empty();
+        }
+
+        List<Long> eventIds = events.stream().map(Event::getId).filter(Objects::nonNull).toList();
+        Map<Long, List<EventCategory>> categoriesByEvent = eventCategoryRepository.findAllByEventIdIn(eventIds).stream()
+            .collect(Collectors.groupingBy(eventCategory -> eventCategory.getEvent().getId()));
+        Map<Long, List<EventImage>> imagesByEvent = eventImageRepository.findAllByEventIdInOrderByEventIdAscSortOrderAscIdAsc(eventIds).stream()
+            .collect(Collectors.groupingBy(eventImage -> eventImage.getEvent().getId()));
+        Map<Long, List<Session>> sessionsByEvent = sessionRepository.findAllByEventIdInOrderByEventIdAscStartsAtAsc(eventIds).stream()
+            .collect(Collectors.groupingBy(session -> session.getEvent().getId()));
+        Map<Long, List<EventParticipant>> participantsByEvent = eventParticipantRepository.findAllByEventIdInOrderByEventIdAscIdAsc(eventIds).stream()
+            .collect(Collectors.groupingBy(eventParticipant -> eventParticipant.getEvent().getId()));
+
+        List<Long> sessionIds = sessionsByEvent.values().stream()
+            .flatMap(List::stream)
+            .map(Session::getId)
+            .filter(Objects::nonNull)
+            .toList();
+        Map<Long, TicketType> activeTicketTypeBySession = sessionIds.isEmpty()
+            ? Map.of()
+            : ticketTypeRepository.findAllBySessionIdInAndActiveIsTrueOrderBySessionIdAscIdAsc(sessionIds).stream()
+                .collect(Collectors.toMap(
+                    ticketType -> ticketType.getSession().getId(),
+                    Function.identity(),
+                    (first, ignored) -> first
+                ));
+        Map<Long, Long> activeTicketsBySession = sessionIds.isEmpty()
+            ? Map.of()
+            : ticketRepository.countBySessionIdsAndStatus(sessionIds, "активен").stream()
+                .collect(Collectors.toMap(
+                    TicketRepository.SessionTicketCount::getSessionId,
+                    TicketRepository.SessionTicketCount::getCount
+                ));
+
+        List<Long> participantIds = participantsByEvent.values().stream()
+            .flatMap(List::stream)
+            .map(EventParticipant::getParticipant)
+            .filter(Objects::nonNull)
+            .map(Participant::getId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+        Map<Long, List<Long>> imageIdsByParticipant = participantIds.isEmpty()
+            ? Map.of()
+            : participantImageRepository.findAllByParticipantIdInOrderByParticipantIdAscPrimaryDescIdAsc(participantIds).stream()
+                .collect(Collectors.groupingBy(
+                    participantImage -> participantImage.getParticipant().getId(),
+                    Collectors.mapping(
+                        participantImage -> participantImage.getImage() == null ? null : participantImage.getImage().getId(),
+                        Collectors.filtering(Objects::nonNull, Collectors.toList())
+                    )
+                ));
+
+        events.forEach(event -> {
+            List<EventCategory> categories = categoriesByEvent.getOrDefault(event.getId(), List.of());
+            event.getEventCategories().clear();
+            event.getEventCategories().addAll(categories);
+
+            List<EventImage> images = imagesByEvent.getOrDefault(event.getId(), List.of());
+            event.getEventImages().clear();
+            event.getEventImages().addAll(images);
+
+            event.setAgeRating(parseAgeRating(event.getAgeRestriction()));
+            event.setCoverImageId(images.stream().filter(EventImage::isPrimary)
+                .findFirst()
+                .map(img -> img.getImage() == null ? null : img.getImage().getId())
+                .orElse(images.stream().findFirst().map(img -> img.getImage() == null ? null : img.getImage().getId()).orElse(null)));
+
+            event.getSessions().clear();
+            event.getSessions().addAll(sessionsByEvent.getOrDefault(event.getId(), List.of()));
+        });
+
+        return new EventCatalogData(
+            participantsByEvent,
+            activeTicketTypeBySession,
+            activeTicketsBySession,
+            imageIdsByParticipant
+        );
+    }
+
     private boolean matchesFilters(Event event,
                                    String title,
                                    String q,
@@ -562,9 +671,29 @@ public class EventService {
                                    BigDecimal priceTo,
                                    Boolean registrationOpen,
                                    String status) {
+        return matchesFilters(event, title, q, categoryId, venueId, cityId, organizationId, date, dateFrom, dateTo,
+            participationType, priceFrom, priceTo, registrationOpen, status, null);
+    }
+
+    private boolean matchesFilters(Event event,
+                                   String title,
+                                   String q,
+                                   Long categoryId,
+                                   Long venueId,
+                                   Long cityId,
+                                   Long organizationId,
+                                   LocalDate date,
+                                   LocalDate dateFrom,
+                                   LocalDate dateTo,
+                                   String participationType,
+                                   BigDecimal priceFrom,
+                                   BigDecimal priceTo,
+                                   Boolean registrationOpen,
+                                   String status,
+                                   EventCatalogData catalogData) {
         String searchQuery = StringUtils.hasText(q) ? q.trim() : (StringUtils.hasText(title) ? title.trim() : null);
         if (StringUtils.hasText(searchQuery)) {
-            String searchable = buildSearchableText(event);
+            String searchable = buildSearchableText(event, catalogData);
             for (String term : searchQuery.toLowerCase().split("\\s+")) {
                 if (!searchable.contains(term)) {
                     return false;
@@ -610,7 +739,7 @@ public class EventService {
         if (StringUtils.hasText(participationType)) {
             String normalizedType = participationType.trim().toLowerCase();
             boolean hasMatchingType = event.getSessions().stream().anyMatch(session -> {
-                TicketType pricing = defaultTicketType(session.getId());
+                TicketType pricing = defaultTicketType(session.getId(), catalogData);
                 if ("free".equals(normalizedType) || "бесплатно".equals(normalizedType)) {
                     return pricing == null || pricing.getPrice() == null || pricing.getPrice().compareTo(BigDecimal.ZERO) <= 0;
                 }
@@ -626,7 +755,7 @@ public class EventService {
 
         if (priceFrom != null || priceTo != null) {
             boolean hasPriceInRange = event.getSessions().stream().anyMatch(session -> {
-                TicketType pricing = defaultTicketType(session.getId());
+                TicketType pricing = defaultTicketType(session.getId(), catalogData);
                 BigDecimal sessionPrice = pricing == null || pricing.getPrice() == null ? BigDecimal.ZERO : pricing.getPrice();
                 if (priceFrom != null && sessionPrice.compareTo(priceFrom) < 0) {
                     return false;
@@ -642,7 +771,7 @@ public class EventService {
         }
 
         if (registrationOpen != null) {
-            boolean hasRegistrationState = event.getSessions().stream().anyMatch(session -> isRegistrationOpen(session) == registrationOpen);
+            boolean hasRegistrationState = event.getSessions().stream().anyMatch(session -> isRegistrationOpen(session, catalogData) == registrationOpen);
             if (!hasRegistrationState) {
                 return false;
             }
@@ -672,6 +801,10 @@ public class EventService {
     }
 
     private String buildSearchableText(Event event) {
+        return buildSearchableText(event, null);
+    }
+
+    private String buildSearchableText(Event event, EventCatalogData catalogData) {
         List<String> chunks = new ArrayList<>();
         if (StringUtils.hasText(event.getTitle())) {
             chunks.add(event.getTitle());
@@ -683,7 +816,10 @@ public class EventService {
             chunks.add(event.getOrganization().getName());
         }
 
-        for (EventParticipant eventParticipant : eventParticipantRepository.findAllByEventIdOrderByIdAsc(event.getId())) {
+        List<EventParticipant> eventParticipants = catalogData == null
+            ? eventParticipantRepository.findAllByEventIdOrderByIdAsc(event.getId())
+            : catalogData.participantsByEvent().getOrDefault(event.getId(), List.of());
+        for (EventParticipant eventParticipant : eventParticipants) {
             Participant participant = eventParticipant.getParticipant();
             if (participant == null) {
                 continue;
@@ -700,6 +836,10 @@ public class EventService {
     }
 
     private Comparator<Event> resolveSort(String sortBy, String sortDir) {
+        return resolveSort(sortBy, sortDir, null);
+    }
+
+    private Comparator<Event> resolveSort(String sortBy, String sortDir, EventCatalogData catalogData) {
         Comparator<Event> comparator;
         if ("title".equalsIgnoreCase(sortBy)) {
             comparator = Comparator.comparing(Event::getTitle, Comparator.nullsLast(String::compareToIgnoreCase));
@@ -708,7 +848,7 @@ public class EventService {
         } else if ("price".equalsIgnoreCase(sortBy)) {
             // Сортируем по минимальной цене среди билетов всех сессий события.
             // Бесплатные/без билетов — считаем как 0, чтобы они шли первыми при asc.
-            comparator = Comparator.comparing(this::minTicketPrice, Comparator.nullsLast(Comparator.naturalOrder()));
+            comparator = Comparator.comparing(event -> minTicketPrice(event, catalogData), Comparator.nullsLast(Comparator.naturalOrder()));
         } else {
             comparator = Comparator.comparing(Event::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()));
         }
@@ -717,8 +857,12 @@ public class EventService {
     }
 
     private BigDecimal minTicketPrice(Event event) {
+        return minTicketPrice(event, null);
+    }
+
+    private BigDecimal minTicketPrice(Event event, EventCatalogData catalogData) {
         return event.getSessions().stream()
-            .map(session -> defaultTicketType(session.getId()))
+            .map(session -> defaultTicketType(session.getId(), catalogData))
             .filter(Objects::nonNull)
             .map(TicketType::getPrice)
             .filter(Objects::nonNull)
@@ -737,13 +881,17 @@ public class EventService {
     }
 
     private EventShortResponse toShortResponse(Event event) {
+        return toShortResponse(event, null);
+    }
+
+    private EventShortResponse toShortResponse(Event event, EventCatalogData catalogData) {
         Session mainSession = event.getSessions().stream()
             .filter(session -> session.getVenue() != null)
             .min(Comparator.comparing(Session::getStartsAt, Comparator.nullsLast(Comparator.naturalOrder())))
             .orElse(event.getSessions().stream().findFirst().orElse(null));
-        PriceRange priceRange = extractPriceRange(event.getSessions());
-        boolean registrationOpen = event.getSessions().stream().anyMatch(this::isRegistrationOpen);
-        List<ParticipantSummaryResponse> participants = mapParticipants(event.getId());
+        PriceRange priceRange = extractPriceRange(event.getSessions(), catalogData);
+        boolean registrationOpen = event.getSessions().stream().anyMatch(session -> isRegistrationOpen(session, catalogData));
+        List<ParticipantSummaryResponse> participants = mapParticipants(event.getId(), catalogData);
         City resolvedCity = event.getCity();
         if (resolvedCity == null) {
             resolvedCity = event.getSessions().stream()
@@ -758,7 +906,7 @@ public class EventService {
         long registrationsCount = event.getSessions().stream()
             .map(Session::getId)
             .filter(Objects::nonNull)
-            .mapToLong(sessionId -> ticketRepository.countBySessionIdAndStatus(sessionId, "активен"))
+            .mapToLong(sessionId -> activeTicketsCount(sessionId, catalogData))
             .sum();
 
         return EventShortResponse.builder()
@@ -1106,14 +1254,24 @@ public class EventService {
     }
 
     private List<ParticipantSummaryResponse> mapParticipants(Long eventId) {
-        return eventParticipantRepository.findAllByEventIdOrderByIdAsc(eventId).stream()
+        return mapParticipants(eventId, null);
+    }
+
+    private List<ParticipantSummaryResponse> mapParticipants(Long eventId, EventCatalogData catalogData) {
+        List<EventParticipant> eventParticipants = catalogData == null
+            ? eventParticipantRepository.findAllByEventIdOrderByIdAsc(eventId)
+            : catalogData.participantsByEvent().getOrDefault(eventId, List.of());
+
+        return eventParticipants.stream()
             .map(EventParticipant::getParticipant)
             .filter(Objects::nonNull)
             .map(participant -> {
-                List<Long> imageIds = participantImageRepository.findAllByParticipantIdOrderByPrimaryDescIdAsc(participant.getId()).stream()
-                    .map(participantImage -> participantImage.getImage() == null ? null : participantImage.getImage().getId())
-                    .filter(Objects::nonNull)
-                    .toList();
+                List<Long> imageIds = catalogData == null
+                    ? participantImageRepository.findAllByParticipantIdOrderByPrimaryDescIdAsc(participant.getId()).stream()
+                        .map(participantImage -> participantImage.getImage() == null ? null : participantImage.getImage().getId())
+                        .filter(Objects::nonNull)
+                        .toList()
+                    : catalogData.imageIdsByParticipant().getOrDefault(participant.getId(), List.of());
                 Long primaryImageId = imageIds.isEmpty() ? null : imageIds.get(0);
                 return ParticipantSummaryResponse.builder()
                     .id(participant.getId())
@@ -1168,11 +1326,22 @@ public class EventService {
     }
 
     private TicketType defaultTicketType(Long sessionId) {
+        return defaultTicketType(sessionId, null);
+    }
+
+    private TicketType defaultTicketType(Long sessionId, EventCatalogData catalogData) {
+        if (catalogData != null) {
+            return catalogData.activeTicketTypeBySession().get(sessionId);
+        }
         return ticketTypeRepository.findFirstBySessionIdAndActiveIsTrueOrderByIdAsc(sessionId).orElse(null);
     }
 
     private boolean isRegistrationOpen(Session session) {
-        TicketType type = defaultTicketType(session.getId());
+        return isRegistrationOpen(session, null);
+    }
+
+    private boolean isRegistrationOpen(Session session, EventCatalogData catalogData) {
+        TicketType type = defaultTicketType(session.getId(), catalogData);
         if (type == null) {
             return false;
         }
@@ -1184,7 +1353,7 @@ public class EventService {
             return false;
         }
         if (session.getSeatLimit() != null) {
-            long active = ticketRepository.countBySessionIdAndStatus(session.getId(), "активен");
+            long active = activeTicketsCount(session.getId(), catalogData);
             return active < session.getSeatLimit();
         }
         return true;
@@ -1198,11 +1367,15 @@ public class EventService {
     }
 
     private PriceRange extractPriceRange(Set<Session> sessions) {
+        return extractPriceRange(sessions, null);
+    }
+
+    private PriceRange extractPriceRange(Set<Session> sessions, EventCatalogData catalogData) {
         BigDecimal min = null;
         BigDecimal max = null;
 
         for (Session session : sessions) {
-            TicketType ticketType = defaultTicketType(session.getId());
+            TicketType ticketType = defaultTicketType(session.getId(), catalogData);
             BigDecimal price = ticketType == null || ticketType.getPrice() == null ? BigDecimal.ZERO : ticketType.getPrice();
             if (min == null || price.compareTo(min) < 0) {
                 min = price;
@@ -1215,7 +1388,71 @@ public class EventService {
         return new PriceRange(min, max);
     }
 
+    private long activeTicketsCount(Long sessionId, EventCatalogData catalogData) {
+        if (catalogData != null) {
+            return catalogData.activeTicketsBySession().getOrDefault(sessionId, 0L);
+        }
+        return ticketRepository.countBySessionIdAndStatus(sessionId, "активен");
+    }
+
+    private <K, V> V readCache(ConcurrentMap<K, TimedCache<V>> cache, K key) {
+        return readCache(cache.get(key));
+    }
+
+    private <V> V readCache(TimedCache<V> entry) {
+        if (entry == null || entry.expiresAtMs() < System.currentTimeMillis()) {
+            return null;
+        }
+        return entry.value();
+    }
+
+    private <K, V> void writeCache(ConcurrentMap<K, TimedCache<V>> cache, K key, V value) {
+        if (cache.size() >= PUBLIC_CACHE_MAX_SIZE) {
+            cache.clear();
+        }
+        cache.put(key, new TimedCache<>(value, System.currentTimeMillis() + PUBLIC_CACHE_TTL_MS));
+    }
+
+    private void clearPublicCache() {
+        eventListCache.clear();
+        platformStatsCache.clear();
+    }
+
     private record PriceRange(BigDecimal min, BigDecimal max) {
+    }
+
+    private record EventCatalogData(
+        Map<Long, List<EventParticipant>> participantsByEvent,
+        Map<Long, TicketType> activeTicketTypeBySession,
+        Map<Long, Long> activeTicketsBySession,
+        Map<Long, List<Long>> imageIdsByParticipant
+    ) {
+        private static EventCatalogData empty() {
+            return new EventCatalogData(Map.of(), Map.of(), Map.of(), Map.of());
+        }
+    }
+
+    private record EventListCacheKey(
+        String title,
+        String q,
+        Long categoryId,
+        Long venueId,
+        Long cityId,
+        Long organizationId,
+        LocalDate date,
+        LocalDate dateFrom,
+        LocalDate dateTo,
+        String participationType,
+        BigDecimal priceFrom,
+        BigDecimal priceTo,
+        Boolean registrationOpen,
+        String status,
+        String sortBy,
+        String sortDir
+    ) {
+    }
+
+    private record TimedCache<T>(T value, long expiresAtMs) {
     }
 
     private EventStatus parseEventStatus(String raw) {

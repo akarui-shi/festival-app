@@ -43,6 +43,7 @@ import java.util.Optional;
 public class AdminModerationDemoDataInitializer implements ApplicationRunner {
 
     private static final String DEMO_KEY = "admin-demo";
+    private static final long EVENT_DATE_SHIFT_DAYS = 5;
 
     private static final String EV_COURTYARD_THEATRE = "images/admin-demo/festival-crowd.jpg";
     private static final String EV_COMMUNITY_LECTURE = "images/admin-demo/community-lecture.jpg";
@@ -75,7 +76,7 @@ public class AdminModerationDemoDataInitializer implements ApplicationRunner {
         OffsetDateTime now = OffsetDateTime.now();
         Map<String, Category> categories = support.ensureBaseCategories();
 
-        int pendingEvents = seedPendingEvents(now, categories);
+        int pendingEvents = seedPendingEvents(now.plusDays(EVENT_DATE_SHIFT_DAYS), categories);
         int pendingPublications = seedPendingPublications(now);
         int pendingComments = seedPendingComments(now);
 
@@ -194,6 +195,7 @@ public class AdminModerationDemoDataInitializer implements ApplicationRunner {
         if (holder.created() || sessionRepository.findAllByEventIdOrderByStartsAtAsc(holder.event().getId()).isEmpty()) {
             support.createSessionsAndTickets(holder.event(), spec, city.get());
         }
+        support.syncEventSchedule(holder.event(), spec, OffsetDateTime.now());
         support.normalizePrimaryImage(holder.event().getId());
         return 1;
     }

@@ -7,6 +7,7 @@ import com.festivalapp.backend.exception.UnauthorizedException;
 import com.festivalapp.backend.service.PromoCodeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -34,7 +35,7 @@ public class PromoCodeController {
     @PostMapping("/api/organizer/promo-codes")
     public ResponseEntity<PromoCodeResponse> create(@Valid @RequestBody PromoCodeCreateRequest request,
                                                     Authentication auth) {
-        return ResponseEntity.ok(promoCodeService.create(request, resolveIdentifier(auth)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(promoCodeService.create(request, resolveIdentifier(auth)));
     }
 
     @DeleteMapping("/api/organizer/promo-codes/{id}")

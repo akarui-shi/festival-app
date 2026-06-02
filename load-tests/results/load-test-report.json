@@ -1,0 +1,99 @@
+{
+  "generatedAt": "2026-05-28T21:45:01.756Z",
+  "baseUrl": "http://127.0.0.1:8080",
+  "totalVus": 10,
+  "durationSeconds": 5,
+  "profile": {
+    "public": 7,
+    "auth": 2,
+    "orders": 1
+  },
+  "fixture": {
+    "eventId": 45,
+    "sessionId": 50,
+    "ticketTypeId": null
+  },
+  "requests": 94,
+  "errorRate": 0,
+  "groups": {
+    "public": {
+      "count": 70,
+      "avgMs": 155,
+      "p90Ms": 398,
+      "p95Ms": 498,
+      "maxMs": 511,
+      "requests": 70,
+      "errors": 0
+    },
+    "auth": {
+      "count": 16,
+      "avgMs": 52,
+      "p90Ms": 173,
+      "p95Ms": 176,
+      "maxMs": 176,
+      "requests": 16,
+      "errors": 0
+    },
+    "orders": {
+      "count": 8,
+      "avgMs": 56,
+      "p90Ms": 172,
+      "p95Ms": 172,
+      "maxMs": 172,
+      "requests": 8,
+      "errors": 0
+    },
+    "all": {
+      "count": 94,
+      "avgMs": 129,
+      "p90Ms": 381,
+      "p95Ms": 497,
+      "maxMs": 511
+    }
+  },
+  "serverProcess": {
+    "pid": "4814",
+    "avgCpuPercent": 100,
+    "maxCpuPercent": 238,
+    "avgMemoryMb": 1385,
+    "maxMemoryMb": 1906,
+    "samples": [
+      {
+        "at": "2026-05-28T21:44:54.274Z",
+        "cpu": 40.9,
+        "mem": 3.3,
+        "rssMb": 544.25
+      },
+      {
+        "at": "2026-05-28T21:44:55.295Z",
+        "cpu": 237.5,
+        "mem": 9,
+        "rssMb": 1467.328125
+      },
+      {
+        "at": "2026-05-28T21:44:56.306Z",
+        "cpu": 50.7,
+        "mem": 10,
+        "rssMb": 1634.515625
+      },
+      {
+        "at": "2026-05-28T21:44:57.313Z",
+        "cpu": 42.6,
+        "mem": 8.4,
+        "rssMb": 1371.015625
+      },
+      {
+        "at": "2026-05-28T21:44:58.320Z",
+        "cpu": 127.5,
+        "mem": 11.6,
+        "rssMb": 1906.4375
+      }
+    ]
+  },
+  "thresholds": {
+    "responseTimeMs": 2000,
+    "errorRate": 0.01,
+    "cpuPercent": 80,
+    "memoryMb": 2048
+  }
+}
