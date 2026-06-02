@@ -10,5 +10,7 @@ public interface TicketTypeRepository extends JpaRepository<TicketType, Long> {
 
     List<TicketType> findAllBySessionIdOrderByIdAsc(Long sessionId);
 
+    List<TicketType> findAllBySessionIdInAndActiveIsTrueOrderBySessionIdAscIdAsc(List<Long> sessionIds);
+
     Optional<TicketType> findFirstBySessionIdAndActiveIsTrueOrderByIdAsc(Long sessionId);
 }

@@ -14,6 +14,9 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
     List<Session> findAllByEventIdOrderByStartsAtAsc(Long eventId);
 
     @EntityGraph(attributePaths = {"event", "event.organization", "event.city", "venue", "venue.city"})
+    List<Session> findAllByEventIdInOrderByEventIdAscStartsAtAsc(List<Long> eventIds);
+
+    @EntityGraph(attributePaths = {"event", "event.organization", "event.city", "venue", "venue.city"})
     List<Session> findAllByStartsAtBetweenOrderByStartsAtAsc(OffsetDateTime from, OffsetDateTime to);
 
     @EntityGraph(attributePaths = {"event", "event.organization", "event.city", "venue", "venue.city"})

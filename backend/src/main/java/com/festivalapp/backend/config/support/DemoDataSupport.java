@@ -359,6 +359,80 @@ public class DemoDataSupport {
         }
     }
 
+    /**
+     * Обновляет даты уже созданного демо-события и его сессий по текущему seed-описанию.
+     * Это нужно, чтобы относительные демо-даты не застревали в прошлом после повторных запусков.
+     */
+    public void syncEventSchedule(Event event, EventSeedSpec spec, OffsetDateTime now) {
+        OffsetDateTime startsAt = spec.sessions().stream()
+            .map(SessionSeedSpec::startsAt)
+            .min(OffsetDateTime::compareTo)
+            .orElse(now.plusDays(3));
+        OffsetDateTime endsAt = spec.sessions().stream()
+            .map(SessionSeedSpec::endsAt)
+            .max(OffsetDateTime::compareTo)
+            .orElse(startsAt.plusHours(2));
+
+        boolean eventChanged = false;
+        if (!startsAt.equals(event.getStartsAt())) {
+            event.setStartsAt(startsAt);
+            eventChanged = true;
+        }
+        if (!endsAt.equals(event.getEndsAt())) {
+            event.setEndsAt(endsAt);
+            eventChanged = true;
+        }
+        if (event.getStatus() == null || !spec.status().equalsIgnoreCase(event.getStatus())) {
+            event.setStatus(spec.status());
+            eventChanged = true;
+        }
+        if (eventChanged) {
+            event.setUpdatedAt(now);
+            eventRepository.save(event);
+        }
+
+        List<Session> sessions = sessionRepository.findAllByEventIdOrderByStartsAtAsc(event.getId());
+        for (int i = 0; i < spec.sessions().size() && i < sessions.size(); i += 1) {
+            SessionSeedSpec sessionSpec = spec.sessions().get(i);
+            Session session = sessions.stream()
+                .filter(candidate -> sessionSpec.sessionTitle().equalsIgnoreCase(candidate.getSessionTitle()))
+                .findFirst()
+                .orElse(sessions.get(i));
+
+            boolean sessionChanged = false;
+            if (!sessionSpec.startsAt().equals(session.getStartsAt())) {
+                session.setStartsAt(sessionSpec.startsAt());
+                sessionChanged = true;
+            }
+            if (!sessionSpec.endsAt().equals(session.getEndsAt())) {
+                session.setEndsAt(sessionSpec.endsAt());
+                sessionChanged = true;
+            }
+            if (sessionChanged) {
+                session.setUpdatedAt(now);
+                sessionRepository.save(session);
+            }
+
+            List<TicketType> ticketTypes = ticketTypeRepository.findAllBySessionIdOrderByIdAsc(session.getId());
+            for (TicketType ticketType : ticketTypes) {
+                boolean ticketChanged = false;
+                OffsetDateTime salesStartAt = sessionSpec.startsAt().minusDays(30);
+                OffsetDateTime salesEndAt = sessionSpec.startsAt();
+                if (!salesStartAt.equals(ticketType.getSalesStartAt())) {
+                    ticketType.setSalesStartAt(salesStartAt);
+                    ticketChanged = true;
+                }
+                if (!salesEndAt.equals(ticketType.getSalesEndAt())) {
+                    ticketType.setSalesEndAt(salesEndAt);
+                    ticketChanged = true;
+                }
+                if (ticketChanged) {
+                    ticketTypeRepository.save(ticketType);
+                }
+            }
+        }
+    }
+
     /** Привязывает участников к событию по имени (lower-case ключ карты). */
     public void ensureEventParticipants(Event event, List<String> participantNames, Map<String, Participant> participants) {
         List<EventParticipant> existing = eventParticipantRepository.findAllByEventIdOrderByIdAsc(event.getId());

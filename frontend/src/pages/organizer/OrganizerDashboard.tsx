@@ -48,7 +48,6 @@ export default function OrganizerDashboard() {
   const topEvents = [...engagements]
     .sort((a, b) => (b.registrationsCount || 0) - (a.registrationsCount || 0))
     .slice(0, 5);
-  const maxRegistrations = topEvents[0]?.registrationsCount || 1;
 
   const stats = [
     {
@@ -128,7 +127,6 @@ export default function OrganizerDashboard() {
         ) : (
           <div className="space-y-3">
             {topEvents.map((event, index) => {
-              const pct = Math.round(((event.registrationsCount || 0) / maxRegistrations) * 100);
               return (
                 <Link
                   key={event.eventId}
@@ -147,7 +145,7 @@ export default function OrganizerDashboard() {
                       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
                         <div
                           className="h-full rounded-full bg-primary/60 transition-all duration-500"
-                          style={{ width: `${pct}%` }}
+                          style={{ width: `${Math.round(event.averageSessionOccupancyPercent || 0)}%` }}
                         />
                       </div>
                       <span className="shrink-0 text-xs text-muted-foreground">

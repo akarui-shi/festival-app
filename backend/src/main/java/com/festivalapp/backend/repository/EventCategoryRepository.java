@@ -14,6 +14,9 @@ public interface EventCategoryRepository extends JpaRepository<EventCategory, Lo
     @EntityGraph(attributePaths = {"category"})
     List<EventCategory> findAllByEventId(Long eventId);
 
+    @EntityGraph(attributePaths = {"event", "category"})
+    List<EventCategory> findAllByEventIdIn(List<Long> eventIds);
+
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from EventCategory ec where ec.event.id = :eventId")
     void deleteByEventId(@Param("eventId") Long eventId);
