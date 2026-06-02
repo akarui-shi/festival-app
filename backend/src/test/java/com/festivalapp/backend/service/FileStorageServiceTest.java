@@ -24,6 +24,13 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Unit-тесты для {@link FileStorageService} — сервиса хранения изображений в БД.
+ * Уровень: unit. Мокируются ImageRepository и UserRepository.
+ * Изображения хранятся в виде BLOB в PostgreSQL (не в файловой системе и не в S3).
+ * Проверяются: сохранение файла с правильными метаданными и загрузка по id.
+ * ReflectionTestUtils используется для инъекции значений @Value-полей в приватные поля сервиса.
+ */
 @ExtendWith(MockitoExtension.class)
 class FileStorageServiceTest {
 
@@ -36,12 +43,17 @@ class FileStorageServiceTest {
     @InjectMocks
     private FileStorageService fileStorageService;
 
+    // @Value-поля (maxFileSizeBytes, uploadDir) не инжектируются через Spring в unit-тесте,
+    // поэтому устанавливаем их напрямую через ReflectionTestUtils — безопасно для тестов.
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(fileStorageService, "maxFileSizeBytes", 5_242_880L);
         ReflectionTestUtils.setField(fileStorageService, "uploadDir", "uploads");
     }
 
+    // Happy-path сохранения: бинарные данные файла попадают в Image.fileData,
+    // mimeType берётся из заголовка multipart, uploadedByUser — из авторизованного пользователя.
+    // ArgumentCaptor позволяет проверить содержимое объекта, переданного в save().
     @Test
     void storeEventImage_savesBinaryIntoDatabase() {
         User uploader = User.builder().id(7L).login("org").build();
@@ -79,6 +91,8 @@ class FileStorageServiceTest {
         assertThat(saved.getId()).isEqualTo(101L);
     }
 
+    // Загрузка изображения по id: bytes должны точно соответствовать сохранённым данным.
+    // StoredImageContent — record, содержащий и метаданные (Image), и сами байты.
     @Test
     void loadById_readsBytesFromDatabaseBlob() {
         Image image = Image.builder()

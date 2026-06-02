@@ -62,6 +62,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Unit-тесты для {@link OrganizerEventWizardService} — сервиса мастера создания мероприятий.
+ * Уровень: unit. Мокируются все репозитории и AdminAuditService.
+ * Сервис реализует многошаговый wizard: создание черновика → сеансы → типы билетов → отправка на модерацию.
+ * Проверяются: создание черновика (включая ограничение «ровно одна организация»),
+ * добавление сеансов, создание типов билетов, валидация перед отправкой на модерацию.
+ */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class OrganizerEventWizardServiceTest {
@@ -92,6 +99,10 @@ class OrganizerEventWizardServiceTest {
     private City city;
     private Organization ownedOrganization;
 
+    // Организатор с одной организацией «Орг 1» в Москве.
+    // Стабы для «пустых» коллекций (категории, изображения, сеансы) нужны, чтобы
+    // wizardService мог строить OrganizerEventWizardResponse без NPE.
+    // AtomicLong симулирует автоинкремент id при сохранении мероприятия через JPA.
     @BeforeEach
     void setUp() {
         actor = organizerUser(10L);
@@ -116,6 +127,9 @@ class OrganizerEventWizardServiceTest {
         });
     }
 
+    // Happy-path создания черновика: организатор состоит в одной организации →
+    // черновик создаётся с правильным organizationId. adminAuditService.log() вызывается
+    // для записи в журнал аудита (verify с eq-матчерами проверяет все параметры).
     @Test
     void createDraft_allowsOrganizerInOwnedOrganization() {
         when(organizationMemberRepository.findAllByUserIdAndLeftAtIsNull(actor.getId())).thenReturn(List.of(
@@ -133,6 +147,8 @@ class OrganizerEventWizardServiceTest {
         verify(adminAuditService).log(eq("organizer"), eq("EVENT_DRAFT_CREATED"), eq("Event"), anyLong(), eq("organizationId=100"));
     }
 
+    // Если организатор состоит в двух организациях — сервис не может автоматически выбрать одну.
+    // BadRequestException «ровно в одной» — явное бизнес-ограничение архитектуры приложения.
     @Test
     void createDraft_rejectsWhenOrganizerHasMultipleOrganizations() {
         Organization secondOrganization = Organization.builder().id(101L).name("Орг 2").city(city).build();
@@ -148,6 +164,9 @@ class OrganizerEventWizardServiceTest {
             .hasMessageContaining("ровно в одной");
     }
 
+    // Обновление сеансов: новый SessionItem добавляется через sessionRepository.save().
+    // Стаб sessionRepository.findAll возвращает сначала пустой список (до сохранения),
+    // затем список с сохранённым сеансом — имитация последовательности чтения после записи.
     @Test
     void updateSessions_createsSessionForManagedEvent() {
         Event event = managedEvent(700L, ownedOrganization, city);
@@ -186,14 +205,18 @@ class OrganizerEventWizardServiceTest {
         verify(sessionRepository).save(any(Session.class));
     }
 
+    // Создание типа билета: TicketTypeItem сохраняется через ticketTypeRepository.save().
+    // AtomicReference<TicketType> имитирует кэш «только что сохранённого» объекта —
+    // нужен, чтобы повторный вызов findAll после save() вернул созданный тип билета.
     @Test
     void updateTickets_createsTicketTypeInSession() {
         Event event = managedEvent(701L, ownedOrganization, city);
+        OffsetDateTime sessionStart = OffsetDateTime.now(ZoneOffset.UTC).plusDays(30);
         Session session = Session.builder()
             .id(1000L)
             .event(event)
-            .startsAt(LocalDateTime.of(2026, 5, 30, 18, 0).atOffset(ZoneOffset.UTC))
-            .endsAt(LocalDateTime.of(2026, 5, 30, 20, 0).atOffset(ZoneOffset.UTC))
+            .startsAt(sessionStart)
+            .endsAt(sessionStart.plusHours(2))
             .seatLimit(100)
             .status("запланирован")
             .build();
@@ -236,6 +259,8 @@ class OrganizerEventWizardServiceTest {
         verify(ticketTypeRepository).save(any(TicketType.class));
     }
 
+    // Отправка на модерацию без обязательных данных → BadRequestException «не готово».
+    // never() подтверждает, что eventRepository.save() НЕ был вызван — статус не изменился.
     @Test
     void submitForModeration_rejectsWhenRequiredDataMissing() {
         Event event = managedEvent(702L, ownedOrganization, city);
@@ -249,6 +274,8 @@ class OrganizerEventWizardServiceTest {
         verify(eventRepository, never()).save(event);
     }
 
+    // Happy-path отправки на модерацию: мероприятие полностью заполнено (категория, обложка,
+    // сеанс с типом билета) → статус меняется, readyForModeration=true в ответе.
     @Test
     void submitForModeration_succeedsWithValidData() {
         Event event = managedEvent(703L, ownedOrganization, city);
@@ -297,6 +324,8 @@ class OrganizerEventWizardServiceTest {
         verify(eventRepository).save(event);
     }
 
+    // Строит тестовое мероприятие в статусе «черновик» с минимальным набором полей.
+    // Используется в тестах update* и submitForModeration вместо createDraft.
     private static Event managedEvent(Long eventId, Organization organization, City cityValue) {
         return Event.builder()
             .id(eventId)
@@ -312,6 +341,7 @@ class OrganizerEventWizardServiceTest {
             .build();
     }
 
+    // Строит пользователя с ролью «Организатор». Используется в setUp() для создания actor.
     private static User organizerUser(Long userId) {
         Role organizerRole = Role.builder().id(1L).name("Организатор").build();
         User user = User.builder()

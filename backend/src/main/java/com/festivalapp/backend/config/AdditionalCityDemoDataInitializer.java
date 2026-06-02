@@ -40,6 +40,7 @@ import java.util.Map;
 public class AdditionalCityDemoDataInitializer implements ApplicationRunner {
 
     private static final String PASSWORD = "123456";
+    private static final long EVENT_DATE_SHIFT_DAYS = 5;
 
     private final CityRepository cityRepository;
     private final UserRepository userRepository;
@@ -98,6 +99,7 @@ public class AdditionalCityDemoDataInitializer implements ApplicationRunner {
         prepareOrganization(stageOrg, stageOrganizer, "kolomna-extra", "images/theatre stage/eduardo-pastor-SkEUgyJqJlQ-unsplash.jpg", now);
 
         support.ensureParticipantImages(participants, kolomnaParticipantImages(), craftOrganizer, now, "kolomna-participants");
+        OffsetDateTime eventDateBase = now.plusDays(EVENT_DATE_SHIFT_DAYS);
 
         seedEvents(craftOrg, craftOrganizer, city, categories, participants, now, "kolomna-extra", List.of(
             new EventSeedSpec(
@@ -110,8 +112,8 @@ public class AdditionalCityDemoDataInitializer implements ApplicationRunner {
                 "0+",
                 List.of("Фестиваль", "Мастер-класс"),
                 List.of("images/free-craft/kolomna-clay-hands.jpg", "images/russian-festival/festival-02.jpg"),
-                List.of(new SessionSeedSpec("Ремесленная ярмарка", now.plusDays(31).withHour(12).withMinute(0).withSecond(0).withNano(0),
-                    now.plusDays(31).withHour(18).withMinute(0).withSecond(0).withNano(0),
+                List.of(new SessionSeedSpec("Ремесленная ярмарка", eventDateBase.plusDays(31).withHour(12).withMinute(0).withSecond(0).withNano(0),
+                    eventDateBase.plusDays(31).withHour(18).withMinute(0).withSecond(0).withNano(0),
                     "Московская область, Коломна, улица Зайцева, 14", null, 500, BigDecimal.ZERO)),
                 List.of("Керамическая студия «Посад»", "Мастерская «Калачный двор»", "Фольклорный ансамбль «Коломенская слобода»")
             ),
@@ -125,8 +127,8 @@ public class AdditionalCityDemoDataInitializer implements ApplicationRunner {
                 "12+",
                 List.of("Лекция"),
                 List.of("images/kolomna-views/kolomna-04.jpg", "images/russian-architecture/architecture-01.jpg"),
-                List.of(new SessionSeedSpec("Вечерняя группа", now.plusDays(34).withHour(20).withMinute(30).withSecond(0).withNano(0),
-                    now.plusDays(34).withHour(22).withMinute(0).withSecond(0).withNano(0),
+                List.of(new SessionSeedSpec("Вечерняя группа", eventDateBase.plusDays(34).withHour(20).withMinute(30).withSecond(0).withNano(0),
+                    eventDateBase.plusDays(34).withHour(22).withMinute(0).withSecond(0).withNano(0),
                     null, "Московская область, Коломна, улица Лажечникова, 5", 35, new BigDecimal("700.00"))),
                 List.of("Дмитрий Бельский", "Анна Воронина")
             )
@@ -142,8 +144,8 @@ public class AdditionalCityDemoDataInitializer implements ApplicationRunner {
                 "12+",
                 List.of("Мастер-класс"),
                 List.of("images/theatre stage/kyle-head-p6rNTdAPbuk-unsplash.jpg", "images/art gallery/praewthida-k-vJejbjXEOxU-unsplash.jpg"),
-                List.of(new SessionSeedSpec("Открытый класс", now.plusDays(29).withHour(18).withMinute(30).withSecond(0).withNano(0),
-                    now.plusDays(29).withHour(20).withMinute(0).withSecond(0).withNano(0),
+                List.of(new SessionSeedSpec("Открытый класс", eventDateBase.plusDays(29).withHour(18).withMinute(30).withSecond(0).withNano(0),
+                    eventDateBase.plusDays(29).withHour(20).withMinute(0).withSecond(0).withNano(0),
                     null, "Московская область, Коломна, улица Октябрьской Революции, 205", 40, new BigDecimal("650.00"))),
                 List.of("Балерина Ольга Степанова")
             ),
@@ -156,8 +158,8 @@ public class AdditionalCityDemoDataInitializer implements ApplicationRunner {
                 "12+",
                 List.of("Концерт"),
                 List.of("images/open air/aranxa-esteve-pOXHU0UEDcg-unsplash.jpg", "images/live music/frank-rolando-romero-vJ5apSa8r14-unsplash.jpg"),
-                List.of(new SessionSeedSpec("Акустический вечер", now.plusDays(36).withHour(19).withMinute(0).withSecond(0).withNano(0),
-                    now.plusDays(36).withHour(21).withMinute(0).withSecond(0).withNano(0),
+                List.of(new SessionSeedSpec("Акустический вечер", eventDateBase.plusDays(36).withHour(19).withMinute(0).withSecond(0).withNano(0),
+                    eventDateBase.plusDays(36).withHour(21).withMinute(0).withSecond(0).withNano(0),
                     null, "Московская область, Коломна, Красногвардейская улица, 2", 90, new BigDecimal("550.00"))),
                 List.of("Марина Соколова", "Алексей Руденко")
             )
@@ -188,6 +190,7 @@ public class AdditionalCityDemoDataInitializer implements ApplicationRunner {
         prepareOrganization(musicOrg, musicOrganizer, "ryazan-extra", "images/music stage/rahul-kukreja-_5MoVxUZxEw-unsplash.jpg", now);
 
         support.ensureParticipantImages(participants, ryazanParticipantImages(), excursionOrganizer, now, "ryazan-participants");
+        OffsetDateTime eventDateBase = now.plusDays(EVENT_DATE_SHIFT_DAYS);
 
         seedEvents(excursionOrg, excursionOrganizer, city, categories, participants, now, "ryazan-walks", List.of(
             new EventSeedSpec(
@@ -199,8 +202,8 @@ public class AdditionalCityDemoDataInitializer implements ApplicationRunner {
                 "12+",
                 List.of("Лекция"),
                 List.of("images/ryazan-views/ryazan-04.jpg", "images/russian-architecture/architecture-05.jpg"),
-                List.of(new SessionSeedSpec("Фото-маршрут", now.plusDays(30).withHour(16).withMinute(0).withSecond(0).withNano(0),
-                    now.plusDays(30).withHour(18).withMinute(0).withSecond(0).withNano(0),
+                List.of(new SessionSeedSpec("Фото-маршрут", eventDateBase.plusDays(30).withHour(16).withMinute(0).withSecond(0).withNano(0),
+                    eventDateBase.plusDays(30).withHour(18).withMinute(0).withSecond(0).withNano(0),
                     null, "Рязанская область, Рязань, Соборная площадь, 13", 28, new BigDecimal("650.00"))),
                 List.of("Архитектурное бюро «Старый план»", "Антон Сухов")
             ),
@@ -213,8 +216,8 @@ public class AdditionalCityDemoDataInitializer implements ApplicationRunner {
                 "5+",
                 List.of("Мастер-класс", "Лекция"),
                 List.of("images/free-children/ryazan-kids-artwork.jpg", "images/free-museum/museum-04.jpg"),
-                List.of(new SessionSeedSpec("Семейная группа", now.plusDays(32).withHour(12).withMinute(0).withSecond(0).withNano(0),
-                    now.plusDays(32).withHour(13).withMinute(30).withSecond(0).withNano(0),
+                List.of(new SessionSeedSpec("Семейная группа", eventDateBase.plusDays(32).withHour(12).withMinute(0).withSecond(0).withNano(0),
+                    eventDateBase.plusDays(32).withHour(13).withMinute(30).withSecond(0).withNano(0),
                     null, "Рязанская область, Рязань, улица Почтовая, 60", 30, BigDecimal.ZERO)),
                 List.of("Елена Гурьева", "Татьяна Лазарева")
             )
@@ -230,8 +233,8 @@ public class AdditionalCityDemoDataInitializer implements ApplicationRunner {
                 "12+",
                 List.of("Концерт"),
                 List.of("images/live music/pexels-brett-sayles-1434625.jpg", "images/music stage/magnus-lunay-LHR6tUw8N34-unsplash.jpg"),
-                List.of(new SessionSeedSpec("Камерный концерт", now.plusDays(33).withHour(19).withMinute(0).withSecond(0).withNano(0),
-                    now.plusDays(33).withHour(21).withMinute(0).withSecond(0).withNano(0),
+                List.of(new SessionSeedSpec("Камерный концерт", eventDateBase.plusDays(33).withHour(19).withMinute(0).withSecond(0).withNano(0),
+                    eventDateBase.plusDays(33).withHour(21).withMinute(0).withSecond(0).withNano(0),
                     null, "Рязанская область, Рязань, улица Почтовая, 54", 140, new BigDecimal("900.00"))),
                 List.of("Сергей Титов", "Дарья Белова")
             ),
@@ -244,8 +247,8 @@ public class AdditionalCityDemoDataInitializer implements ApplicationRunner {
                 "18+",
                 List.of("Концерт"),
                 List.of("images/music stage/ivaldo-hadi-4AUzJ6hbPJU-unsplash.jpg", "images/music stage/photo.jpg"),
-                List.of(new SessionSeedSpec("Ночной сет", now.plusDays(38).withHour(21).withMinute(0).withSecond(0).withNano(0),
-                    now.plusDays(38).withHour(23).withMinute(45).withSecond(0).withNano(0),
+                List.of(new SessionSeedSpec("Ночной сет", eventDateBase.plusDays(38).withHour(21).withMinute(0).withSecond(0).withNano(0),
+                    eventDateBase.plusDays(38).withHour(23).withMinute(45).withSecond(0).withNano(0),
                     null, "Рязанская область, Рязань, улица Почтовая, 60", 120, new BigDecimal("1100.00"))),
                 List.of("Никита Власов", "Игорь Демьянов")
             )
@@ -267,6 +270,7 @@ public class AdditionalCityDemoDataInitializer implements ApplicationRunner {
             if (holder.created() || sessionRepository.findAllByEventIdOrderByStartsAtAsc(holder.event().getId()).isEmpty()) {
                 support.createSessionsAndTickets(holder.event(), spec, city);
             }
+            support.syncEventSchedule(holder.event(), spec, now);
             support.ensureEventParticipants(holder.event(), spec.participantNames(), participants);
             support.normalizePrimaryImage(holder.event().getId());
         }

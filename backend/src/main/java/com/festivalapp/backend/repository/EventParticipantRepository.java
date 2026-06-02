@@ -12,6 +12,9 @@ public interface EventParticipantRepository extends JpaRepository<EventParticipa
     List<EventParticipant> findAllByEventIdOrderByIdAsc(Long eventId);
 
     @EntityGraph(attributePaths = {"participant", "event"})
+    List<EventParticipant> findAllByEventIdInOrderByEventIdAscIdAsc(List<Long> eventIds);
+
+    @EntityGraph(attributePaths = {"participant", "event"})
     List<EventParticipant> findAllByParticipantIdOrderByIdAsc(Long participantId);
 
     void deleteByEventId(Long eventId);

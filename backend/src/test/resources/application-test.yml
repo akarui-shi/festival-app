@@ -1,0 +1,21 @@
+spring:
+  mail:
+    host: localhost
+    port: 25
+    username: test
+    password: test
+
+  jpa:
+    show-sql: false
+
+app:
+  demo:
+    kolomna-seed-enabled: false
+    ryazan-seed-enabled: false
+
+  notifications:
+    email-from: noreply@test.local
+
+yandex:
+  metrika:
+    enabled: false

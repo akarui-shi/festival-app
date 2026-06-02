@@ -63,6 +63,7 @@ public class RyazanDemoDataInitializer implements ApplicationRunner {
     private static final String CITY_NAME = "Рязань";
     private static final String CITY_REGION = "Рязанская область";
     private static final String DEMO_KEY = "ryazan";
+    private static final long EVENT_DATE_SHIFT_DAYS = 5;
 
     // --- Картинки. Каждая — ровно одна сущность Рязани (см. javadoc). ---
 
@@ -176,7 +177,7 @@ public class RyazanDemoDataInitializer implements ApplicationRunner {
         Map<String, Category> categories = support.ensureBaseCategories();
         Map<String, Participant> participants = support.ensureParticipants(buildParticipants(), now);
 
-        List<EventSeedSpec> eventSpecs = buildEventSpecs(now);
+        List<EventSeedSpec> eventSpecs = buildEventSpecs(now.plusDays(EVENT_DATE_SHIFT_DAYS));
         Map<String, List<PublicationSeedSpec>> publicationsByEventTitle = buildPublicationSpecsByEventTitle();
 
         for (EventSeedSpec spec : eventSpecs) {
@@ -189,6 +190,7 @@ public class RyazanDemoDataInitializer implements ApplicationRunner {
             if (holder.created() || sessionRepository.findAllByEventIdOrderByStartsAtAsc(event.getId()).isEmpty()) {
                 support.createSessionsAndTickets(event, spec, ryazan);
             }
+            support.syncEventSchedule(event, spec, now);
 
             support.ensureEventParticipants(event, spec.participantNames(), participants);
             support.ensurePublications(

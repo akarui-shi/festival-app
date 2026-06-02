@@ -70,6 +70,7 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
     private static final String CITY_NAME = "Коломна";
     private static final String CITY_REGION = "Московская область";
     private static final String DEMO_KEY = "kolomna";
+    private static final long EVENT_DATE_SHIFT_DAYS = 5;
 
     // --- Картинки. Каждый файл используется ровно один раз в Коломне (см. javadoc). ---
 
@@ -200,7 +201,7 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
         Map<String, Participant> participants = support.ensureParticipants(buildParticipants(), now);
 
         // 4. События + публикации.
-        List<EventSeedSpec> eventSpecs = buildEventSpecs(now);
+        List<EventSeedSpec> eventSpecs = buildEventSpecs(now.plusDays(EVENT_DATE_SHIFT_DAYS));
         Map<String, List<PublicationSeedSpec>> publicationsByEventTitle = buildPublicationSpecsByEventTitle();
 
         for (EventSeedSpec spec : eventSpecs) {
@@ -214,6 +215,7 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
             if (holder.created() || sessionRepository.findAllByEventIdOrderByStartsAtAsc(event.getId()).isEmpty()) {
                 support.createSessionsAndTickets(event, spec, kolomna);
             }
+            support.syncEventSchedule(event, spec, now);
 
             support.ensureEventParticipants(event, spec.participantNames(), participants);
             support.ensurePublications(
@@ -322,30 +324,78 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
     private List<EventSeedSpec> buildEventSpecs(OffsetDateTime now) {
         List<EventSeedSpec> result = new ArrayList<>();
 
-        // Событие 2. Лекторий: Космос над Коломной — научно-популярная лекция.
+        // Событие 2. Лекторий: Космос над Коломной — серия из 4 показов, демо-мероприятие для аналитики.
+        // Два прошедших показа + два предстоящих. Фиксированные даты. Два тарифа: бесплатный + платный.
         // Картинки: 2 из lecture (лекторий, аудитория).
         result.add(new EventSeedSpec(
             "Лекторий: Космос над Коломной",
-            "Открытая лекция о современных космических миссиях и наблюдениях звёздного неба над Коломной.",
+            "Серия научно-популярных лекций о современных космических миссиях и звёздном небе над Коломной.",
             "Простым языком о том, как изменились наши знания о космосе за последние десять лет: телескоп Джеймса Уэбба, " +
                 "марсоходы новой генерации, миссии к спутникам Юпитера, частный космос и ближайшие планы Роскосмоса.\n\n" +
                 "Лектор — Егор Нечаев, популяризатор науки и автор цикла «Космос рядом». В программе — около часа " +
                 "основной лекции с большим визуальным рядом и 30 минут вопросов из зала.\n\n" +
-                "После лекции желающие смогут остаться на короткую астрономическую сессию во дворе библиотеки: " +
-                "если позволит погода, можно будет посмотреть Луну и планеты в телескоп. Лекторий бесплатный, " +
+                "После каждого показа желающие могут остаться на астрономическую сессию во дворе: " +
+                "если позволит погода, можно посмотреть Луну и планеты в телескоп. Вход бесплатный, " +
                 "но количество мест ограничено вместимостью зала.",
             "6+",
             List.of("Лекция"),
             List.of(EV_LECT_COSMOS_1, EV_LECT_COSMOS_2),
             List.of(
+                // Показ 1: пятница вечером 18:30 — слот 18-22 в тепловой карте
                 new SessionSeedSpec(
-                    "Главная лекция",
-                    now.plusDays(10).withHour(18).withMinute(30).withSecond(0).withNano(0),
-                    now.plusDays(10).withHour(20).withMinute(0).withSecond(0).withNano(0),
+                    "Показ 1: Телескоп Уэбба и новая эра астрофизики",
+                    OffsetDateTime.of(2026, 4, 10, 18, 30, 0, 0, now.getOffset()),
+                    OffsetDateTime.of(2026, 4, 10, 20,  0, 0, 0, now.getOffset()),
                     null,
                     "Московская область, Коломна, улица Лажечникова, 5",
-                    150,
-                    BigDecimal.ZERO
+                    18,   // вместимость подобрана под данные (~78% заполняемость)
+                    BigDecimal.ZERO,
+                    List.of(
+                        new TicketSeedSpec("Бесплатный вход",       BigDecimal.ZERO,          12),
+                        new TicketSeedSpec("Поддержка мероприятия", new BigDecimal("500.00"),   6)
+                    )
+                ),
+                // Показ 2: пятница днём 14:00 — слот 14-18 (разнообразие тепловой карты)
+                new SessionSeedSpec(
+                    "Показ 2: Марс, Юпитер и будущее пилотируемого космоса",
+                    OffsetDateTime.of(2026, 5,  8, 14,  0, 0, 0, now.getOffset()),
+                    OffsetDateTime.of(2026, 5,  8, 15, 30, 0, 0, now.getOffset()),
+                    null,
+                    "Московская область, Коломна, улица Лажечникова, 5",
+                    15,   // вместимость под данные (~80% заполняемость)
+                    BigDecimal.ZERO,
+                    List.of(
+                        new TicketSeedSpec("Бесплатный вход",       BigDecimal.ZERO,          10),
+                        new TicketSeedSpec("Поддержка мероприятия", new BigDecimal("500.00"),   5)
+                    )
+                ),
+                // Показ 3: суббота вечером 18:30 — слот 18-22
+                new SessionSeedSpec(
+                    "Показ 3: Тёмная материя, чёрные дыры и тайны Вселенной",
+                    OffsetDateTime.of(2026, 6, 20, 18, 30, 0, 0, now.getOffset()),
+                    OffsetDateTime.of(2026, 6, 20, 20,  0, 0, 0, now.getOffset()),
+                    null,
+                    "Московская область, Коломна, улица Лажечникова, 5",
+                    12,   // вместимость под данные (~67% заполняемость — идут продажи)
+                    BigDecimal.ZERO,
+                    List.of(
+                        new TicketSeedSpec("Бесплатный вход",       BigDecimal.ZERO,           8),
+                        new TicketSeedSpec("Поддержка мероприятия", new BigDecimal("500.00"),   4)
+                    )
+                ),
+                // Показ 4: среда утром 11:00 — слот 10-14 (третий уникальный слот)
+                new SessionSeedSpec(
+                    "Показ 4: Ночной лекторий — звёзды над Коломной",
+                    OffsetDateTime.of(2026, 7, 15, 11,  0, 0, 0, now.getOffset()),
+                    OffsetDateTime.of(2026, 7, 15, 12, 30, 0, 0, now.getOffset()),
+                    null,
+                    "Московская область, Коломна, улица Лажечникова, 5",
+                    10,   // вместимость под данные (~80% заполняемость)
+                    BigDecimal.ZERO,
+                    List.of(
+                        new TicketSeedSpec("Место на лекции",        BigDecimal.ZERO,           7),
+                        new TicketSeedSpec("Поддержка мероприятия",  new BigDecimal("300.00"),   3)
+                    )
                 )
             ),
             List.of("Егор Нечаев")
@@ -867,25 +917,26 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
             "отклонено"
         ));
 
-        // ARCHIVED — весенний фестиваль, который уже прошёл.
+        // PUBLISHED — весенний фестиваль перенесён в будущую демо-дату.
         result.add(new EventSeedSpec(
             "Весенний фестиваль Коломны 2024",
-            "Большой уличный фестиваль открытия сезона — прошёл в апреле прошлого года.",
-            "Ежегодный праздник открытия тёплого сезона собрал более двух тысяч гостей на " +
+            "Большой уличный фестиваль открытия сезона с тремя сценами и городской ярмаркой.",
+            "Ежегодный праздник открытия тёплого сезона собирает более двух тысяч гостей на " +
                 "площадях исторического центра. Три сцены работали параллельно: главная у набережной, " +
                 "камерная в сквере у кремля и детская у Дома мастеров.\n\n" +
                 "В программе — четырнадцать выступлений, ярмарка весенних растений, кулинарные " +
                 "мастер-классы от коломенских поваров и уличные художники. Фестиваль шёл с 12:00 " +
-                "до 21:00, погода порадовала: тепло и солнечно весь день.\n\n" +
-                "В этом году фестиваль пройдёт снова — следите за анонсами организации.",
+                "до 21:00, с вечерним концертом и большой зоной отдыха для семей.\n\n" +
+                "В этом году фестиваль пройдёт снова: организаторы обновили программу и добавили " +
+                "больше бесплатных мастер-классов.",
             "0+",
             List.of("Фестиваль", "Концерт", "Мастер-класс"),
             List.of(EV_SPRING_FEST_1, EV_SPRING_FEST_2),
             List.of(
                 new SessionSeedSpec(
                     "Весенний день",
-                    now.minusDays(30).withHour(12).withMinute(0).withSecond(0).withNano(0),
-                    now.minusDays(30).withHour(21).withMinute(0).withSecond(0).withNano(0),
+                    now.plusDays(23).withHour(12).withMinute(0).withSecond(0).withNano(0),
+                    now.plusDays(23).withHour(21).withMinute(0).withSecond(0).withNano(0),
                     null,
                     "Московская область, Коломна, улица Лажечникова, 5",
                     2000,
@@ -893,7 +944,7 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
                 )
             ),
             List.of("Марина Соколова", "Фольклорный ансамбль «Коломенская слобода»"),
-            "завершено"
+            "опубликовано"
         ));
 
         // CANCELLED — мастер-класс по акварели, отменённый по болезни мастера.
