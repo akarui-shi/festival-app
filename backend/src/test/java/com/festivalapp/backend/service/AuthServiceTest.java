@@ -67,6 +67,7 @@ class AuthServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private JwtService jwtService;
     @Mock private EmailVerificationService emailVerificationService;
+    @Mock private LoginAttemptService loginAttemptService;
 
     @InjectMocks
     private AuthService authService;
@@ -306,6 +307,7 @@ class AuthServiceTest {
         assertThat(resp.getToken()).isEqualTo("jwt-token");
         assertThat(resp.getUser().getLogin()).isEqualTo("alice");
         verify(userRepository).save(user);
+        verify(loginAttemptService).recordSuccess("alice");
     }
 
     // Несуществующий пользователь → UnauthorizedException (не 404, чтобы не раскрывать существование аккаунта).
@@ -319,6 +321,7 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.login(req))
             .isInstanceOf(UnauthorizedException.class);
+        verify(loginAttemptService).recordFailure("ghost");
     }
 
     // Заблокированный пользователь (active=false) не может войти.
@@ -353,6 +356,24 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.login(req))
             .isInstanceOf(UnauthorizedException.class)
             .hasMessageContaining("Неверный");
+        verify(loginAttemptService).recordFailure("bob");
+    }
+
+    // После превышения лимита попыток LoginAttemptService блокирует вход ещё до проверки пароля.
+    @Test
+    void login_tooManyAttemptsThrowsBeforeLookup() {
+        when(userRepository.findByLoginOrEmailWithRoles("alice")).thenReturn(Optional.empty());
+        org.mockito.Mockito.doThrow(new UnauthorizedException("Слишком много попыток входа. Повторите позже."))
+            .when(loginAttemptService).assertAllowed("alice");
+
+        LoginRequest req = new LoginRequest();
+        req.setLoginOrEmail("alice");
+        req.setPassword("Secret123");
+
+        assertThatThrownBy(() -> authService.login(req))
+            .isInstanceOf(UnauthorizedException.class)
+            .hasMessageContaining("Слишком много попыток");
+        verify(userRepository, never()).findByLoginOrEmailWithRoles(anyString());
     }
 
     // Пользователь с неподтверждённым email: пароль верный, но вход запрещён.

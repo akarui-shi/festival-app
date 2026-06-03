@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CityProvider } from "@/contexts/CityContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { YandexMetrikaTracker } from "@/components/YandexMetrikaTracker";
 
 import HomePage from "./pages/HomePage";
 import EventsCatalogPage from "./pages/EventsCatalogPage";
@@ -57,6 +58,7 @@ const App = () => (
       <AuthProvider>
         <CityProvider>
           <BrowserRouter>
+            <YandexMetrikaTracker />
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/events" element={<EventsCatalogPage />} />

@@ -1,0 +1,70 @@
+{
+  "generatedAt": "2026-06-02T18:06:53.663Z",
+  "baseUrl": "http://127.0.0.1:8080",
+  "totalVus": 1,
+  "durationSeconds": 5,
+  "rampUpSeconds": 1,
+  "profile": {
+    "public": 1,
+    "auth": 0,
+    "orders": 0
+  },
+  "fixture": {
+    "eventId": 1,
+    "sessionId": null,
+    "ticketTypeId": null
+  },
+  "requests": 15,
+  "errorRate": 1,
+  "groups": {
+    "public": {
+      "count": 15,
+      "avgMs": 2,
+      "p90Ms": 3,
+      "p95Ms": 4,
+      "maxMs": 4,
+      "requests": 15,
+      "errors": 15
+    },
+    "auth": {
+      "count": 0,
+      "avgMs": 0,
+      "p90Ms": 0,
+      "p95Ms": 0,
+      "maxMs": 0,
+      "requests": 0,
+      "errors": 0
+    },
+    "orders": {
+      "count": 0,
+      "avgMs": 0,
+      "p90Ms": 0,
+      "p95Ms": 0,
+      "maxMs": 0,
+      "requests": 0,
+      "errors": 0
+    },
+    "all": {
+      "count": 15,
+      "avgMs": 2,
+      "p90Ms": 3,
+      "p95Ms": 4,
+      "maxMs": 4
+    }
+  },
+  "serverProcess": {
+    "pid": "31262",
+    "cpuCores": 8,
+    "avgCpuPercent": 0,
+    "maxCpuPercent": 0,
+    "avgMemoryMb": 0,
+    "maxMemoryMb": 0,
+    "samples": []
+  },
+  "thresholds": {
+    "responseTimeMs": 2000,
+    "errorRate": 0.01,
+    "cpuPercent": 80,
+    "memoryMb": 2048
+  }
+}

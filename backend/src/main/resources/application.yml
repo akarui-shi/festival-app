@@ -83,8 +83,12 @@ server:
 
 security:
   jwt:
-    secret: ZmVzdGl2YWwtYXBwLXN1cGVyLXNlY3JldC1rZXktZm9yLWp3dC0yMDI2LTAxMDE=
-    expiration-ms: 86400000
+    secret: ${JWT_SECRET}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  login-attempts:
+    max-failures: ${LOGIN_ATTEMPT_MAX_FAILURES:5}
+    window-minutes: ${LOGIN_ATTEMPT_WINDOW_MINUTES:15}
+    lock-minutes: ${LOGIN_ATTEMPT_LOCK_MINUTES:15}
 
 app:
   upload:

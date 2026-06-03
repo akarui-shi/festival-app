@@ -51,6 +51,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final EmailVerificationService emailVerificationService;
+    private final LoginAttemptService loginAttemptService;
 
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
@@ -141,14 +142,20 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
+        loginAttemptService.assertAllowed(request.getLoginOrEmail());
+
         User user = userRepository.findByLoginOrEmailWithRoles(request.getLoginOrEmail())
-            .orElseThrow(() -> new UnauthorizedException("Неверный логин/email или пароль"));
+            .orElseThrow(() -> {
+                loginAttemptService.recordFailure(request.getLoginOrEmail());
+                return new UnauthorizedException("Неверный логин/email или пароль");
+            });
 
         if (!user.isActive()) {
             throw new UnauthorizedException("Учетная запись заблокирована");
         }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            loginAttemptService.recordFailure(request.getLoginOrEmail());
             throw new UnauthorizedException("Неверный логин/email или пароль");
         }
         if (!user.isEmailVerified()) {
@@ -159,6 +166,7 @@ public class AuthService {
         user.setLastLoginAt(OffsetDateTime.now());
         user.setUpdatedAt(OffsetDateTime.now());
         userRepository.save(user);
+        loginAttemptService.recordSuccess(request.getLoginOrEmail());
 
         return issueAuthResponse(user);
     }

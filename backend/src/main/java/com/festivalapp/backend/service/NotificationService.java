@@ -48,10 +48,6 @@ public class NotificationService {
             return;
         }
 
-        if (order.getTotalAmount() == null || order.getTotalAmount().compareTo(BigDecimal.ZERO) <= 0) {
-            return;
-        }
-
         if (!"оплачен".equalsIgnoreCase(order.getStatus())) {
             return;
         }

@@ -1,3 +1,8 @@
+security:
+  jwt:
+    secret: dGVzdC1vbmx5LXNlY3JldC1rZXktbmV2ZXItdXNlLWluLXByb2QtMzJieXRlcyEh
+    expiration-ms: 86400000
+
 spring:
   mail:
     host: localhost

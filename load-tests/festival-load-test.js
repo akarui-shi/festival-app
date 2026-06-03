@@ -8,10 +8,10 @@
  *   20% — операции аутентификации и просмотра личного кабинета
  *   10% — оформление заказов и записей
  *
- * Запуск (500 VU — половина от требуемых 1000, для локальной проверки):
+ * Запуск (500 VU — для локальной проверки на слабом железе):
  *   k6 run festival-load-test.js
  *
- * Запуск на полных 1000 VU:
+ * Запуск на полных 1000 VU (нефункциональное требование: время отклика ≤ 2 с):
  *   k6 run --env VU_SCALE=2 festival-load-test.js
  *
  * Установка k6: brew install k6
@@ -147,8 +147,8 @@ export function catalogScenario() {
 
     sleep(0.5);
 
-    // GET /api/events?search=... — поиск по названию
-    res = http.get(`${BASE_URL}/api/events?search=фестиваль`);
+    // GET /api/events?search=... — поиск по названию (кириллица требует URL-кодирования)
+    res = http.get(`${BASE_URL}/api/events?search=${encodeURIComponent('фестиваль')}`);
     check(res, { 'search status 200': (r) => r.status === 200 });
     catalogLatency.add(res.timings.duration);
     sleep(0.5);
@@ -204,20 +204,17 @@ export function authScenario() {
 
     sleep(0.5);
 
-    // GET /api/auth/me — данные текущего пользователя
-    let res = http.get(`${BASE_URL}/api/auth/me`, headers);
+    // GET /api/users/me — данные текущего пользователя
+    let res = http.get(`${BASE_URL}/api/users/me`, headers);
     check(res, { 'profile status 200': (r) => r.status === 200 });
     profileLatency.add(res.timings.duration);
     sleep(0.5);
 
-    // GET /api/users/{id}/favorites — список избранного
-    const userId = loginRes.json('user.id');
-    if (userId) {
-      res = http.get(`${BASE_URL}/api/users/${userId}/favorites`, headers);
-      check(res, { 'favorites status 200': (r) => r.status === 200 });
-      profileLatency.add(res.timings.duration);
-      sleep(0.3);
-    }
+    // GET /api/favorites/my — список избранного текущего пользователя
+    res = http.get(`${BASE_URL}/api/favorites/my`, headers);
+    check(res, { 'favorites status 200': (r) => r.status === 200 });
+    profileLatency.add(res.timings.duration);
+    sleep(0.3);
 
     // GET /api/notifications — уведомления
     res = http.get(`${BASE_URL}/api/notifications`, headers);
@@ -258,44 +255,47 @@ export function orderScenario() {
     orderLatency.add(res.timings.duration);
     sleep(1); // пользователь выбирает мероприятие
 
-    // GET /api/events/1 — смотрим детальную страницу
-    res = http.get(`${BASE_URL}/api/events/1`, headers);
+    // GET /api/events/38 — смотрим детальную страницу тестового мероприятия
+    res = http.get(`${BASE_URL}/api/events/38`, headers);
     check(res, { 'order flow: event detail': (r) => r.status === 200 || r.status === 404 });
     orderLatency.add(res.timings.duration);
     sleep(0.8);
 
-    // GET /api/sessions?eventId=1 — проверяем доступные сеансы
-    res = http.get(`${BASE_URL}/api/sessions?eventId=1`, headers);
+    // GET /api/sessions?eventId=38 — проверяем доступные сеансы
+    res = http.get(`${BASE_URL}/api/sessions?eventId=38`, headers);
     const sessionsOk = check(res, {
       'order flow: sessions': (r) => r.status === 200 || r.status === 404,
     });
     orderLatency.add(res.timings.duration);
     orderErrors.add(!sessionsOk);
 
-    // Запись на мероприятие (POST) — самая тяжёлая операция, только если сеансы есть
-    // Раскомментировать, когда в БД есть сеансы с availableSeats > 0
-    /*
-    if (sessionsOk && res.status === 200) {
-      const sessions = res.json();
-      if (sessions && sessions.length > 0) {
-        const sessionId = sessions[0].id;
-        res = http.post(`${BASE_URL}/api/registrations`,
-          JSON.stringify({ sessionId, paymentMethod: 'yookassa' }),
-          headers
-        );
-        check(res, { 'registration 200 or 201': (r) => r.status === 200 || r.status === 201 });
-        orderLatency.add(res.timings.duration);
-      }
-    }
-    */
+    // Запись на сеанс 53 с билетом 66 (безлимитный тестовый сеанс, quota=10000)
+    {
+      const LOAD_TEST_SESSION_ID = 53;
+      const LOAD_TEST_TICKET_TYPE_ID = 66;
 
-    const userId = loginRes.json('user.id');
-    if (userId) {
-      // GET /api/registrations — список своих записей
-      res = http.get(`${BASE_URL}/api/registrations?userId=${userId}`, headers);
-      check(res, { 'my registrations 200': (r) => r.status === 200 || r.status === 403 });
+      res = http.post(
+        `${BASE_URL}/api/orders`,
+        JSON.stringify({
+          sessionId: LOAD_TEST_SESSION_ID,
+          items: [{ ticketTypeId: LOAD_TEST_TICKET_TYPE_ID, quantity: 1 }],
+          paymentProvider: 'yookassa',
+        }),
+        headers
+      );
+      const regOk = check(res, {
+        'order created 200/201': (r) => r.status === 200 || r.status === 201,
+        'order not 500': (r) => r.status !== 500,
+      });
       orderLatency.add(res.timings.duration);
+      orderErrors.add(!regOk);
+      sleep(0.5);
     }
+
+    // GET /api/orders/my — список своих заказов
+    res = http.get(`${BASE_URL}/api/orders/my`, headers);
+    check(res, { 'my orders 200': (r) => r.status === 200 || r.status === 403 });
+    orderLatency.add(res.timings.duration);
 
   });
 

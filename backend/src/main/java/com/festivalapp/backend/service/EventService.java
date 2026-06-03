@@ -130,47 +130,36 @@ public class EventService {
             return cached;
         }
 
-        Set<Long> ftsIds = null;
         String searchQuery = StringUtils.hasText(q) ? q.trim() : (StringUtils.hasText(title) ? title.trim() : null);
-        if (StringUtils.hasText(searchQuery)) {
-            try {
-                ftsIds = new HashSet<>(eventRepository.findIdsByFullText(searchQuery));
-            } catch (Exception ignored) {
-                // fall back to in-memory search if FTS fails (e.g. empty tsquery)
-            }
-        }
-        // Если PostgreSQL-FTS ничего не нашёл (русский стеммер не нормализует, например, "джаз"
-        // и "джазовый" к одной форме) — обнуляем фильтр по ftsIds, чтобы матчинг ушёл в
-        // in-memory подстрочный поиск через matchesFilters.buildSearchableText. Это даёт
-        // нечёткий поиск типа ILIKE без отдельного запроса.
-        if (ftsIds != null && ftsIds.isEmpty()) {
-            ftsIds = null;
-        }
-        final Set<Long> ftsIdsFinal = ftsIds;
+        EventStatus requestedStatus = StringUtils.hasText(status) ? parseEventStatus(status) : EventStatus.PUBLISHED;
+        String statusFilter = DomainStatusMapper.toEventDbStatus(requestedStatus == null ? EventStatus.PUBLISHED : requestedStatus);
+        String participationFilter = normalizeParticipationType(participationType);
+        OffsetDateTime dateStart = date == null ? null : date.atStartOfDay(BUSINESS_ZONE).toOffsetDateTime();
+        OffsetDateTime dateEnd = date == null ? null : date.plusDays(1).atStartOfDay(BUSINESS_ZONE).toOffsetDateTime();
+        OffsetDateTime rangeStart = dateFrom == null ? null : dateFrom.atStartOfDay(BUSINESS_ZONE).toOffsetDateTime();
+        OffsetDateTime rangeEnd = dateTo == null ? null : dateTo.plusDays(1).atStartOfDay(BUSINESS_ZONE).toOffsetDateTime();
+        OffsetDateTime now = OffsetDateTime.now(BUSINESS_ZONE);
 
-        List<Event> events = eventRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc();
+        List<Event> events = eventRepository.searchCatalog(
+            normalizeOptional(searchQuery),
+            categoryId,
+            venueId,
+            cityId,
+            organizationId,
+            dateStart,
+            dateEnd,
+            rangeStart,
+            rangeEnd,
+            participationFilter,
+            priceFrom,
+            priceTo,
+            registrationOpen,
+            statusFilter,
+            now
+        );
         EventCatalogData catalogData = hydrateEvents(events);
 
         List<EventShortResponse> response = events.stream()
-            .filter(e -> ftsIdsFinal == null || ftsIdsFinal.contains(e.getId()))
-            .filter(event -> matchesFilters(
-                event,
-                title,
-                ftsIdsFinal != null ? null : q,
-                categoryId,
-                venueId,
-                cityId,
-                organizationId,
-                date,
-                dateFrom,
-                dateTo,
-                participationType,
-                priceFrom,
-                priceTo,
-                registrationOpen,
-                status,
-                catalogData
-            ))
             .sorted(resolveSort(sortBy, sortDir, catalogData))
             .map(event -> toShortResponse(event, catalogData))
             .toList();
@@ -202,9 +191,13 @@ public class EventService {
             .filter(e -> DomainStatusMapper.toEventStatus(e.getStatus()) == EventStatus.PUBLISHED)
             .toList();
 
+        // Batch-запрос: один SELECT вместо N запросов в компараторе
+        List<Long> eventIds = published.stream().map(Event::getId).filter(Objects::nonNull).toList();
+        Map<Long, Long> favoriteCounts = favoriteRepository.countsByEventIds(eventIds);
+
         Comparator<Event> sorter;
         if (preferredCategoryIds.isEmpty()) {
-            sorter = Comparator.comparingLong((Event e) -> favoriteRepository.countByEventId(e.getId())).reversed()
+            sorter = Comparator.comparingLong((Event e) -> favoriteCounts.getOrDefault(e.getId(), 0L)).reversed()
                 .thenComparing(Event::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder()));
         } else {
             sorter = Comparator.<Event, Integer>comparing(e -> {
@@ -213,7 +206,7 @@ public class EventService {
                     .collect(Collectors.toSet());
                 return (int) preferredCategoryIds.stream().filter(ids::contains).count();
             }).reversed()
-            .thenComparing(Comparator.comparingLong((Event e) -> favoriteRepository.countByEventId(e.getId())).reversed());
+            .thenComparing(Comparator.comparingLong((Event e) -> favoriteCounts.getOrDefault(e.getId(), 0L)).reversed());
         }
 
         return published.stream()
@@ -656,183 +649,18 @@ public class EventService {
         );
     }
 
-    private boolean matchesFilters(Event event,
-                                   String title,
-                                   String q,
-                                   Long categoryId,
-                                   Long venueId,
-                                   Long cityId,
-                                   Long organizationId,
-                                   LocalDate date,
-                                   LocalDate dateFrom,
-                                   LocalDate dateTo,
-                                   String participationType,
-                                   BigDecimal priceFrom,
-                                   BigDecimal priceTo,
-                                   Boolean registrationOpen,
-                                   String status) {
-        return matchesFilters(event, title, q, categoryId, venueId, cityId, organizationId, date, dateFrom, dateTo,
-            participationType, priceFrom, priceTo, registrationOpen, status, null);
-    }
-
-    private boolean matchesFilters(Event event,
-                                   String title,
-                                   String q,
-                                   Long categoryId,
-                                   Long venueId,
-                                   Long cityId,
-                                   Long organizationId,
-                                   LocalDate date,
-                                   LocalDate dateFrom,
-                                   LocalDate dateTo,
-                                   String participationType,
-                                   BigDecimal priceFrom,
-                                   BigDecimal priceTo,
-                                   Boolean registrationOpen,
-                                   String status,
-                                   EventCatalogData catalogData) {
-        String searchQuery = StringUtils.hasText(q) ? q.trim() : (StringUtils.hasText(title) ? title.trim() : null);
-        if (StringUtils.hasText(searchQuery)) {
-            String searchable = buildSearchableText(event, catalogData);
-            for (String term : searchQuery.toLowerCase().split("\\s+")) {
-                if (!searchable.contains(term)) {
-                    return false;
-                }
-            }
+    private String normalizeParticipationType(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
         }
-
-        if (categoryId != null) {
-            boolean hasCategory = event.getEventCategories().stream()
-                .map(EventCategory::getCategory)
-                .filter(Objects::nonNull)
-                .anyMatch(category -> Objects.equals(category.getId(), categoryId));
-            if (!hasCategory) {
-                return false;
-            }
+        String normalized = value.trim().toLowerCase();
+        if ("free".equals(normalized) || "бесплатно".equals(normalized)) {
+            return "free";
         }
-
-        if (venueId != null) {
-            boolean hasVenue = event.getSessions().stream()
-                .anyMatch(session -> session.getVenue() != null && Objects.equals(session.getVenue().getId(), venueId));
-            if (!hasVenue) {
-                return false;
-            }
+        if ("paid".equals(normalized) || "платно".equals(normalized)) {
+            return "paid";
         }
-
-        if (cityId != null && (event.getCity() == null || !Objects.equals(event.getCity().getId(), cityId))) {
-            return false;
-        }
-
-        if (organizationId != null && (event.getOrganization() == null || !Objects.equals(event.getOrganization().getId(), organizationId))) {
-            return false;
-        }
-
-        if (StringUtils.hasText(status)) {
-            EventStatus requested = parseEventStatus(status);
-            if (requested != null && DomainStatusMapper.toEventStatus(event.getStatus()) != requested) {
-                return false;
-            }
-        } else if (DomainStatusMapper.toEventStatus(event.getStatus()) != EventStatus.PUBLISHED) {
-            return false;
-        }
-
-        if (StringUtils.hasText(participationType)) {
-            String normalizedType = participationType.trim().toLowerCase();
-            boolean hasMatchingType = event.getSessions().stream().anyMatch(session -> {
-                TicketType pricing = defaultTicketType(session.getId(), catalogData);
-                if ("free".equals(normalizedType) || "бесплатно".equals(normalizedType)) {
-                    return pricing == null || pricing.getPrice() == null || pricing.getPrice().compareTo(BigDecimal.ZERO) <= 0;
-                }
-                if ("paid".equals(normalizedType) || "платно".equals(normalizedType)) {
-                    return pricing != null && pricing.getPrice() != null && pricing.getPrice().compareTo(BigDecimal.ZERO) > 0;
-                }
-                return true;
-            });
-            if (!hasMatchingType) {
-                return false;
-            }
-        }
-
-        if (priceFrom != null || priceTo != null) {
-            boolean hasPriceInRange = event.getSessions().stream().anyMatch(session -> {
-                TicketType pricing = defaultTicketType(session.getId(), catalogData);
-                BigDecimal sessionPrice = pricing == null || pricing.getPrice() == null ? BigDecimal.ZERO : pricing.getPrice();
-                if (priceFrom != null && sessionPrice.compareTo(priceFrom) < 0) {
-                    return false;
-                }
-                if (priceTo != null && sessionPrice.compareTo(priceTo) > 0) {
-                    return false;
-                }
-                return true;
-            });
-            if (!hasPriceInRange) {
-                return false;
-            }
-        }
-
-        if (registrationOpen != null) {
-            boolean hasRegistrationState = event.getSessions().stream().anyMatch(session -> isRegistrationOpen(session, catalogData) == registrationOpen);
-            if (!hasRegistrationState) {
-                return false;
-            }
-        }
-
-        if (date != null) {
-            boolean hasDate = event.getSessions().stream().anyMatch(session ->
-                session.getStartsAt() != null && session.getStartsAt().toLocalDate().equals(date)
-            );
-            if (!hasDate) {
-                return false;
-            }
-        }
-
-        if (dateFrom != null || dateTo != null) {
-            OffsetDateTime from = dateFrom == null ? OffsetDateTime.MIN : dateFrom.atStartOfDay().atOffset(ZoneOffset.UTC);
-            OffsetDateTime to = dateTo == null ? OffsetDateTime.MAX : dateTo.plusDays(1).atStartOfDay().atOffset(ZoneOffset.UTC);
-            boolean inRange = event.getSessions().stream().anyMatch(session -> session.getStartsAt() != null
-                && !session.getStartsAt().isBefore(from)
-                && session.getStartsAt().isBefore(to));
-            if (!inRange) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private String buildSearchableText(Event event) {
-        return buildSearchableText(event, null);
-    }
-
-    private String buildSearchableText(Event event, EventCatalogData catalogData) {
-        List<String> chunks = new ArrayList<>();
-        if (StringUtils.hasText(event.getTitle())) {
-            chunks.add(event.getTitle());
-        }
-        if (StringUtils.hasText(event.getShortDescription())) {
-            chunks.add(event.getShortDescription());
-        }
-        if (event.getOrganization() != null && StringUtils.hasText(event.getOrganization().getName())) {
-            chunks.add(event.getOrganization().getName());
-        }
-
-        List<EventParticipant> eventParticipants = catalogData == null
-            ? eventParticipantRepository.findAllByEventIdOrderByIdAsc(event.getId())
-            : catalogData.participantsByEvent().getOrDefault(event.getId(), List.of());
-        for (EventParticipant eventParticipant : eventParticipants) {
-            Participant participant = eventParticipant.getParticipant();
-            if (participant == null) {
-                continue;
-            }
-            if (StringUtils.hasText(participant.getName())) {
-                chunks.add(participant.getName());
-            }
-            if (StringUtils.hasText(participant.getStageName())) {
-                chunks.add(participant.getStageName());
-            }
-        }
-
-        return String.join(" ", chunks).toLowerCase();
+        return null;
     }
 
     private Comparator<Event> resolveSort(String sortBy, String sortDir) {

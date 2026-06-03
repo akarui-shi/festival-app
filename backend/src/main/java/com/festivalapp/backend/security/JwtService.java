@@ -4,9 +4,11 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.security.Key;
 import java.util.Date;
@@ -19,6 +21,21 @@ public class JwtService {
 
     @Value("${security.jwt.expiration-ms}")
     private long jwtExpirationMs;
+
+    @PostConstruct
+    void validateSecret() {
+        if (!StringUtils.hasText(jwtSecret)) {
+            throw new IllegalStateException(
+                "JWT secret is not configured. Set the JWT_SECRET environment variable " +
+                "(base64-encoded random string of at least 32 bytes).");
+        }
+        byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException(
+                "JWT secret is too short (" + keyBytes.length + " bytes). " +
+                "HMAC-SHA256 requires at least 32 bytes. Regenerate JWT_SECRET.");
+        }
+    }
 
     public String generateToken(String username) {
         Date now = new Date();
