@@ -18,7 +18,7 @@ interface AuthContextType {
     organizationId?: number,
     joinRequestMessage?: string,
   ) => Promise<RegisterResponse>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateUser: (data: Partial<User>) => Promise<User>;
   loginWithToken: (token: string) => Promise<void>;
   isAuthenticated: boolean;
@@ -75,8 +75,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const logout = useCallback(() => {
-    authService.logout();
+  const logout = useCallback(async () => {
+    await authService.logout();
     setUser(null);
   }, []);
 

@@ -85,6 +85,7 @@ security:
   jwt:
     secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+    cookie-secure: ${JWT_COOKIE_SECURE:false}
   login-attempts:
     max-failures: ${LOGIN_ATTEMPT_MAX_FAILURES:5}
     window-minutes: ${LOGIN_ATTEMPT_WINDOW_MINUTES:15}

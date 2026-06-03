@@ -20,6 +20,7 @@ import java.io.IOException;
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     private final SocialAuthService socialAuthService;
+    private final JwtCookieHelper jwtCookieHelper;
 
     @Value("${app.frontend-base-url:http://localhost:5173}")
     private String frontendBaseUrl;
@@ -35,16 +36,16 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         try {
             AuthResponse authResponse = socialAuthService.loginWithOAuth2(oauth2AuthenticationToken);
-            response.sendRedirect(buildSuccessRedirect(authResponse.getToken()));
+            jwtCookieHelper.setJwtCookie(response, authResponse.getToken());
+            response.sendRedirect(buildSuccessRedirect());
         } catch (Exception ex) {
             response.sendRedirect(buildErrorRedirect("social_login_failed"));
         }
     }
 
-    private String buildSuccessRedirect(String token) {
+    private String buildSuccessRedirect() {
         return UriComponentsBuilder.fromHttpUrl(frontendBaseUrl)
             .path("/oauth/callback")
-            .queryParam("token", token)
             .build(true)
             .toUriString();
     }

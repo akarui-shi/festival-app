@@ -1,5 +1,5 @@
 import type { AuthResponse, LoginRequest, MessageResponse, RegisterRequest, RegisterResponse, User } from '@/types';
-import { API_BASE_URL, ApiError, apiGet, apiPatch, apiPost, apiPut, removeAuthToken, setAuthToken } from './api-client';
+import { API_BASE_URL, ApiError, apiGet, apiPatch, apiPost, apiPut, removeAuthToken } from './api-client';
 
 const CURRENT_USER_KEY = 'current_user';
 const CURRENT_USER_LOGIN_KEY = 'current_user_login';
@@ -10,10 +10,7 @@ function buildLoginFromEmail(email: string): string {
   return `${normalized || 'user'}_${Date.now().toString().slice(-6)}`;
 }
 
-function persistUser(user: User, login: string, token?: string): void {
-  if (token) {
-    setAuthToken(token);
-  }
+function persistUser(user: User, login: string): void {
   localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
   localStorage.setItem(CURRENT_USER_LOGIN_KEY, login);
 }
@@ -43,35 +40,10 @@ function resolveBackendBaseUrl(): string {
 }
 
 function normalizeAuthResponse(response: AuthResponse): AuthResponse {
-  persistUser(response.user, response.user.login, response.token);
+  persistUser(response.user, response.user.login);
   return response;
 }
 
-async function fetchCurrentUserDirect(token: string): Promise<User> {
-  const backendBaseUrl = resolveBackendBaseUrl();
-  const response = await fetch(`${backendBaseUrl}/api/users/me`, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    // Important: do not send OAuth2 session cookies here.
-    // We want backend to authenticate strictly by JWT token.
-    credentials: 'omit',
-  });
-
-  if (!response.ok) {
-    let message = `HTTP ${response.status}`;
-    try {
-      const data = await response.json();
-      message = data?.message || data?.error || message;
-    } catch {
-      // ignore json parsing errors for non-json responses
-    }
-    throw new ApiError(response.status, message);
-  }
-
-  return response.json() as Promise<User>;
-}
 
 export const authService = {
   async login(req: LoginRequest): Promise<AuthResponse> {
@@ -103,15 +75,9 @@ export const authService = {
   },
 
   async getCurrentUser(): Promise<User | null> {
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
-      return null;
-    }
-
     try {
-      const response = await apiGet<User>('/users/me');
-      const user = response;
-      persistUser(user, response.login);
+      const user = await apiGet<User>('/users/me');
+      persistUser(user, user.login);
       return user;
     } catch (error) {
       if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
@@ -154,23 +120,26 @@ export const authService = {
     return `${resolveBackendBaseUrl()}/oauth2/authorization/${provider}`;
   },
 
-  async loginWithToken(token: string): Promise<User> {
-    setAuthToken(token);
+  async loginWithToken(_token?: string): Promise<User> {
     try {
-      const user = await fetchCurrentUserDirect(token);
-      persistUser(user, user.login, token);
+      const user = await apiGet<User>('/users/me');
+      persistUser(user, user.login);
       return user;
     } catch (error) {
       clearSession();
       if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-        throw new Error('Токен соцвхода отклонен сервером. Проверьте что frontend и backend запущены на одном окружении');
+        throw new Error('Не удалось получить данные пользователя после входа через соцсети');
       }
       throw error;
     }
   },
 
-  logout(): void {
-    clearSession();
+  async logout(): Promise<void> {
+    try {
+      await apiPost<void>('/auth/logout');
+    } finally {
+      clearSession();
+    }
   },
 
   async getMyInterests(): Promise<number[]> {

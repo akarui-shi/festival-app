@@ -77,7 +77,7 @@ async function request<T>(method: string, endpoint: string, options: RequestOpti
     method,
     headers,
     body,
-    credentials: 'same-origin',
+    credentials: 'include',
   });
 
   if (!response.ok) {
@@ -129,8 +129,7 @@ export function removeAuthToken(): void {
 }
 
 export function getAuthHeaders(): Record<string, string> {
-  const token = getAuthToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return {};
 }
 
 export { API_BASE_URL };

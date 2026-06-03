@@ -6,8 +6,10 @@ import com.festivalapp.backend.dto.LoginRequest;
 import com.festivalapp.backend.dto.MessageResponse;
 import com.festivalapp.backend.dto.RegisterRequest;
 import com.festivalapp.backend.dto.RegisterResponse;
+import com.festivalapp.backend.security.JwtCookieHelper;
 import com.festivalapp.backend.service.AuthService;
 import com.festivalapp.backend.service.EmailVerificationService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,6 +26,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final EmailVerificationService emailVerificationService;
+    private final JwtCookieHelper jwtCookieHelper;
 
     @PostMapping("/register")
     public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
@@ -31,8 +34,17 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request,
+                                              HttpServletResponse response) {
+        AuthResponse authResponse = authService.login(request);
+        jwtCookieHelper.setJwtCookie(response, authResponse.getToken());
+        return ResponseEntity.ok(authResponse);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletResponse response) {
+        jwtCookieHelper.clearJwtCookie(response);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/verify-email")
