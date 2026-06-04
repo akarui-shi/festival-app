@@ -8,3 +8,4 @@ node_modules/
 **/.env.production.local
 !**/.env.example
 load-tests/results/
+load-tests/results/
