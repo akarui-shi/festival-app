@@ -9,3 +9,4 @@ node_modules/
 !**/.env.example
 load-tests/results/
 load-tests/results/
+load-tests/results/
