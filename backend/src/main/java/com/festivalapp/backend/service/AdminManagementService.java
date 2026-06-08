@@ -215,13 +215,20 @@ public class AdminManagementService {
         return Map.of("success", true);
     }
 
-    @Transactional
-    public VenueResponse createVenue(AdminVenueUpsertRequest request) {
-        City city = cityRepository.findById(request.getCityId())
-            .orElseThrow(() -> new ResourceNotFoundException("City not found"));
+    @Transactional(readOnly = true)
+    public List<VenueResponse> getVenues(String actorIdentifier) {
+        City adminCity = resolveAdminCity(actorIdentifier);
+        return venueRepository.findAllByCityIdOrderByNameAsc(adminCity.getId()).stream()
+            .filter(Venue::isActive)
+            .map(venue -> toVenueResponse(venue, null))
+            .toList();
+    }
 
+    @Transactional
+    public VenueResponse createVenue(AdminVenueUpsertRequest request, String actorIdentifier) {
+        City adminCity = resolveAdminCity(actorIdentifier);
         Venue venue = venueRepository.save(Venue.builder()
-            .city(city)
+            .city(adminCity)
             .name(normalizeRequired(request.getName(), "Venue name is required"))
             .address(normalizeRequired(request.getAddress(), "Venue address is required"))
             .description(null)
@@ -239,14 +246,13 @@ public class AdminManagementService {
     }
 
     @Transactional
-    public VenueResponse updateVenue(Long id, AdminVenueUpsertRequest request) {
+    public VenueResponse updateVenue(Long id, AdminVenueUpsertRequest request, String actorIdentifier) {
+        City adminCity = resolveAdminCity(actorIdentifier);
         Venue venue = venueRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Venue not found"));
 
-        if (request.getCityId() != null && (venue.getCity() == null || !venue.getCity().getId().equals(request.getCityId()))) {
-            City city = cityRepository.findById(request.getCityId())
-                .orElseThrow(() -> new ResourceNotFoundException("City not found"));
-            venue.setCity(city);
+        if (venue.getCity() == null || !venue.getCity().getId().equals(adminCity.getId())) {
+            throw new ResourceNotFoundException("Venue not found");
         }
 
         venue.setName(normalizeRequired(request.getName(), "Venue name is required"));
@@ -263,9 +269,13 @@ public class AdminManagementService {
     }
 
     @Transactional
-    public Map<String, Object> deleteVenue(Long id) {
+    public Map<String, Object> deleteVenue(Long id, String actorIdentifier) {
+        City adminCity = resolveAdminCity(actorIdentifier);
         Venue venue = venueRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Venue not found"));
+        if (venue.getCity() == null || !venue.getCity().getId().equals(adminCity.getId())) {
+            throw new ResourceNotFoundException("Venue not found");
+        }
         try {
             venueRepository.delete(venue);
         } catch (DataIntegrityViolationException ex) {
@@ -273,6 +283,15 @@ public class AdminManagementService {
         }
         adminAuditService.log(null, "VENUE_DELETED", "Venue", venue.getId(), venue.getName());
         return Map.of("success", true);
+    }
+
+    private City resolveAdminCity(String actorIdentifier) {
+        User admin = userRepository.findByLoginOrEmailWithRoles(actorIdentifier)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (admin.getCity() == null || admin.getCity().getId() == null) {
+            throw new BadRequestException("У администратора не указан город");
+        }
+        return admin.getCity();
     }
 
     private AdminUserResponse toAdminUserResponse(User user) {

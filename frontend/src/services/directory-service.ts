@@ -18,6 +18,10 @@ export const directoryService = {
     return apiGet<Venue[]>('/venues');
   },
 
+  async getAdminVenues(): Promise<Venue[]> {
+    return apiGet<Venue[]>('/admin/venues');
+  },
+
   async createCategory(data: Partial<Category>): Promise<Category> {
     return apiPost<Category>('/admin/categories', {
       name: data.name,
@@ -56,7 +60,6 @@ export const directoryService = {
     return apiPost<Venue>('/admin/venues', {
       name: data.name,
       address: data.address,
-      cityId: data.cityId == null ? undefined : Number(data.cityId),
       capacity: data.capacity,
       latitude: data.latitude == null ? undefined : Number(data.latitude),
       longitude: data.longitude == null ? undefined : Number(data.longitude),
@@ -67,7 +70,6 @@ export const directoryService = {
     return apiPut<Venue>(`/admin/venues/${id}`, {
       name: data.name,
       address: data.address,
-      cityId: data.cityId == null ? undefined : Number(data.cityId),
       capacity: data.capacity,
       latitude: data.latitude == null ? undefined : Number(data.latitude),
       longitude: data.longitude == null ? undefined : Number(data.longitude),

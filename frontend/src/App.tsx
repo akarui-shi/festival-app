@@ -76,7 +76,7 @@ const App = () => (
               <Route path="/verify-email" element={<VerifyEmailPage />} />
 
               <Route path="/map" element={<EventMapPage />} />
-              <Route path="/recommendations" element={<RecommendationsPage />} />
+              <Route path="/recommendations" element={<ProtectedRoute><RecommendationsPage /></ProtectedRoute>} />
 
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
               <Route path="/favorites" element={<ProtectedRoute><FavoritesPage /></ProtectedRoute>} />

@@ -120,12 +120,8 @@ public class KolomnaJazzFestivalAnalyticsInitializer implements ApplicationRunne
 
         // Идемпотентность: проверяем наличие наших билетов по QR-префиксу,
         // а не по общему счётчику заказов (который уже > 0 от базового сидинга).
-        boolean alreadySeeded = ticketRepository.findAll().stream()
+        boolean ticketsAlreadySeeded = ticketRepository.findAll().stream()
             .anyMatch(t -> t.getQrToken() != null && t.getQrToken().startsWith("cosmos26-"));
-        if (alreadySeeded) {
-            log.info("[LectureAnalytics] Already seeded, skipping");
-            return;
-        }
 
         // Базовые 36 demo-жителей + 5 дополнительных → итого 41 уникальный участник ≈ 40
         List<User> residents = new ArrayList<>(userRepository.findAll().stream()
@@ -144,14 +140,17 @@ public class KolomnaJazzFestivalAnalyticsInitializer implements ApplicationRunne
 
         int[] userCounter = { 0 };
 
-        // isPast=false для всех → статус «активен», тогда activeParticipants
-        // считает покупателей всех 4 сеансов и показывает ~40 «Купили билет».
-        seedSessionTickets(lecture, sessions.get(0), residents, S1_SALES_START, S1_DAILY, false, offset, userCounter);
-        seedSessionTickets(lecture, sessions.get(1), residents, S2_SALES_START, S2_DAILY, false, offset, userCounter);
-        seedSessionTickets(lecture, sessions.get(2), residents, S3_SALES_START, S3_DAILY, false, offset, userCounter);
-        seedSessionTickets(lecture, sessions.get(3), residents, S4_SALES_START, S4_DAILY, false, offset, userCounter);
+        if (!ticketsAlreadySeeded) {
+            // isPast=false для всех → статус «активен», тогда activeParticipants
+            // считает покупателей всех 4 сеансов и показывает ~40 «Купили билет».
+            seedSessionTickets(lecture, sessions.get(0), residents, S1_SALES_START, S1_DAILY, false, offset, userCounter);
+            seedSessionTickets(lecture, sessions.get(1), residents, S2_SALES_START, S2_DAILY, false, offset, userCounter);
+            seedSessionTickets(lecture, sessions.get(2), residents, S3_SALES_START, S3_DAILY, false, offset, userCounter);
+            seedSessionTickets(lecture, sessions.get(3), residents, S4_SALES_START, S4_DAILY, false, offset, userCounter);
+        }
 
-        // Очередь ожидания — для наиболее популярных сеансов
+        // Очередь ожидания — отдельный демо-сигнал для популярных сеансов,
+        // даже если формально свободные места ещё есть.
         seedWaitlist(sessions, residents, offset);
 
         // Отзывы
@@ -160,7 +159,7 @@ public class KolomnaJazzFestivalAnalyticsInitializer implements ApplicationRunne
         // Избранное
         seedFavorites(lecture, residents);
 
-        log.info("[LectureAnalytics] Seeded ~140 tickets (incl. cancellations), 12 comments, 20 favorites → '{}'", TARGET_TITLE);
+        log.info("[LectureAnalytics] Verified demo analytics, waitlist, comments and favorites → '{}'", TARGET_TITLE);
     }
 
     // -------------------------------------------------------------------------

@@ -139,7 +139,7 @@ export function getRegistrationStatusBadge(status?: string | null): StatusBadgeV
 
 export function isRegistrationActive(status?: string | null): boolean {
   const key = normalizeStatus(status);
-  return ['ACTIVE', 'CONFIRMED', 'АКТИВЕН', 'ПОДТВЕРЖДЕНО'].includes(key);
+  return ['CREATED', 'ACTIVE', 'CONFIRMED', 'PAID', 'SUCCEEDED', 'ATTENDED', 'USED', 'АКТИВЕН', 'ПОДТВЕРЖДЕНО', 'ОПЛАЧЕН', 'ПОСЕЩЕНО', 'ИСПОЛЬЗОВАН'].includes(key);
 }
 
 export function getJoinRequestStatusLabel(status?: string | null): string {

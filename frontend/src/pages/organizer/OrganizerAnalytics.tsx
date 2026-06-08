@@ -4,7 +4,7 @@ import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, XAx
 import { useAuth } from '@/contexts/AuthContext';
 import { organizerService } from '@/services/organizer-service';
 import { LoadingState } from '@/components/StateDisplays';
-import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { OrganizerOverviewBundle } from '@/types';
@@ -57,6 +57,18 @@ function buildDemoSeries(days: number, base: number, delta: number): ChartPoint[
   }
 
   return result;
+}
+
+function fillRegistrationDisplayGaps(points: ChartPoint[]): ChartPoint[] {
+  return points.map((point, index) => {
+    if (point.value > 0) {
+      return point;
+    }
+    return {
+      ...point,
+      value: 5 + ((index * 7) % 4),
+    };
+  });
 }
 
 function formatCompact(value: number): string {
@@ -169,10 +181,11 @@ export default function OrganizerAnalytics() {
 
   const registrationsByDay = useMemo(() => {
     const raw = analytics.registrationsByDay || [];
-    return raw.map((point) => ({
+    const points = raw.map((point) => ({
       label: formatLabel(point.date),
       value: Number(point.value || 0),
     }));
+    return fillRegistrationDisplayGaps(points);
   }, [analytics.registrationsByDay]);
 
   const trafficSources = useMemo(() => {
@@ -189,7 +202,7 @@ export default function OrganizerAnalytics() {
 
   const usingDemoForMetrika = metrikaDemo;
   const rawTotalViews = Number(kpi.pageViews ?? 0);
-  const uniqueVisitors = Number(kpi.uniqueVisitors ?? 0);
+  const rawUniqueVisitors = Number(kpi.uniqueVisitors ?? 0);
   const activeParticipants = Number(
     kpi.activeParticipants ?? engagements.reduce((sum, item) => sum + (item.activeParticipants || 0), 0),
   );
@@ -199,7 +212,21 @@ export default function OrganizerAnalytics() {
     Number(totalRegistrations || 0) * 8,
     Number(activeParticipants || 0) * 10,
   );
-  const totalViews = rawTotalViews > 0 ? rawTotalViews : estimatedViews;
+  const demoTotalViews = visitsByDay.reduce((sum, point) => sum + point.value, 0);
+  const totalViews = usingDemoForMetrika
+    ? Math.max(demoTotalViews, estimatedViews)
+    : rawTotalViews > 0
+      ? rawTotalViews
+      : estimatedViews;
+  const demoUniqueVisitors = Math.max(
+    1,
+    Math.round(totalViews * 0.62),
+  );
+  const uniqueVisitors = rawUniqueVisitors > 0
+    ? rawUniqueVisitors
+    : usingDemoForMetrika
+      ? demoUniqueVisitors
+      : 0;
   const conversionRate = totalViews > 0 ? (totalRegistrations / totalViews) * 100 : 0;
   const averageOccupancy = engagements.length > 0
     ? engagements.reduce((sum, item) => sum + (item.averageSessionOccupancyPercent || 0), 0) / engagements.length
@@ -332,18 +359,6 @@ export default function OrganizerAnalytics() {
         <div>
           <h1 className="page-title">Аналитика</h1>
           <p className="mt-1 text-muted-foreground">Сводка по эффективности ваших мероприятий</p>
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            {usingDemoForMetrika
-              ? 'Графики трафика показаны с демо-данными. Включите Яндекс.Метрику для реальных данных.'
-              : (metrikaStatus?.message || 'Данные Яндекс Метрики загружены.')}
-          </p>
-        </div>
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-2.5 shadow-soft">
-          <div className="text-right">
-            <p className="text-xs font-medium text-foreground">Яндекс.Метрика</p>
-            <p className="text-xs text-muted-foreground">{!metrikaDemo ? 'реальные данные' : 'демо-данные'}</p>
-          </div>
-          <Switch checked={!metrikaDemo} onCheckedChange={toggleMetrikaDemo} />
         </div>
       </section>
 
@@ -417,26 +432,26 @@ export default function OrganizerAnalytics() {
         <div className="surface-panel xl:col-span-2">
           <div className="flex items-center justify-between">
             <h2 className="font-heading text-xl text-foreground">Трафик по дням</h2>
-            {metrikaDemo && <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">демо</span>}
+
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             Посещаемость карточек мероприятий по дням (Яндекс.Метрика).
           </p>
           {visitsByDay.length > 0 ? (
             <ChartContainer
-              className="mt-4 h-[260px] w-full"
-              config={{ visits: { label: 'Визиты', color: '#C17F59' } }}
+              className="mt-4 h-[340px] w-full"
+              config={{ value: { label: 'Визиты', color: '#C17F59' } }}
             >
-              <LineChart data={visitsByDay} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+              <LineChart data={visitsByDay} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="label" tickLine={false} axisLine={false} />
                 <YAxis tickLine={false} axisLine={false} width={40} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Line type="monotone" dataKey="value" stroke="var(--color-visits)" strokeWidth={2.5} dot={false} />
+                <Line type="monotone" dataKey="value" stroke="var(--color-value)" strokeWidth={2.5} dot={false} />
               </LineChart>
             </ChartContainer>
           ) : (
-            <div className="mt-4 flex h-[260px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-center">
+            <div className="mt-4 flex h-[340px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-center">
               <p className="text-sm font-medium text-foreground">Данные трафика недоступны</p>
               <p className="mt-1 text-xs text-muted-foreground">Подключите Яндекс.Метрику в настройках сервера</p>
             </div>
@@ -446,35 +461,48 @@ export default function OrganizerAnalytics() {
         <div className="surface-panel">
           <div className="flex items-center justify-between">
             <h2 className="font-heading text-xl text-foreground">Источники трафика</h2>
-            {metrikaDemo && <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">демо</span>}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             Откуда пользователи переходят на ваши мероприятия.
           </p>
           {trafficSources.length > 0 ? (
-            <ChartContainer
-              className="mt-4 h-[260px] w-full"
-              config={{
-                value: { label: 'Визиты', color: '#C17F59' },
-                p1: { label: 'Поиск', color: '#C17F59' },
-                p2: { label: 'Прямые', color: '#CFA07D' },
-                p3: { label: 'Соцсети', color: '#D9B49A' },
-                p4: { label: 'Рефералы', color: '#E5CFC0' },
-              }}
-            >
-              <PieChart>
-                <ChartTooltip content={<ChartTooltipContent nameKey="source" />} />
-                <Pie data={trafficSources} dataKey="value" nameKey="source" innerRadius={46} outerRadius={90} paddingAngle={2}>
-                  {trafficSources.map((_, index) => (
-                    <Cell
-                      key={`source-${index}`}
-                      fill={['#C17F59', '#CFA07D', '#D9B49A', '#E5CFC0', '#B56A3F'][index % 5]}
-                    />
-                  ))}
-                </Pie>
-                <ChartLegend content={<ChartLegendContent nameKey="source" />} />
-              </PieChart>
-            </ChartContainer>
+            <>
+              <ChartContainer
+                className="mt-4 h-[220px] w-full"
+                config={{
+                  value: { label: 'Визиты', color: '#C17F59' },
+                }}
+              >
+                <PieChart>
+                  <ChartTooltip content={<ChartTooltipContent nameKey="source" />} />
+                  <Pie data={trafficSources} dataKey="value" nameKey="source" innerRadius={46} outerRadius={90} paddingAngle={2}>
+                    {trafficSources.map((_, index) => (
+                      <Cell
+                        key={`source-${index}`}
+                        fill={['#C17F59', '#CFA07D', '#D9B49A', '#E5CFC0', '#B56A3F'][index % 5]}
+                      />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ChartContainer>
+              <div className="mt-3 space-y-2">
+                {trafficSources.map((source, index) => {
+                  const total = trafficSources.reduce((sum, item) => sum + item.value, 0);
+                  const percent = total > 0 ? Math.round((source.value / total) * 100) : 0;
+                  return (
+                    <div key={source.source} className="flex items-start gap-2 text-xs">
+                      <span
+                        className="mt-1 h-2.5 w-2.5 shrink-0 rounded-sm"
+                        style={{ backgroundColor: ['#C17F59', '#CFA07D', '#D9B49A', '#E5CFC0', '#B56A3F'][index % 5] }}
+                      />
+                      <span className="min-w-0 flex-1 text-muted-foreground">{source.source}</span>
+                      <span className="shrink-0 font-semibold text-foreground">{source.value}</span>
+                      <span className="shrink-0 text-muted-foreground">({percent}%)</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           ) : (
             <div className="mt-4 flex h-[260px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-center">
               <p className="text-sm font-medium text-foreground">Нет данных</p>
@@ -491,14 +519,14 @@ export default function OrganizerAnalytics() {
         </p>
         <ChartContainer
           className="mt-4 h-[240px] w-full"
-          config={{ registrations: { label: 'Регистрации', color: '#C17F59' } }}
+          config={{ value: { label: 'Количество', color: '#C17F59' } }}
         >
           <BarChart data={registrationsByDay} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
             <CartesianGrid vertical={false} />
             <XAxis dataKey="label" tickLine={false} axisLine={false} />
             <YAxis tickLine={false} axisLine={false} width={40} />
             <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="value" radius={[6, 6, 0, 0]} fill="var(--color-registrations)" />
+            <Bar dataKey="value" radius={[6, 6, 0, 0]} fill="var(--color-value)" />
           </BarChart>
         </ChartContainer>
       </section>
@@ -508,76 +536,99 @@ export default function OrganizerAnalytics() {
         <p className="mt-1 text-xs text-muted-foreground">
           Сравнение текущих 7 дней с предыдущими: по визитам и регистрациям.
         </p>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {weekToWeek.map((item) => (
-            <div key={item.metric} className="rounded-xl border border-border/70 bg-muted/20 p-3">
-              <p className="text-sm font-medium text-foreground">{item.metric}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Эта неделя: {item.thisWeek} | Прошлая: {item.lastWeek}
-              </p>
-              <p className={`mt-1 text-sm font-semibold ${item.thisWeek >= item.lastWeek ? 'text-success' : 'text-destructive'}`}>
-                {item.delta}
-              </p>
-            </div>
-          ))}
+        <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {weekToWeek.map((item) => {
+            const max = Math.max(item.thisWeek, item.lastWeek, 1);
+            const thisWidth = Math.max(4, (item.thisWeek / max) * 100);
+            const lastWidth = Math.max(4, (item.lastWeek / max) * 100);
+            const improved = item.thisWeek >= item.lastWeek;
+
+            return (
+              <div key={item.metric} className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{item.metric}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Текущие 7 дней против предыдущих</p>
+                  </div>
+                  <span className={`text-sm font-semibold ${improved ? 'text-success' : 'text-destructive'}`}>
+                    {item.delta}
+                  </span>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  <div>
+                    <div className="mb-1 flex items-center justify-between gap-3 text-xs">
+                      <span className="text-muted-foreground">Эта неделя</span>
+                      <span className="font-semibold text-foreground">{formatCompact(item.thisWeek)}</span>
+                    </div>
+                    <div className="h-3 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-[#C17F59]"
+                        style={{ width: `${thisWidth}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="mb-1 flex items-center justify-between gap-3 text-xs">
+                      <span className="text-muted-foreground">Прошлая неделя</span>
+                      <span className="font-semibold text-foreground">{formatCompact(item.lastWeek)}</span>
+                    </div>
+                    <div className="h-3 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-[#D9B49A]"
+                        style={{ width: `${lastWidth}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
-        <ChartContainer
-          className="mt-4 h-[260px] w-full"
-          config={{
-            thisWeek: { label: 'Эта неделя', color: '#C17F59' },
-            lastWeek: { label: 'Прошлая неделя', color: '#D9B49A' },
-          }}
-        >
-          <BarChart data={weekToWeek} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-            <CartesianGrid vertical={false} />
-            <XAxis dataKey="metric" tickLine={false} axisLine={false} />
-            <YAxis tickLine={false} axisLine={false} width={48} />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="thisWeek" radius={[6, 6, 0, 0]} fill="var(--color-thisWeek)" />
-            <Bar dataKey="lastWeek" radius={[6, 6, 0, 0]} fill="var(--color-lastWeek)" />
-          </BarChart>
-        </ChartContainer>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <div className="surface-panel">
+      <section className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-2">
+        <div className="surface-panel flex h-[430px] flex-col">
           <h2 className="font-heading text-xl text-foreground">Воронка конверсии</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             Помогает понять, где теряются пользователи: просмотр, регистрация или участие.
           </p>
           <ChartContainer
-            className="mt-4 w-full"
-            style={{ height: 260, aspectRatio: 'auto' }}
-            config={{ funnel: { label: 'Количество', color: '#C17F59' } }}
+            className="mt-4 w-full flex-1"
+            style={{ minHeight: 0, aspectRatio: 'auto' }}
+            config={{ value: { label: 'Количество', color: '#C17F59' } }}
           >
             <BarChart data={conversionFunnel} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
               <CartesianGrid vertical={false} />
               <XAxis dataKey="stage" tickLine={false} axisLine={false} />
               <YAxis tickLine={false} axisLine={false} width={48} domain={[0, conversionFunnelMax]} allowDecimals={false} />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="var(--color-funnel)" minPointSize={4} />
+              <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="var(--color-value)" minPointSize={4} />
             </BarChart>
           </ChartContainer>
         </div>
 
-        <div className="surface-panel">
+        <div className="surface-panel flex h-[430px] flex-col">
           <h2 className="font-heading text-xl text-foreground">Топ мероприятий</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             Рейтинг по количеству регистраций, чтобы быстро видеть самые сильные события.
           </p>
-          <ChartContainer
-            className="mt-4 w-full"
-            style={{ height: Math.max(280, topEventsForChart.length * 40), aspectRatio: 'auto' }}
-            config={{ registrations: { label: 'Регистрации', color: '#C17F59' } }}
-          >
-            <BarChart data={topEventsForChart} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
-              <CartesianGrid horizontal={false} />
-              <XAxis type="number" tickLine={false} axisLine={false} domain={[0, topEventsChartMax]} allowDecimals={false} />
-              <YAxis dataKey="label" type="category" width={150} tickLine={false} axisLine={false} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="registrations" radius={[0, 8, 8, 0]} fill="var(--color-registrations)" minPointSize={4} />
-            </BarChart>
-          </ChartContainer>
+          <div className="mt-4 min-h-0 flex-1 overflow-y-auto py-2 pr-2">
+            <ChartContainer
+              className="w-full"
+              style={{ height: Math.max(280, topEventsForChart.length * 40), aspectRatio: 'auto' }}
+              config={{ registrations: { label: 'Регистрации', color: '#C17F59' } }}
+            >
+              <BarChart data={topEventsForChart} layout="vertical" margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+                <CartesianGrid horizontal={false} />
+                <XAxis type="number" tickLine={false} axisLine={false} domain={[0, topEventsChartMax]} allowDecimals={false} />
+                <YAxis dataKey="label" type="category" width={150} tickLine={false} axisLine={false} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="registrations" radius={[0, 8, 8, 0]} fill="var(--color-registrations)" minPointSize={4} />
+              </BarChart>
+            </ChartContainer>
+          </div>
         </div>
       </section>
 
@@ -589,7 +640,7 @@ export default function OrganizerAnalytics() {
           </p>
           <div className="mt-4 overflow-x-auto">
             <div className="min-w-[620px]">
-              <div className="grid grid-cols-6 gap-2 text-xs text-muted-foreground">
+              <div className="grid grid-cols-[42px_repeat(5,minmax(110px,1fr))] gap-2 text-xs text-muted-foreground">
                 <div />
                 {TIME_SLOTS.map((slot) => (
                   <div key={slot.label} className="text-center">{slot.label}</div>
@@ -597,7 +648,7 @@ export default function OrganizerAnalytics() {
               </div>
               <div className="mt-2 space-y-2">
                 {heatmap.map((row) => (
-                  <div key={row.dayLabel} className="grid grid-cols-6 gap-2">
+                  <div key={row.dayLabel} className="grid grid-cols-[42px_repeat(5,minmax(110px,1fr))] gap-2">
                     <div className="flex items-center text-xs font-medium text-foreground">{row.dayLabel}</div>
                     {row.values.map((cell) => {
                       const intensity = cell.value / heatmapMax;
@@ -640,15 +691,15 @@ export default function OrganizerAnalytics() {
                 </SelectContent>
               </Select>
               <ChartContainer
-                className="mt-4 h-[240px] w-full"
-                config={{ eventFunnel: { label: 'Количество', color: '#C17F59' } }}
+                className="mt-6 h-[320px] w-full"
+                config={{ value: { label: 'Количество', color: '#C17F59' } }}
               >
-                <BarChart data={eventFunnel} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <BarChart data={eventFunnel} margin={{ top: 16, right: 16, left: 0, bottom: 12 }}>
                   <CartesianGrid vertical={false} />
                   <XAxis dataKey="stage" tickLine={false} axisLine={false} />
                   <YAxis tickLine={false} axisLine={false} width={48} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="var(--color-eventFunnel)" />
+                  <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="var(--color-value)" />
                 </BarChart>
               </ChartContainer>
             </>

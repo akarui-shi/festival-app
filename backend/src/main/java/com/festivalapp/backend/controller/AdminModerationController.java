@@ -44,24 +44,28 @@ public class AdminModerationController {
     private final ModerationService moderationService;
 
     @GetMapping("/publications")
-    public ResponseEntity<List<PublicationShortResponse>> getPublications(@RequestParam(required = false) PublicationStatus status) {
-        return ResponseEntity.ok(publicationService.getAllForAdmin(status));
+    public ResponseEntity<List<PublicationShortResponse>> getPublications(@RequestParam(required = false) PublicationStatus status,
+                                                                          Authentication authentication) {
+        return ResponseEntity.ok(publicationService.getAllForAdmin(status, extractUserIdentifier(authentication)));
     }
 
     @GetMapping("/publications/{id}")
-    public ResponseEntity<PublicationDetailsResponse> getPublicationById(@PathVariable Long id) {
-        return ResponseEntity.ok(publicationService.getByIdForAdmin(id));
+    public ResponseEntity<PublicationDetailsResponse> getPublicationById(@PathVariable Long id,
+                                                                         Authentication authentication) {
+        return ResponseEntity.ok(publicationService.getByIdForAdmin(id, extractUserIdentifier(authentication)));
     }
 
     @GetMapping("/events")
-    public ResponseEntity<List<EventShortResponse>> getEvents(@RequestParam(required = false) EventStatus status) {
-        return ResponseEntity.ok(eventService.getAllForAdmin(status));
+    public ResponseEntity<List<EventShortResponse>> getEvents(@RequestParam(required = false) EventStatus status,
+                                                              Authentication authentication) {
+        return ResponseEntity.ok(eventService.getAllForAdmin(status, extractUserIdentifier(authentication)));
     }
 
     @PatchMapping("/events/{id}/status")
     public ResponseEntity<EventShortResponse> updateEventStatus(@PathVariable Long id,
-                                                                @Valid @RequestBody EventStatusUpdateRequest request) {
-        return ResponseEntity.ok(eventService.updateStatusByAdmin(id, request.getStatus()));
+                                                                @Valid @RequestBody EventStatusUpdateRequest request,
+                                                                Authentication authentication) {
+        return ResponseEntity.ok(eventService.updateStatusByAdmin(id, request.getStatus(), extractUserIdentifier(authentication)));
     }
 
     @GetMapping("/comments")

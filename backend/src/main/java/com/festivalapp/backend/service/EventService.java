@@ -506,8 +506,9 @@ public class EventService {
     }
 
     @Transactional(readOnly = true)
-    public List<EventShortResponse> getAllForAdmin(EventStatus status) {
-        return eventRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc().stream()
+    public List<EventShortResponse> getAllForAdmin(EventStatus status, String adminIdentifier) {
+        City adminCity = resolveAdminCity(adminIdentifier);
+        return eventRepository.findAllByCityIdAndDeletedAtIsNullOrderByCreatedAtDesc(adminCity.getId()).stream()
             .map(this::hydrateEvent)
             .filter(event -> {
                 EventStatus resolved = DomainStatusMapper.toEventStatus(event.getStatus());
@@ -521,8 +522,12 @@ public class EventService {
     }
 
     @Transactional
-    public EventShortResponse updateStatusByAdmin(Long eventId, EventStatus status) {
+    public EventShortResponse updateStatusByAdmin(Long eventId, EventStatus status, String adminIdentifier) {
+        City adminCity = resolveAdminCity(adminIdentifier);
         Event event = loadEvent(eventId);
+        if (event.getCity() == null || !event.getCity().getId().equals(adminCity.getId())) {
+            throw new ResourceNotFoundException("Event not found");
+        }
         EventStatus previousStatus = DomainStatusMapper.toEventStatus(event.getStatus());
         EventStatus targetStatus = status == null ? EventStatus.DRAFT : status;
         event.setStatus(DomainStatusMapper.toEventDbStatus(targetStatus));
@@ -886,6 +891,14 @@ public class EventService {
     private User resolveActor(String actorIdentifier) {
         return userRepository.findByLoginOrEmailWithRoles(actorIdentifier)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    }
+
+    private City resolveAdminCity(String actorIdentifier) {
+        User admin = resolveActor(actorIdentifier);
+        if (admin.getCity() == null || admin.getCity().getId() == null) {
+            throw new BadRequestException("У администратора не указан город");
+        }
+        return admin.getCity();
     }
 
     private Organization resolveManagedOrganization(User actor) {

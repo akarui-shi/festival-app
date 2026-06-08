@@ -24,12 +24,16 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 @RestController
 @RequestMapping("/api/organizer")
@@ -123,6 +127,135 @@ public class OrganizerController {
             .body(buildAttendeeRows(id));
     }
 
+    @GetMapping("/events/{id}/attendees/export.xlsx")
+    public ResponseEntity<byte[]> exportAttendeesExcel(@PathVariable Long id,
+                                                       @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) {
+            throw new UnauthorizedException("Unauthorized user");
+        }
+        eventService.getOrganizerEventById(id, principal.getUsername());
+        List<AttendeeExportRow> rows = buildAttendeeRows(id);
+
+        byte[] bytes = buildXlsx(rows);
+        String filename = "attendees-event-" + id + ".xlsx";
+
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+            .body(bytes);
+    }
+
+    private byte[] buildXlsx(List<AttendeeExportRow> rows) {
+        try {
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            try (ZipOutputStream zip = new ZipOutputStream(output, StandardCharsets.UTF_8)) {
+                addZipEntry(zip, "[Content_Types].xml", """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+                      <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+                      <Default Extension="xml" ContentType="application/xml"/>
+                      <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+                      <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+                      <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+                    </Types>
+                    """);
+                addZipEntry(zip, "_rels/.rels", """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+                      <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+                    </Relationships>
+                    """);
+                addZipEntry(zip, "xl/workbook.xml", """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+                      <sheets>
+                        <sheet name="Участники" sheetId="1" r:id="rId1"/>
+                      </sheets>
+                    </workbook>
+                    """);
+                addZipEntry(zip, "xl/_rels/workbook.xml.rels", """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+                      <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+                      <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+                    </Relationships>
+                    """);
+                addZipEntry(zip, "xl/styles.xml", """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+                      <fonts count="2"><font/><font><b/></font></fonts>
+                      <fills count="1"><fill><patternFill patternType="none"/></fill></fills>
+                      <borders count="1"><border/></borders>
+                      <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+                      <cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" applyFont="1"/></cellXfs>
+                    </styleSheet>
+                    """);
+                addZipEntry(zip, "xl/worksheets/sheet1.xml", buildWorksheetXml(rows));
+            }
+            return output.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to build Excel export", e);
+        }
+    }
+
+    private String buildWorksheetXml(List<AttendeeExportRow> rows) {
+        StringBuilder xml = new StringBuilder();
+        xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+            .append("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">\n")
+            .append("  <cols><col min=\"1\" max=\"1\" width=\"28\" customWidth=\"1\"/><col min=\"2\" max=\"2\" width=\"30\" customWidth=\"1\"/><col min=\"3\" max=\"3\" width=\"48\" customWidth=\"1\"/><col min=\"4\" max=\"4\" width=\"20\" customWidth=\"1\"/><col min=\"5\" max=\"5\" width=\"18\" customWidth=\"1\"/><col min=\"6\" max=\"6\" width=\"10\" customWidth=\"1\"/></cols>\n")
+            .append("  <sheetData>\n")
+            .append("    <row r=\"1\">");
+        String[] headers = {"ФИО", "Email", "Сессия", "Дата начала", "Статус билета", "Билетов"};
+        for (int col = 0; col < headers.length; col += 1) {
+            appendTextCell(xml, col, 1, headers[col], true);
+        }
+        xml.append("</row>\n");
+
+        for (int rowIndex = 0; rowIndex < rows.size(); rowIndex += 1) {
+            AttendeeExportRow row = rows.get(rowIndex);
+            int excelRow = rowIndex + 2;
+            xml.append("    <row r=\"").append(excelRow).append("\">");
+            appendTextCell(xml, 0, excelRow, row.fullName(), false);
+            appendTextCell(xml, 1, excelRow, row.email(), false);
+            appendTextCell(xml, 2, excelRow, row.session(), false);
+            appendTextCell(xml, 3, excelRow, row.startAt(), false);
+            appendTextCell(xml, 4, excelRow, row.ticketStatus(), false);
+            appendNumberCell(xml, 5, excelRow, row.ticketsCount());
+            xml.append("</row>\n");
+        }
+
+        xml.append("  </sheetData>\n</worksheet>\n");
+        return xml.toString();
+    }
+
+    private static void addZipEntry(ZipOutputStream zip, String name, String content) throws IOException {
+        zip.putNextEntry(new ZipEntry(name));
+        zip.write(content.stripLeading().getBytes(StandardCharsets.UTF_8));
+        zip.closeEntry();
+    }
+
+    private static void appendTextCell(StringBuilder xml, int colIndex, int rowIndex, String value, boolean header) {
+        xml.append("<c r=\"").append(cellRef(colIndex, rowIndex)).append("\" t=\"inlineStr\"");
+        if (header) {
+            xml.append(" s=\"1\"");
+        }
+        xml.append("><is><t>").append(escapeXml(value)).append("</t></is></c>");
+    }
+
+    private static void appendNumberCell(StringBuilder xml, int colIndex, int rowIndex, int value) {
+        xml.append("<c r=\"").append(cellRef(colIndex, rowIndex)).append("\"><v>").append(value).append("</v></c>");
+    }
+
+    private static String cellRef(int colIndex, int rowIndex) {
+        StringBuilder col = new StringBuilder();
+        int current = colIndex;
+        do {
+            col.insert(0, (char) ('A' + (current % 26)));
+            current = current / 26 - 1;
+        } while (current >= 0);
+        return col.append(rowIndex).toString();
+    }
+
     private List<AttendeeExportRow> buildAttendeeRows(Long eventId) {
         List<Session> sessions = sessionRepository.findAllByEventIdOrderByStartsAtAsc(eventId);
         Map<String, MutableAttendeeRow> grouped = new LinkedHashMap<>();
@@ -174,6 +307,16 @@ public class OrganizerController {
             return "\"" + s.replace("\"", "\"\"") + "\"";
         }
         return s;
+    }
+
+    private static String escapeXml(String value) {
+        if (value == null) return "";
+        return value.trim()
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&apos;");
     }
 
     private static String trim(String value) {

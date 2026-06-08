@@ -80,8 +80,9 @@ public class PublicationController {
 
     @PatchMapping("/{id}/status")
     public ResponseEntity<PublicationDetailsResponse> updateStatus(@PathVariable Long id,
-                                                                   @Valid @RequestBody PublicationStatusUpdateRequest request) {
-        return ResponseEntity.ok(publicationService.updateStatus(id, request.getStatus()));
+                                                                   @Valid @RequestBody PublicationStatusUpdateRequest request,
+                                                                   @AuthenticationPrincipal UserDetails principal) {
+        return ResponseEntity.ok(publicationService.updateStatus(id, request.getStatus(), extractUsername(principal)));
     }
 
     private String extractUsername(UserDetails principal) {

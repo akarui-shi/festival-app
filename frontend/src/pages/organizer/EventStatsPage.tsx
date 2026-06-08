@@ -15,7 +15,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { Input } from '@/components/ui/input';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
-import { getRegistrationStatusBadge } from '@/lib/statuses';
+import { getRegistrationStatusBadge, isRegistrationActive } from '@/lib/statuses';
 import { imageSrc } from '@/lib/image';
 import type { Id, OrganizerEventStatsBundle, Session, SessionRegistration, WaitlistEntry } from '@/types';
 
@@ -66,6 +66,15 @@ function formatPercentDelta(current: number, previous: number): string {
   const delta = ((current - previous) / previous) * 100;
   const prefix = delta >= 0 ? '+' : '';
   return `${prefix}${delta.toFixed(1)}%`;
+}
+
+function getSessionOccupancy(session: Session): { current: number; total: number } {
+  const total = Number(session.maxParticipants ?? session.totalCapacity ?? 0);
+  const current = session.currentParticipants != null
+    ? Number(session.currentParticipants)
+    : Math.max(0, total - Number(session.availableSeats ?? total));
+
+  return { current, total };
 }
 
 export default function EventStatsPage() {
@@ -136,8 +145,7 @@ export default function EventStatsPage() {
     }
 
     return sessions.map((session, index) => {
-      const capacity = Number(session.maxParticipants ?? session.totalCapacity ?? 0);
-      const occupied = Number(session.currentParticipants ?? 0);
+      const { current: occupied, total: capacity } = getSessionOccupancy(session);
       const occupancy = capacity > 0 ? (occupied / capacity) * 100 : 0;
       return {
         label: `Сеанс ${index + 1}`,
@@ -147,6 +155,15 @@ export default function EventStatsPage() {
       };
     });
   }, [safeStats?.sessions, sessions]);
+
+  const activeRegistrations = useMemo(
+    () => registrations.filter((registration) => isRegistrationActive(registration.status)),
+    [registrations],
+  );
+  const activeTicketsCount = activeRegistrations.reduce(
+    (sum, registration) => sum + Number(registration.quantity || 1),
+    0,
+  );
 
   const registrationsByDay = useMemo(() => {
     const dayMap = new Map<string, number>();
@@ -253,6 +270,7 @@ export default function EventStatsPage() {
 
   const exportCsvUrl = `/api/organizer/events/${id}/attendees/export`;
   const exportJsonUrl = `/api/organizer/events/${id}/attendees/export.json`;
+  const exportExcelUrl = `/api/organizer/events/${id}/attendees/export.xlsx`;
 
   return (
     <div className="space-y-8">
@@ -272,6 +290,12 @@ export default function EventStatsPage() {
             <Button variant="outline" size="sm" className="gap-2">
               <Download className="h-4 w-4" />
               JSON
+            </Button>
+          </a>
+          <a href={exportExcelUrl} download>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Download className="h-4 w-4" />
+              Excel
             </Button>
           </a>
         </div>
@@ -330,14 +354,14 @@ export default function EventStatsPage() {
           </p>
           <ChartContainer
             className="mt-4 h-[240px] w-full"
-            config={{ registrations: { label: 'Регистрации', color: '#C17F59' } }}
+            config={{ value: { label: 'Количество', color: '#C17F59' } }}
           >
             <LineChart data={registrationsByDay} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
               <CartesianGrid vertical={false} />
               <XAxis dataKey="label" tickLine={false} axisLine={false} />
               <YAxis tickLine={false} axisLine={false} width={40} />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Line type="monotone" dataKey="value" stroke="var(--color-registrations)" strokeWidth={2.5} dot={false} />
+              <Line type="monotone" dataKey="value" stroke="var(--color-value)" strokeWidth={2.5} dot={false} />
             </LineChart>
           </ChartContainer>
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -425,14 +449,14 @@ export default function EventStatsPage() {
           </p>
           <ChartContainer
             className="mt-4 h-[240px] w-full"
-            config={{ funnel: { label: 'Количество', color: '#C17F59' } }}
+            config={{ value: { label: 'Количество', color: '#C17F59' } }}
           >
             <BarChart data={eventFunnel} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
               <CartesianGrid vertical={false} />
               <XAxis dataKey="stage" tickLine={false} axisLine={false} />
               <YAxis tickLine={false} axisLine={false} width={40} />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="var(--color-funnel)" />
+              <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="var(--color-value)" />
             </BarChart>
           </ChartContainer>
         </div>
@@ -445,7 +469,7 @@ export default function EventStatsPage() {
         </p>
         <div className="mt-4 overflow-x-auto">
           <div className="min-w-[620px]">
-            <div className="grid grid-cols-6 gap-2 text-xs text-muted-foreground">
+            <div className="grid grid-cols-[42px_repeat(5,minmax(110px,1fr))] gap-2 text-xs text-muted-foreground">
               <div />
               {TIME_SLOTS.map((slot) => (
                 <div key={slot.label} className="text-center">{slot.label}</div>
@@ -453,7 +477,7 @@ export default function EventStatsPage() {
             </div>
             <div className="mt-2 space-y-2">
               {heatmap.map((row) => (
-                <div key={row.dayLabel} className="grid grid-cols-6 gap-2">
+                <div key={row.dayLabel} className="grid grid-cols-[42px_repeat(5,minmax(110px,1fr))] gap-2">
                   <div className="flex items-center text-xs font-medium text-foreground">{row.dayLabel}</div>
                   {row.values.map((cell) => {
                     const intensity = cell.value / heatmapMax;
@@ -530,39 +554,43 @@ export default function EventStatsPage() {
             <EmptyState icon={Calendar} title="Сеансов нет" description="Добавьте первый сеанс для начала регистрации" />
           )}
 
-          {sessions.map((s) => (
-            <div key={s.id} className="surface-row flex items-center justify-between py-3 text-sm">
-              <div className="flex items-center gap-3">
-                <span>{s.date || (s.startAt ? new Date(s.startAt).toLocaleDateString('ru-RU') : 'Дата уточняется')}</span>
-                <span className="text-muted-foreground">
-                  {(s.startTime || (s.startAt ? new Date(s.startAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '--:--'))}
-                  {' - '}
-                  {(s.endTime || (s.endAt ? new Date(s.endAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '--:--'))}
-                </span>
-                <Badge variant="secondary">
-                  {(s.currentParticipants ?? 0)}/{(s.maxParticipants ?? s.totalCapacity ?? 0)}
-                </Badge>
+          {sessions.map((s) => {
+            const { current, total } = getSessionOccupancy(s);
+
+            return (
+              <div key={s.id} className="surface-row flex items-center justify-between py-3 text-sm">
+                <div className="flex items-center gap-3">
+                  <span>{s.date || (s.startAt ? new Date(s.startAt).toLocaleDateString('ru-RU') : 'Дата уточняется')}</span>
+                  <span className="text-muted-foreground">
+                    {(s.startTime || (s.startAt ? new Date(s.startAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '--:--'))}
+                    {' - '}
+                    {(s.endTime || (s.endAt ? new Date(s.endAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '--:--'))}
+                  </span>
+                  <Badge variant="secondary">
+                    {current}/{total}
+                  </Badge>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSessionToDelete(s)}
+                  className="text-destructive text-xs"
+                >
+                  Удалить
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSessionToDelete(s)}
-                className="text-destructive text-xs"
-              >
-                Удалить
-              </Button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
       <section className="surface-panel space-y-4">
-        <h2 className="font-heading text-2xl text-foreground">Купили билет ({registrations.length})</h2>
-        {registrations.length === 0 ? (
+        <h2 className="font-heading text-2xl text-foreground">Купили билет ({activeTicketsCount})</h2>
+        {activeRegistrations.length === 0 ? (
           <EmptyState icon={Users} title="Нет участников" description="Пользователи пока не приобрели билеты на это мероприятие" />
         ) : (
           <div className="space-y-2">
-            {registrations.map((r) => {
+            {activeRegistrations.map((r) => {
               const status = getRegistrationStatusBadge(r.status);
               const userName = r.userFullName || 'Пользователь';
               const initials = userName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || '?';

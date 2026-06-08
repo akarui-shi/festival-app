@@ -47,13 +47,6 @@ export default function OAuthCallbackPage() {
       return;
     }
 
-    if (!token) {
-      const message = 'Не получен токен авторизации';
-      setErrorText(message);
-      toast.error(message);
-      return;
-    }
-
     loginWithToken(token)
       .then(() => {
         toast.success('Вход выполнен');

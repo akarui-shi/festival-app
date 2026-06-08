@@ -4,6 +4,7 @@ import com.festivalapp.backend.dto.PublicationCreateRequest;
 import com.festivalapp.backend.dto.PublicationDetailsResponse;
 import com.festivalapp.backend.dto.PublicationShortResponse;
 import com.festivalapp.backend.dto.PublicationUpdateRequest;
+import com.festivalapp.backend.entity.City;
 import com.festivalapp.backend.entity.Event;
 import com.festivalapp.backend.entity.EventImage;
 import com.festivalapp.backend.entity.Image;
@@ -173,9 +174,11 @@ public class PublicationService {
     }
 
     @Transactional(readOnly = true)
-    public PublicationDetailsResponse getByIdForAdmin(Long id) {
+    public PublicationDetailsResponse getByIdForAdmin(Long id, String adminIdentifier) {
+        City adminCity = resolveAdminCity(adminIdentifier);
         Publication publication = publicationRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Publication not found"));
+        assertPublicationCity(publication, adminCity);
         return toDetails(publication);
     }
 
@@ -227,9 +230,11 @@ public class PublicationService {
     }
 
     @Transactional
-    public PublicationDetailsResponse updateStatus(Long id, PublicationStatus status) {
+    public PublicationDetailsResponse updateStatus(Long id, PublicationStatus status, String adminIdentifier) {
+        City adminCity = resolveAdminCity(adminIdentifier);
         Publication publication = publicationRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Publication not found"));
+        assertPublicationCity(publication, adminCity);
 
         publication.setStatus(DomainStatusMapper.toPublicationDbStatus(status));
         publication.setModerationStatus(status == PublicationStatus.REJECTED ? "отклонено" : "одобрено");
@@ -242,8 +247,9 @@ public class PublicationService {
     }
 
     @Transactional(readOnly = true)
-    public List<PublicationShortResponse> getAllForAdmin(PublicationStatus status) {
-        return publicationRepository.findAllByOrderByCreatedAtDesc().stream()
+    public List<PublicationShortResponse> getAllForAdmin(PublicationStatus status, String adminIdentifier) {
+        City adminCity = resolveAdminCity(adminIdentifier);
+        return publicationRepository.findAllByEventCityIdOrderByCreatedAtDesc(adminCity.getId()).stream()
             .filter(publication -> status == null || DomainStatusMapper.toPublicationStatus(publication.getStatus()) == status)
             .map(this::toShort)
             .toList();
@@ -370,9 +376,25 @@ public class PublicationService {
         }
     }
 
+    private void assertPublicationCity(Publication publication, City adminCity) {
+        if (publication.getEvent() == null
+            || publication.getEvent().getCity() == null
+            || !Objects.equals(publication.getEvent().getCity().getId(), adminCity.getId())) {
+            throw new ResourceNotFoundException("Publication not found");
+        }
+    }
+
     private User resolveActor(String actorIdentifier) {
         return userRepository.findByLoginOrEmailWithRoles(actorIdentifier)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    }
+
+    private City resolveAdminCity(String actorIdentifier) {
+        User admin = resolveActor(actorIdentifier);
+        if (admin.getCity() == null || admin.getCity().getId() == null) {
+            throw new BadRequestException("У администратора не указан город");
+        }
+        return admin.getCity();
     }
 
     private String fullName(User user) {

@@ -11,12 +11,15 @@ import com.festivalapp.backend.dto.AdminVenueUpsertRequest;
 import com.festivalapp.backend.dto.CategoryResponse;
 import com.festivalapp.backend.dto.CityResponse;
 import com.festivalapp.backend.dto.VenueResponse;
+import com.festivalapp.backend.exception.UnauthorizedException;
 import com.festivalapp.backend.service.AdminAuditService;
 import com.festivalapp.backend.service.AdminManagementService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -98,24 +101,39 @@ public class AdminManagementController {
         return ResponseEntity.ok(adminManagementService.deleteCity(id));
     }
 
+    @GetMapping("/venues")
+    public ResponseEntity<List<VenueResponse>> getVenues(@AuthenticationPrincipal UserDetails principal) {
+        return ResponseEntity.ok(adminManagementService.getVenues(requireUsername(principal)));
+    }
+
     @PostMapping("/venues")
-    public ResponseEntity<VenueResponse> createVenue(@Valid @RequestBody AdminVenueUpsertRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(adminManagementService.createVenue(request));
+    public ResponseEntity<VenueResponse> createVenue(@Valid @RequestBody AdminVenueUpsertRequest request,
+                                                     @AuthenticationPrincipal UserDetails principal) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(adminManagementService.createVenue(request, requireUsername(principal)));
     }
 
     @PutMapping("/venues/{id}")
     public ResponseEntity<VenueResponse> updateVenue(@PathVariable Long id,
-                                                     @Valid @RequestBody AdminVenueUpsertRequest request) {
-        return ResponseEntity.ok(adminManagementService.updateVenue(id, request));
+                                                     @Valid @RequestBody AdminVenueUpsertRequest request,
+                                                     @AuthenticationPrincipal UserDetails principal) {
+        return ResponseEntity.ok(adminManagementService.updateVenue(id, request, requireUsername(principal)));
     }
 
     @DeleteMapping("/venues/{id}")
-    public ResponseEntity<Map<String, Object>> deleteVenue(@PathVariable Long id) {
-        return ResponseEntity.ok(adminManagementService.deleteVenue(id));
+    public ResponseEntity<Map<String, Object>> deleteVenue(@PathVariable Long id,
+                                                           @AuthenticationPrincipal UserDetails principal) {
+        return ResponseEntity.ok(adminManagementService.deleteVenue(id, requireUsername(principal)));
     }
 
     @GetMapping("/actions")
     public ResponseEntity<List<AdminActionResponse>> getActions() {
         return ResponseEntity.ok(adminAuditService.getRecentActions());
+    }
+
+    private String requireUsername(UserDetails principal) {
+        if (principal == null) {
+            throw new UnauthorizedException("Unauthorized user");
+        }
+        return principal.getUsername();
     }
 }

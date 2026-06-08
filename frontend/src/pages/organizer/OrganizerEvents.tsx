@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart3, Calendar, Edit, Eye, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -13,12 +13,44 @@ import { imageSrc } from '@/lib/image';
 import { getEventStatusBadge } from '@/lib/statuses';
 import type { Event, Id } from '@/types';
 
+type EventFilterKey = 'ALL' | 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED';
+
+const FILTER_LABELS: Record<EventFilterKey, string> = {
+  ALL: 'Все',
+  DRAFT: 'Черновики',
+  PENDING: 'На модерации',
+  PUBLISHED: 'Опубликованные',
+  REJECTED: 'Отклонённые',
+  ARCHIVED: 'Завершённые',
+};
+
+const STATUS_ORDER: Record<EventFilterKey | 'OTHER', number> = {
+  ALL: 0,
+  PUBLISHED: 1,
+  DRAFT: 2,
+  PENDING: 3,
+  REJECTED: 4,
+  ARCHIVED: 5,
+  OTHER: 6,
+};
+
+function normalizeEventStatus(event: Event): EventFilterKey | 'OTHER' {
+  const key = String(event.status || '').trim().replace(/\s+/g, '_').toUpperCase();
+  if (key === 'DRAFT' || key === 'ЧЕРНОВИК') return 'DRAFT';
+  if (key === 'PENDING' || key === 'PENDING_APPROVAL' || key === 'ON_MODERATION' || key === 'НА_РАССМОТРЕНИИ') return 'PENDING';
+  if (key === 'PUBLISHED' || key === 'ОПУБЛИКОВАНО') return 'PUBLISHED';
+  if (key === 'REJECTED' || key === 'CANCELLED' || key === 'CANCELED' || key === 'ОТКЛОНЕНО' || key === 'ОТМЕНЕНО') return 'REJECTED';
+  if (key === 'ARCHIVED' || key === 'ЗАВЕРШЕНО' || key === 'АРХИВИРОВАНО') return 'ARCHIVED';
+  return 'OTHER';
+}
+
 export default function OrganizerEvents() {
   const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
+  const [filter, setFilter] = useState<EventFilterKey>('ALL');
 
   useEffect(() => {
     if (!user) return;
@@ -28,6 +60,36 @@ export default function OrganizerEvents() {
       .catch((err: any) => { setEvents([]); setError(err?.message || 'Не удалось загрузить мероприятия'); })
       .finally(() => setLoading(false));
   }, [user]);
+
+  const counts = useMemo(() => {
+    return events.reduce<Record<EventFilterKey, number>>(
+      (acc, event) => {
+        const status = normalizeEventStatus(event);
+        acc.ALL += 1;
+        if (status !== 'OTHER') {
+          acc[status] += 1;
+        }
+        return acc;
+      },
+      { ALL: 0, DRAFT: 0, PENDING: 0, PUBLISHED: 0, REJECTED: 0, ARCHIVED: 0 },
+    );
+  }, [events]);
+
+  const filteredEvents = useMemo(() => {
+    return events
+      .filter((event) => filter === 'ALL' || normalizeEventStatus(event) === filter)
+      .sort((a, b) => {
+        if (filter === 'ALL') {
+          const statusDiff = STATUS_ORDER[normalizeEventStatus(a)] - STATUS_ORDER[normalizeEventStatus(b)];
+          if (statusDiff !== 0) {
+            return statusDiff;
+          }
+        }
+        const left = a.createdAt ? Date.parse(a.createdAt) : 0;
+        const right = b.createdAt ? Date.parse(b.createdAt) : 0;
+        return right - left;
+      });
+  }, [events, filter]);
 
   const del = async (id: Id) => {
     await eventService.deleteEvent(id);
@@ -62,6 +124,30 @@ export default function OrganizerEvents() {
         </Button>
       </div>
 
+      {events.length > 0 && (
+        <section className="surface-soft">
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(FILTER_LABELS) as EventFilterKey[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setFilter(key)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-all duration-150 ${
+                  filter === key
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'border border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                }`}
+              >
+                {FILTER_LABELS[key]}
+                <span className={`rounded-full px-1.5 py-0 text-xs font-bold ${filter === key ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'}`}>
+                  {counts[key]}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       <ConfirmActionDialog
         open={Boolean(eventToDelete)}
         onOpenChange={(open) => { if (!open) setEventToDelete(null); }}
@@ -81,9 +167,11 @@ export default function OrganizerEvents() {
             </Link>
           </Button>
         </div>
+      ) : filteredEvents.length === 0 ? (
+        <EmptyState icon={Calendar} title="Нет мероприятий с этим статусом" description="Выберите другой статус или создайте новое мероприятие" />
       ) : (
         <div className="space-y-2.5">
-          {events.map((event) => {
+          {filteredEvents.map((event) => {
             const status = getEventStatusBadge(event.status);
             const categoryLabel = event.categories?.[0]?.name || event.category?.name || null;
             const cityLabel = event.cityName || event.city?.name || null;

@@ -355,11 +355,11 @@ public class KolomnaDemoDataInitializer implements ApplicationRunner {
                         new TicketSeedSpec("Поддержка мероприятия", new BigDecimal("500.00"),   6)
                     )
                 ),
-                // Показ 2: пятница днём 14:00 — слот 14-18 (разнообразие тепловой карты)
+                // Показ 2: пятница вечером 18:00 — вместе с первым показом даёт ячейку 2 в тепловой карте.
                 new SessionSeedSpec(
                     "Показ 2: Марс, Юпитер и будущее пилотируемого космоса",
-                    OffsetDateTime.of(2026, 5,  8, 14,  0, 0, 0, now.getOffset()),
-                    OffsetDateTime.of(2026, 5,  8, 15, 30, 0, 0, now.getOffset()),
+                    OffsetDateTime.of(2026, 5,  8, 18,  0, 0, 0, now.getOffset()),
+                    OffsetDateTime.of(2026, 5,  8, 19, 30, 0, 0, now.getOffset()),
                     null,
                     "Московская область, Коломна, улица Лажечникова, 5",
                     15,   // вместимость под данные (~80% заполняемость)

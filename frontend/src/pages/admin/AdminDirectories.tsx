@@ -108,6 +108,84 @@ function venueToDraft(venue: Venue, cities: City[]): { draft: VenueDraft; city: 
   };
 }
 
+type AddressFieldProps = {
+  value: string;
+  onChange: (v: string) => void;
+  onClear: () => void;
+  suggestions: YandexAddressSuggestion[];
+  suggestionsLoading: boolean;
+  onPickSuggestion: (s: YandexAddressSuggestion) => void;
+  detectedCity: City | null;
+  cityUnknown: boolean;
+};
+
+function AddressField({
+  value, onChange, onClear, suggestions, suggestionsLoading, onPickSuggestion,
+  detectedCity, cityUnknown,
+}: AddressFieldProps) {
+  return (
+    <div>
+      <Label>Адрес *</Label>
+      <div className="relative">
+        <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && suggestions[0]) {
+              e.preventDefault();
+              onPickSuggestion(suggestions[0]);
+            }
+          }}
+          placeholder="Начните вводить — например, «Коломна, ул. Октябрьской революции»"
+          className="pl-9 pr-8"
+          autoComplete="off"
+        />
+        {value && (
+          <button type="button" className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded text-muted-foreground hover:text-foreground" onClick={onClear}>
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {suggestionsLoading && <p className="mt-1 text-xs text-muted-foreground">Поиск адреса...</p>}
+
+      {suggestions.length > 0 && (
+        <ul className="mt-1.5 max-h-64 overflow-auto rounded-xl border border-border bg-card shadow-card">
+          {suggestions.map((s) => (
+            <li key={s.id}>
+              <button
+                type="button"
+                className="flex w-full items-start gap-2.5 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => onPickSuggestion(s)}
+              >
+                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/50" />
+                <span className="min-w-0">
+                  <span className="block truncate text-foreground">{s.label}</span>
+                  {s.cityName && <span className="text-xs text-muted-foreground">{s.cityName}{s.region ? `, ${s.region}` : ''}</span>}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {detectedCity && (
+        <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[hsl(var(--success)/0.1)] px-2.5 py-1 text-xs font-medium text-[hsl(var(--success))]">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          Город определён: {detectedCity.name}
+        </div>
+      )}
+      {cityUnknown && !detectedCity && value && (
+        <p className="mt-1.5 text-xs text-destructive">
+          Город не найден в системе. Добавьте его во вкладке «Города».
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function AdminDirectories() {
   const { selectedCity } = useCity();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -133,9 +211,6 @@ export default function AdminDirectories() {
   const [newSuggestionsLoading, setNewSuggestionsLoading] = useState(false);
   const newSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [venueQuery, setVenueQuery] = useState('');
-  const [venueCityFilter, setVenueCityFilter] = useState('all');
-  const [venueCityFilterSearch, setVenueCityFilterSearch] = useState('Все города');
-  const [venueCityFilterOpen, setVenueCityFilterOpen] = useState(false);
   const [mapInitialCenter, setMapInitialCenter] = useState<[number, number] | undefined>();
   const [newVenueCitySearch, setNewVenueCitySearch] = useState('');
   const [newVenueCityOpen, setNewVenueCityOpen] = useState(false);
@@ -153,7 +228,7 @@ export default function AdminDirectories() {
   const [savingVenue, setSavingVenue] = useState(false);
 
   useEffect(() => {
-    Promise.all([directoryService.getCategories(), directoryService.getAdminCities(), directoryService.getVenues()])
+    Promise.all([directoryService.getCategories(), directoryService.getAdminCities(), directoryService.getAdminVenues()])
       .then(([categoryResponse, cityResponse, venueResponse]) => {
         setCategories(categoryResponse);
         setCities(cityResponse);
@@ -226,15 +301,14 @@ export default function AdminDirectories() {
     const query = normalizeText(venueQuery);
     return venues.filter((venue) => {
       const city = getVenueCity(venue);
-      const matchesCity = venueCityFilter === 'all' || String(city?.id ?? venue.cityId ?? '') === venueCityFilter;
       const matchesQuery = !query
         || normalizeText(venue.name).includes(query)
         || normalizeText(venue.address).includes(query)
         || normalizeText(city?.name ?? venue.cityName).includes(query)
         || normalizeText(city?.region).includes(query);
-      return matchesCity && matchesQuery;
+      return matchesQuery;
     });
-  }, [cities, venueCityFilter, venueQuery, venues]);
+  }, [cities, venueQuery, venues]);
 
   const citySuggestionsForNewVenue = useMemo(
     () => sortCitiesBySearch(cities, newVenueCitySearch, true).slice(0, 12),
@@ -244,11 +318,6 @@ export default function AdminDirectories() {
   const citySuggestionsForEditVenue = useMemo(
     () => sortCitiesBySearch(cities, editVenueCitySearch, true).slice(0, 12),
     [cities, editVenueCitySearch],
-  );
-
-  const citySuggestionsForVenueFilter = useMemo(
-    () => sortCitiesBySearch(cities, venueCityFilterSearch === 'Все города' ? '' : venueCityFilterSearch, true).slice(0, 12),
-    [cities, venueCityFilterSearch],
   );
 
   // ─── Categories ─────────────────────────────────────────────────────────────
@@ -421,7 +490,6 @@ export default function AdminDirectories() {
   const addVenue = async () => {
     if (!newVenue.name.trim()) { toast.error('Укажите название площадки'); return; }
     if (!newVenue.address.trim()) { toast.error('Укажите адрес'); return; }
-    if (!newVenue.cityId) { toast.error('Город не определён или не добавлен в систему. Выберите адрес из подсказок или кликните на карту.'); return; }
     try {
       const venue = await directoryService.createVenue({
         ...newVenue,
@@ -432,8 +500,7 @@ export default function AdminDirectories() {
         longitude: newVenue.longitude ? Number(newVenue.longitude) : undefined,
       });
       setVenues((prev) => [...prev, venue].sort((a, b) => a.name.localeCompare(b.name, 'ru')));
-      setNewVenue({ ...emptyDraft(), cityId: selectedAdminCity ? String(selectedAdminCity.id) : '' });
-      setNewVenueCitySearch(selectedAdminCity ? getCityLabel(selectedAdminCity) : '');
+      setNewVenue(emptyDraft());
       setNewDetectedCity(null);
       setNewCityUnknown(false);
       setNewSuggestions([]);
@@ -505,7 +572,6 @@ export default function AdminDirectories() {
   const saveVenue = async (venueId: string | number) => {
     if (!editDraft.name.trim()) { toast.error('Укажите название площадки'); return; }
     if (!editDraft.address.trim()) { toast.error('Укажите адрес'); return; }
-    if (!editDraft.cityId) { toast.error('Город не определён или не добавлен в систему.'); return; }
     setSavingVenue(true);
     try {
       const updated = await directoryService.updateVenue(venueId, {
@@ -537,84 +603,6 @@ export default function AdminDirectories() {
       toast.error(error instanceof Error ? error.message : 'Не удалось удалить площадку');
     }
   };
-
-  // ─── Address input block (reusable UI fragment) ───────────────────────────────
-
-  function AddressField({
-    value, onChange, onClear, suggestions, suggestionsLoading, onPickSuggestion,
-    detectedCity, cityUnknown,
-  }: {
-    value: string;
-    onChange: (v: string) => void;
-    onClear: () => void;
-    suggestions: YandexAddressSuggestion[];
-    suggestionsLoading: boolean;
-    onPickSuggestion: (s: YandexAddressSuggestion) => void;
-    detectedCity: City | null;
-    cityUnknown: boolean;
-  }) {
-    return (
-      <div>
-        <Label>Адрес *</Label>
-        <div className="relative">
-          <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && suggestions[0]) {
-                e.preventDefault();
-                onPickSuggestion(suggestions[0]);
-              }
-            }}
-            placeholder="Начните вводить — например, «Коломна, ул. Октябрьской революции»"
-            className="pl-9 pr-8"
-            autoComplete="off"
-          />
-          {value && (
-            <button type="button" className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded text-muted-foreground hover:text-foreground" onClick={onClear}>
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-
-        {suggestionsLoading && <p className="mt-1 text-xs text-muted-foreground">Поиск адреса...</p>}
-
-        {suggestions.length > 0 && (
-          <ul className="mt-1.5 max-h-64 overflow-auto rounded-xl border border-border bg-card shadow-card">
-            {suggestions.map((s) => (
-              <li key={s.id}>
-                <button
-                  type="button"
-                  className="flex w-full items-start gap-2.5 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => onPickSuggestion(s)}
-                >
-                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/50" />
-                  <span className="min-w-0">
-                    <span className="block truncate text-foreground">{s.label}</span>
-                    {s.cityName && <span className="text-xs text-muted-foreground">{s.cityName}{s.region ? `, ${s.region}` : ''}</span>}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {detectedCity && (
-          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[hsl(var(--success)/0.1)] px-2.5 py-1 text-xs font-medium text-[hsl(var(--success))]">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            Город определён: {detectedCity.name}
-          </div>
-        )}
-        {cityUnknown && !detectedCity && value && (
-          <p className="mt-1.5 text-xs text-destructive">
-            Город не найден в системе. Добавьте его во вкладке «Города».
-          </p>
-        )}
-      </div>
-    );
-  }
 
   function CityAutocompleteField({
     label,
@@ -871,37 +859,11 @@ export default function AdminDirectories() {
 
           {/* New venue form */}
           <div className="surface-soft space-y-4">
-            <h2 className="text-sm font-semibold text-foreground">Новая площадка</h2>
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr_180px]">
+            <p className="text-sm font-semibold text-foreground">Новая площадка</p>
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_180px]">
               <div>
                 <Label>Название *</Label>
                 <Input value={newVenue.name} onChange={(e) => setNewVenue((prev) => ({ ...prev, name: e.target.value }))} placeholder="Театр, зал..." />
-              </div>
-              <div>
-                <CityAutocompleteField
-                  label="Город *"
-                  value={newVenueCitySearch}
-                  onChange={(value) => {
-                    setNewVenueCitySearch(value);
-                    setNewVenue((prev) => ({ ...prev, cityId: '', latitude: '', longitude: '' }));
-                    setNewDetectedCity(null);
-                    setNewCityUnknown(false);
-                  }}
-                  open={newVenueCityOpen}
-                  onOpenChange={setNewVenueCityOpen}
-                  suggestions={citySuggestionsForNewVenue}
-                  onPick={(city) => {
-                    setNewVenueCitySearch(getCityLabel(city));
-                    setNewVenue((prev) => ({ ...prev, cityId: String(city.id), latitude: '', longitude: '' }));
-                    setNewDetectedCity(city);
-                    setNewCityUnknown(false);
-                  }}
-                  onClear={() => {
-                    setNewVenue((prev) => ({ ...prev, cityId: '', latitude: '', longitude: '' }));
-                    setNewDetectedCity(null);
-                    setNewCityUnknown(false);
-                  }}
-                />
               </div>
               <div>
                 <Label>Вместимость</Label>
@@ -912,7 +874,7 @@ export default function AdminDirectories() {
             <AddressField
               value={newVenue.address}
               onChange={onNewAddressInput}
-              onClear={() => { setNewVenue((prev) => ({ ...prev, address: '', latitude: '', longitude: '', cityId: selectedAdminCity ? String(selectedAdminCity.id) : prev.cityId })); if (selectedAdminCity) setNewVenueCitySearch(getCityLabel(selectedAdminCity)); setNewDetectedCity(null); setNewCityUnknown(false); setNewSuggestions([]); }}
+              onClear={() => { setNewVenue((prev) => ({ ...prev, address: '', latitude: '', longitude: '' })); setNewDetectedCity(null); setNewCityUnknown(false); setNewSuggestions([]); }}
               suggestions={newSuggestions}
               suggestionsLoading={newSuggestionsLoading}
               onPickSuggestion={applyNewSuggestion}
@@ -933,7 +895,7 @@ export default function AdminDirectories() {
             <Button onClick={addVenue} className="gap-1.5"><Plus className="h-4 w-4" />Добавить площадку</Button>
           </div>
 
-          <div className="surface-soft grid gap-3 lg:grid-cols-[1fr_260px] lg:items-end">
+          <div className="surface-soft">
             <div>
               <Label>Поиск площадок</Label>
               <div className="relative">
@@ -941,32 +903,10 @@ export default function AdminDirectories() {
                 <Input
                   value={venueQuery}
                   onChange={(e) => setVenueQuery(e.target.value)}
-                  placeholder="Название, адрес или город..."
+                  placeholder="Название или адрес..."
                   className="pl-9"
                 />
               </div>
-            </div>
-            <div>
-              <CityAutocompleteField
-                label="Город"
-                value={venueCityFilterSearch}
-                onChange={(value) => {
-                  setVenueCityFilterSearch(value);
-                  setVenueCityFilter('all');
-                }}
-                open={venueCityFilterOpen}
-                onOpenChange={setVenueCityFilterOpen}
-                suggestions={citySuggestionsForVenueFilter}
-                onPick={(city) => {
-                  setVenueCityFilter(String(city.id));
-                  setVenueCityFilterSearch(getCityLabel(city));
-                }}
-                onClear={() => {
-                  setVenueCityFilter('all');
-                  setVenueCityFilterSearch('Все города');
-                }}
-                placeholder="Все города"
-              />
             </div>
           </div>
 
@@ -1016,36 +956,10 @@ export default function AdminDirectories() {
                   {/* Edit form */}
                   {isExpanded && (
                     <div className="space-y-4 border-t border-border px-4 py-4">
-                      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr_180px]">
+                      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_180px]">
                         <div>
                           <Label>Название *</Label>
                           <Input value={editDraft.name} onChange={(e) => setEditDraft((prev) => ({ ...prev, name: e.target.value }))} />
-                        </div>
-                        <div>
-                          <CityAutocompleteField
-                            label="Город *"
-                            value={editVenueCitySearch}
-                            onChange={(value) => {
-                              setEditVenueCitySearch(value);
-                              setEditDraft((prev) => ({ ...prev, cityId: '', latitude: '', longitude: '' }));
-                              setEditDetectedCity(null);
-                              setEditCityUnknown(false);
-                            }}
-                            open={editVenueCityOpen}
-                            onOpenChange={setEditVenueCityOpen}
-                            suggestions={citySuggestionsForEditVenue}
-                            onPick={(city) => {
-                              setEditVenueCitySearch(getCityLabel(city));
-                              setEditDraft((prev) => ({ ...prev, cityId: String(city.id), latitude: '', longitude: '' }));
-                              setEditDetectedCity(city);
-                              setEditCityUnknown(false);
-                            }}
-                            onClear={() => {
-                              setEditDraft((prev) => ({ ...prev, cityId: '', latitude: '', longitude: '' }));
-                              setEditDetectedCity(null);
-                              setEditCityUnknown(false);
-                            }}
-                          />
                         </div>
                         <div>
                           <Label>Вместимость</Label>

@@ -272,6 +272,20 @@ export default function EventFormPage() {
 
   const addressSearchTimeoutRef = useRef<Record<string, number>>({});
 
+  const organizerCityId = useMemo(() => {
+    const stateOrganization = wizardState?.organizationId
+      ? organizations.find((organization) => organization.id === wizardState.organizationId)
+      : null;
+    return stateOrganization?.cityId ?? organizations[0]?.cityId ?? null;
+  }, [organizations, wizardState?.organizationId]);
+
+  const availableVenues = useMemo(() => {
+    if (organizerCityId == null) {
+      return venues;
+    }
+    return venues.filter((venue) => String(venue.cityId ?? venue.city?.id ?? '') === String(organizerCityId));
+  }, [organizerCityId, venues]);
+
   const applyWizardState = useCallback((state: OrganizerWizardState | null) => {
     if (!state) return;
     setWizardState(state);
@@ -921,7 +935,7 @@ export default function EventFormPage() {
   };
 
   const onSessionVenueChange = (session: SessionDraft, venueIdValue: string) => {
-    const selectedVenue = venues.find((venue) => String(venue.id) === venueIdValue);
+    const selectedVenue = availableVenues.find((venue) => String(venue.id) === venueIdValue);
     if (!selectedVenue) {
       updateSession(session.localId, { venueId: '', locationMode: 'venue' });
       return;
@@ -1357,7 +1371,7 @@ export default function EventFormPage() {
                 const suggestions = addressSuggestionsBySession[session.localId] || [];
                 const showMap = Boolean(mapOpenedBySession[session.localId]);
                 const selectedVenue = session.venueId
-                  ? venues.find((venue) => String(venue.id) === session.venueId)
+                  ? availableVenues.find((venue) => String(venue.id) === session.venueId)
                   : undefined;
                 const showManualMap = session.locationMode === 'manual' && showMap;
                 const showVenueMap = session.locationMode === 'venue' && Boolean(selectedVenue);
@@ -1437,7 +1451,7 @@ export default function EventFormPage() {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="__placeholder__">Выберите площадку</SelectItem>
-                                {venues.map((venue) => (
+                                {availableVenues.map((venue) => (
                                   <SelectItem key={venue.id} value={String(venue.id)}>
                                     {venue.name} · {venue.address}
                                   </SelectItem>

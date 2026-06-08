@@ -19,6 +19,9 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     List<Event> findAllByDeletedAtIsNullOrderByCreatedAtDesc();
 
     @EntityGraph(attributePaths = {"organization", "organization.city", "createdByUser", "city"})
+    List<Event> findAllByCityIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long cityId);
+
+    @EntityGraph(attributePaths = {"organization", "organization.city", "createdByUser", "city"})
     List<Event> findAllByOrganizationIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long organizationId);
 
     @EntityGraph(attributePaths = {"organization", "organization.city", "createdByUser", "city"})

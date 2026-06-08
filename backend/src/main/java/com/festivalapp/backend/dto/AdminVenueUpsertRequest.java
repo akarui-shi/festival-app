@@ -2,7 +2,6 @@ package com.festivalapp.backend.dto;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -30,6 +29,5 @@ public class AdminVenueUpsertRequest {
     private BigDecimal latitude;
     private BigDecimal longitude;
 
-    @NotNull(message = "City ID is required")
     private Long cityId;
 }
