@@ -1,47 +1,152 @@
 # Festival City App
 
-Веб-приложение для организации и продвижения фестивалей и культурных мероприятий в малом городе.
+Веб-приложение для организации культурных мероприятий и фестивалей в малом городе. Жители просматривают афишу и покупают билеты, организаторы управляют событиями и смотрят аналитику, администраторы модерируют контент.
 
-## Технологии
-- Backend: Java 17, Spring Boot, Spring Security, Spring Data JPA
-- Frontend: React, Vite, React Router
-- Database: PostgreSQL, Flyway
+## Стек
 
-## Роли
-- Житель
-- Организатор
-- Администратор
+| Слой | Технологии |
+|------|-----------|
+| Backend | Java 17, Spring Boot 3.3, Spring Security, Spring Data JPA, Flyway |
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, TanStack Query |
+| База данных | PostgreSQL 16 |
+| Аутентификация | JWT (httpOnly cookie), OAuth2 (Google, Яндекс), email-подтверждение |
+| Карты | Яндекс Карты JS API |
+| Оплата | ЮКасса |
+| Аналитика | Яндекс Метрика (опционально) |
+| Инфраструктура | Docker Compose, nginx |
 
-## Основной функционал
-- Регистрация и авторизация
-- Просмотр афиши мероприятий
-- Фильтрация мероприятий
-- Запись на сеансы
-- Избранное
-- Отзывы
-- Управление мероприятиями организатором
-- Модерация публикаций и отзывов администратором
+## Возможности
 
-## Интеграция Яндекс Метрики (кабинет организатора)
-Для подключения внешней аналитики укажите переменные окружения backend:
+**Жители**
+- Афиша с фильтрацией (категория, дата, цена, город) и картой
+- Покупка билетов с оплатой через ЮКасса и QR-кодами
+- Промокоды и скидки
+- Избранное, история регистраций
+- Отзывы и рейтинги
 
-- `YANDEX_METRIKA_ENABLED=true`
-- `YANDEX_METRIKA_TOKEN=<oauth_token>`
-- `YANDEX_METRIKA_COUNTER_ID=<counter_id>`
+**Организаторы**
+- Создание и редактирование мероприятий, управление сеансами и вместимостью
+- Кабинет аналитики: посещаемость, выручка, конверсия (внутренняя + Яндекс Метрика)
+- Управление промокодами и новостными публикациями
+- Список участников с фильтрами
 
-Конфигурация в `application.yml`:
+**Администраторы**
+- Модерация мероприятий (статусная машина: черновик → на модерации → опубликовано)
+- Управление пользователями и ролями
+- Модерация отзывов и публикаций
+- Редактирование справочников (категории, теги, города)
 
-```yaml
-yandex:
-  metrika:
-    enabled: ${YANDEX_METRIKA_ENABLED:false}
-    token: ${YANDEX_METRIKA_TOKEN:}
-    counter-id: ${YANDEX_METRIKA_COUNTER_ID:}
+## Быстрый старт (Docker Compose)
+
+Требования: Docker ≥ 24, Docker Compose ≥ 2.
+
+```bash
+git clone <repo-url>
+cd festival-app
+cp .env.example .env
+# Заполните .env — минимально нужны DB_PASSWORD и JWT_SECRET
+docker compose up -d
 ```
 
-Если Метрика не настроена, кабинет организатора продолжает работать на внутренней аналитике и показывает понятный статус внешних метрик.
+Приложение будет доступно на `http://localhost`.
 
-## Схема БД v2
-- Бэкенд переведён на миграции Flyway.
-- Финальная схема по новой ER-модели: `backend/src/main/resources/db/migration/V1__new_er_schema.sql`.
-- Слой `entity/repository/service` полностью переведён на новую модель данных (legacy-классы удалены).
+Чтобы сгенерировать безопасный `JWT_SECRET`:
+```bash
+openssl rand -base64 64
+```
+
+## Локальная разработка
+
+### Backend
+
+```bash
+cd backend
+cp .env.example .env   # укажите реальные значения
+./mvnw spring-boot:run
+# API: http://localhost:8080
+# Swagger UI: http://localhost:8080/swagger-ui.html
+```
+
+Требования: Java 17+, PostgreSQL 16 (или запустите только БД через Docker).
+
+```bash
+docker compose up db -d   # только база данных
+```
+
+### Frontend
+
+```bash
+cd frontend
+cp .env.example .env      # укажите VITE_BACKEND_BASE_URL=http://localhost:8080
+npm install
+npm run dev
+# http://localhost:5173
+```
+
+## Переменные окружения
+
+Полный список с описаниями — в [.env.example](.env.example) (корень, для Docker Compose).
+
+| Переменная | Описание |
+|-----------|---------|
+| `DB_PASSWORD` | Пароль PostgreSQL |
+| `JWT_SECRET` | Base64-строка ≥ 32 символов |
+| `APP_BASE_URL` | Публичный URL приложения (без слэша) |
+| `GOOGLE_OAUTH_CLIENT_ID/SECRET` | Google OAuth2 |
+| `YANDEX_OAUTH_CLIENT_ID/SECRET` | Яндекс OAuth2 |
+| `MAIL_*` | SMTP (Яндекс Почта, Gmail и др.) |
+| `YOOKASSA_SHOP_ID/SECRET_KEY` | ЮКасса (можно не заполнять для разработки) |
+
+Фронтенд-переменные — в [frontend/.env.example](frontend/.env.example):
+
+| Переменная | Описание |
+|-----------|---------|
+| `VITE_BACKEND_BASE_URL` | URL бэкенда |
+| `VITE_YANDEX_MAPS_API_KEY` | Ключ Яндекс Карт |
+| `VITE_YANDEX_METRIKA_COUNTER_ID` | Счётчик Метрики (опционально) |
+| `VITE_METRIKA_DEMO` | `true` — демо-данные Метрики вместо реальных |
+
+### Яндекс Метрика (кабинет организатора)
+
+Если нужны реальные данные из Метрики, добавьте в `.env`:
+
+```
+YANDEX_METRIKA_ENABLED=true
+YANDEX_METRIKA_TOKEN=<oauth_token>
+YANDEX_METRIKA_COUNTER_ID=<counter_id>
+VITE_METRIKA_DEMO=false
+```
+
+Без этих переменных кабинет работает на внутренней аналитике.
+
+## Тестирование
+
+```bash
+# Frontend unit-тесты (Vitest)
+cd frontend && npm test
+
+# E2E тесты (Playwright)
+cd frontend && npm run test:e2e
+
+# Backend интеграционные тесты (Testcontainers — нужен Docker)
+cd backend && ./mvnw test
+```
+
+## Структура проекта
+
+```
+festival-app/
+├── backend/          # Spring Boot приложение
+│   └── src/main/
+│       ├── java/     # Контроллеры, сервисы, репозитории, сущности
+│       └── resources/
+│           └── db/migration/  # Flyway-миграции
+├── frontend/         # React + Vite
+│   └── src/
+│       ├── pages/    # Страницы (public / organizer / admin)
+│       ├── components/
+│       ├── services/ # API-клиенты
+│       └── contexts/ # Auth, City
+├── docs/diagrams/    # C4, ER, BPMN, диаграммы последовательностей
+└── docker-compose.yml
+```
