@@ -55,6 +55,11 @@ public class AdminModerationController {
         return ResponseEntity.ok(publicationService.getByIdForAdmin(id, extractUserIdentifier(authentication)));
     }
 
+    @GetMapping("/publications/{id}")
+    public ResponseEntity<PublicationDetailsResponse> getPublicationById(@PathVariable Long id) {
+        return ResponseEntity.ok(publicationService.getByIdForAdmin(id));
+    }
+
     @GetMapping("/events")
     public ResponseEntity<List<EventShortResponse>> getEvents(@RequestParam(required = false) EventStatus status,
                                                               Authentication authentication) {
@@ -66,6 +71,58 @@ public class AdminModerationController {
                                                                 @Valid @RequestBody EventStatusUpdateRequest request,
                                                                 Authentication authentication) {
         return ResponseEntity.ok(eventService.updateStatusByAdmin(id, request.getStatus(), extractUserIdentifier(authentication)));
+    }
+
+    @GetMapping("/comments")
+    public ResponseEntity<List<CommentResponse>> getComments() {
+        return ResponseEntity.ok(commentService.getAllForAdmin());
+    }
+
+    @GetMapping("/moderation")
+    public ResponseEntity<List<ModerationResponse>> getModerationHistory() {
+        return ResponseEntity.ok(moderationService.getRecent());
+    }
+
+    @PostMapping("/moderation/decisions")
+    public ResponseEntity<ModerationResponse> applyDecision(@Valid @RequestBody ModerationDecisionRequest request,
+                                                            Authentication authentication) {
+        return ResponseEntity.ok(moderationService.applyDecision(request, extractUserIdentifier(authentication)));
+    }
+
+    private String extractUserIdentifier(Authentication authentication) {
+        if (authentication == null
+            || !authentication.isAuthenticated()
+            || authentication instanceof AnonymousAuthenticationToken) {
+            throw new UnauthorizedException("Unauthorized user");
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof UserDetails userDetails && StringUtils.hasText(userDetails.getUsername())) {
+            return userDetails.getUsername();
+        }
+        if (principal instanceof OAuth2User oauth2User) {
+            String email = oauth2User.getAttribute("email");
+            if (StringUtils.hasText(email)) {
+                return email;
+            }
+            String defaultEmail = oauth2User.getAttribute("default_email");
+            if (StringUtils.hasText(defaultEmail)) {
+                return defaultEmail;
+            }
+            if (StringUtils.hasText(oauth2User.getName())) {
+                return oauth2User.getName();
+            }
+        }
+        if (principal instanceof String principalString && StringUtils.hasText(principalString)
+            && !"anonymousUser".equalsIgnoreCase(principalString)) {
+            return principalString;
+        }
+        if (StringUtils.hasText(authentication.getName())
+            && !"anonymousUser".equalsIgnoreCase(authentication.getName())) {
+            return authentication.getName();
+        }
+
+        throw new UnauthorizedException("Unauthorized user");
     }
 
     @GetMapping("/comments")
